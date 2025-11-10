@@ -62,63 +62,83 @@ export const ChatPanel = ({ selectedChapterId, selectedSubjectId }: ChatPanelPro
 
   return (
     <div className="flex-1 flex flex-col bg-background">
-      <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-sm">Chat</h2>
+      <div className="px-6 py-3 border-b border-border bg-card/50">
+        <h2 className="font-medium text-sm text-foreground">Chat & Q&A</h2>
         {selectedChapterId ? (
-          <p className="text-xs text-muted-foreground mt-1">Ask questions about the selected chapter</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Powered by Gemini • Ask questions about the selected chapter</p>
         ) : (
-          <p className="text-xs text-muted-foreground mt-1">Select a chapter from sources to start</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Select a chapter from sources to start</p>
         )}
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 px-6 py-4" ref={scrollRef}>
         {!selectedChapterId ? (
           <div className="flex items-center justify-center h-full text-center">
-            <div className="space-y-2">
-              <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto" />
+            <div className="space-y-3 max-w-sm">
+              <AlertCircle className="w-10 h-10 text-muted-foreground/60 mx-auto" />
               <p className="text-sm text-muted-foreground">
-                Select a chapter from the Sources panel to begin
+                Select a chapter from the <strong>Sources</strong> panel to begin chatting
               </p>
             </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-center">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Ask a question to get started
-              </p>
+            <div className="space-y-3 max-w-md">
+              <div className="text-4xl mx-auto">💬</div>
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">
+                  Ask anything about this chapter
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Powered by Gemini AI with context from your selected PDF
+                </p>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6 max-w-3xl mx-auto">
             {messages.map((message, idx) => (
               <div
                 key={idx}
                 className={cn(
-                  "flex",
+                  "flex gap-3",
                   message.role === "user" ? "justify-end" : "justify-start"
                 )}
               >
+                {message.role === "assistant" && (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-xs font-semibold text-primary">AI</span>
+                  </div>
+                )}
                 <div
                   className={cn(
-                    "max-w-[80%] rounded-lg p-3 text-sm",
+                    "max-w-[75%] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed",
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted prose prose-sm max-w-none"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-foreground border border-border/50"
                   )}
                 >
                   {message.role === "assistant" ? (
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <div className="prose prose-sm prose-slate max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
                   ) : (
-                    message.content
+                    <div>{message.content}</div>
                   )}
                 </div>
               </div>
             ))}
             {loading && (
-              <div className="flex justify-start">
-                <div className="bg-muted rounded-lg p-3 text-sm">
-                  <span className="animate-pulse">Thinking...</span>
+              <div className="flex gap-3 justify-start">
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-semibold text-primary">AI</span>
+                </div>
+                <div className="bg-muted/50 border border-border/50 rounded-2xl px-4 py-2.5 text-[13px]">
+                  <span className="flex items-center gap-1">
+                    <span className="animate-pulse">●</span>
+                    <span className="animate-pulse animation-delay-200">●</span>
+                    <span className="animate-pulse animation-delay-400">●</span>
+                  </span>
                 </div>
               </div>
             )}
@@ -126,8 +146,8 @@ export const ChatPanel = ({ selectedChapterId, selectedSubjectId }: ChatPanelPro
         )}
       </ScrollArea>
 
-      <div className="p-4 border-t border-border">
-        <div className="flex gap-2">
+      <div className="px-6 py-4 border-t border-border bg-card/30 sticky bottom-0">
+        <div className="max-w-3xl mx-auto flex gap-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -137,15 +157,15 @@ export const ChatPanel = ({ selectedChapterId, selectedSubjectId }: ChatPanelPro
                 handleSend();
               }
             }}
-            placeholder={selectedChapterId ? "Ask a question..." : "Select a chapter first"}
+            placeholder={selectedChapterId ? "Ask a question about this chapter..." : "Select a chapter first"}
             disabled={!selectedChapterId || loading}
-            className="min-h-[60px] resize-none"
+            className="min-h-[52px] resize-none rounded-xl text-sm"
           />
           <Button
             onClick={handleSend}
             disabled={!selectedChapterId || !input.trim() || loading}
             size="icon"
-            className="h-[60px] w-[60px]"
+            className="h-[52px] w-[52px] rounded-xl"
           >
             <Send className="w-4 h-4" />
           </Button>

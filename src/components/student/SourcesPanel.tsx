@@ -85,51 +85,53 @@ export const SourcesPanel = ({
   };
 
   return (
-    <div className="w-80 border-r border-border bg-muted/30 flex flex-col">
-      <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-sm">Sources</h2>
-        <p className="text-xs text-muted-foreground mt-1">Select a chapter to begin</p>
+    <div className="w-72 border-r border-border bg-card flex flex-col shadow-sm">
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="font-medium text-sm text-foreground">Sources</h2>
+        <p className="text-[11px] text-muted-foreground mt-0.5">Select a chapter to begin</p>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-2">
+        <div className="p-3">
           {subjects.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
+            <div className="p-4 text-center text-xs text-muted-foreground">
               No subjects assigned yet
             </div>
           ) : (
             subjects.map((subject) => (
-              <div key={subject.id} className="mb-2">
+              <div key={subject.id} className="mb-1.5">
                 <button
                   onClick={() => toggleSubject(subject.id)}
-                  className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md hover:bg-accent/50 transition-colors text-left group"
                 >
                   <ChevronRight
                     className={cn(
-                      "w-4 h-4 transition-transform",
+                      "w-3.5 h-3.5 transition-transform text-muted-foreground group-hover:text-foreground",
                       expandedSubjects.has(subject.id) && "rotate-90"
                     )}
                   />
-                  <BookOpen className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium flex-1">
+                  <BookOpen className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[13px] font-medium flex-1">
                     {subject.name_kannada || subject.name}
                   </span>
                 </button>
 
                 {expandedSubjects.has(subject.id) && (
-                  <div className="ml-6 mt-1 space-y-1">
+                  <div className="ml-5 mt-1 space-y-0.5">
                     {chapters[subject.id]?.map((chapter) => (
                       <button
                         key={chapter.id}
                         onClick={() => handleSelectChapter(chapter.id, subject.id)}
                         className={cn(
-                          "w-full text-left p-2 px-3 rounded-md text-sm transition-colors",
+                          "w-full text-left px-3 py-2 rounded text-[12px] transition-all",
                           selectedChapterId === chapter.id
-                            ? "bg-primary text-primary-foreground"
-                            : "hover:bg-muted"
+                            ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                            : "hover:bg-accent/50 text-foreground border-l-2 border-transparent"
                         )}
                       >
-                        {chapter.chapter_number}. {chapter.name_kannada || chapter.name}
+                        <div className="line-clamp-2">
+                          {chapter.chapter_number}. {chapter.name_kannada || chapter.name}
+                        </div>
                       </button>
                     ))}
                   </div>

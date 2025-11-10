@@ -12,26 +12,35 @@ interface ToolsPanelProps {
 
 export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelProps) => {
   return (
-    <div className="w-80 border-l border-border bg-muted/30 flex flex-col">
-      <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-sm">Tools</h2>
-        <p className="text-xs text-muted-foreground mt-1">Study aids and resources</p>
+    <div className="w-80 border-l border-border bg-card flex flex-col shadow-sm">
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="font-medium text-sm text-foreground">Study Tools</h2>
+        <p className="text-[11px] text-muted-foreground mt-0.5">Flashcards, quizzes & videos</p>
       </div>
 
       {!selectedChapterId ? (
-        <div className="p-6 text-center text-sm text-muted-foreground">
-          Select a chapter to access tools
+        <div className="p-6 text-center text-xs text-muted-foreground">
+          Select a chapter to access study tools
         </div>
       ) : (
         <Tabs defaultValue="flashcards" className="w-full flex-1 flex flex-col">
-          <TabsList className="w-full grid grid-cols-3 rounded-none border-b">
-            <TabsTrigger value="flashcards" className="rounded-none">
+          <TabsList className="w-full grid grid-cols-3 rounded-none border-b bg-transparent h-12">
+            <TabsTrigger 
+              value="flashcards" 
+              className="rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+            >
               <Brain className="w-4 h-4" />
             </TabsTrigger>
-            <TabsTrigger value="quiz" className="rounded-none">
+            <TabsTrigger 
+              value="quiz" 
+              className="rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+            >
               <HelpCircle className="w-4 h-4" />
             </TabsTrigger>
-            <TabsTrigger value="videos" className="rounded-none">
+            <TabsTrigger 
+              value="videos" 
+              className="rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+            >
               <Video className="w-4 h-4" />
             </TabsTrigger>
           </TabsList>

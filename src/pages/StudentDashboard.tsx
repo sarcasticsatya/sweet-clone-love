@@ -50,25 +50,25 @@ const StudentDashboard = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="border-b border-border px-6 py-3 flex items-center justify-between bg-card">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-primary-foreground" />
+      {/* NotebookLM-style Header */}
+      <header className="border-b border-border px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-primary rounded flex items-center justify-center">
+            <BookOpen className="w-4 h-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold">Karnataka SSLC</h1>
-            <p className="text-xs text-muted-foreground">Learning Platform</p>
+            <h1 className="text-base font-medium">NotebookLM</h1>
+            <p className="text-[10px] text-muted-foreground">Karnataka SSLC Edition</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleSignOut}>
-          <LogOut className="w-4 h-4 mr-2" />
+        <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-8 text-xs">
+          <LogOut className="w-3.5 h-3.5 mr-1.5" />
           Sign Out
         </Button>
       </header>
 
-      {/* Three-panel layout */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Three-panel NotebookLM layout */}
+      <div className="flex-1 flex overflow-hidden bg-muted/10">
         {/* Left: Sources Panel */}
         <SourcesPanel
           selectedChapterId={selectedChapterId}
