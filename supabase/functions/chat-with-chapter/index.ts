@@ -72,7 +72,7 @@ serve(async (req) => {
    - DO NOT use LaTeX syntax (no $...$ or $$...$$).
    - Keep formatting simple and readable for school students.
 5. ALWAYS end your response with a **Final Answer** section that concisely answers the question.
-6. DO NOT refuse to output equations. If the chapter contains equations, write them exactly as they appear (in plain text).
+6. If the chapter contains equations, write them exactly as they appear (in plain text).
 
 CHAPTER: ${chapterName}
 CHAPTER CONTENT:
