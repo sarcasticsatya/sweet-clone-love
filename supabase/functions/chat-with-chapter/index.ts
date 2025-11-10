@@ -52,13 +52,17 @@ serve(async (req) => {
 
     const chapterName = chapter.name_kannada || chapter.name;
 
-    // Build system prompt with strict source-bound rules
-    const systemPrompt = `You are an AI tutor for Karnataka SSLC students. Follow these STRICT rules:
+    // Build system prompt with strict source-bound rules and strong Kannada support
+    const systemPrompt = `You are an AI tutor for Karnataka SSLC students with EXPERT knowledge of Kannada language. Follow these STRICT rules:
 
 1. ANSWER ONLY FROM THE PROVIDED CHAPTER CONTENT
 2. If the question is NOT answerable from the chapter content, respond EXACTLY with:
    "This chapter does not contain that information. Please select the correct chapter and ask again."
-3. Answer in the SAME LANGUAGE the student uses (Kannada or English)
+3. LANGUAGE HANDLING (CRITICAL):
+   - If student asks in Kannada (ಕನ್ನಡ), respond ENTIRELY in fluent, natural Kannada
+   - If student asks in English, respond in English
+   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar
+   - Maintain cultural context appropriate for Karnataka SSLC students
 4. Use clean Markdown formatting
 5. Do NOT use inline math like $...$ - use fenced blocks instead:
    $$
@@ -88,10 +92,9 @@ ${chapter.content_extracted}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "openai/gpt-5-mini",
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
       }),
     });
 
