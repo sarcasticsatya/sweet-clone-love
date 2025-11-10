@@ -81,17 +81,20 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Generate a quiz with 10 multiple-choice questions from the chapter content. Format as JSON with structure:
-            {
-              "questions": [
-                {
-                  "question": "question text",
-                  "options": ["option1", "option2", "option3", "option4"],
-                  "correctAnswer": 0
-                }
-              ]
-            }
-            Use the same language as the chapter (Kannada or English). Make questions clear and educational.`
+            content: `Generate a quiz with 10 multiple-choice questions from the chapter content.
+
+IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
+{
+  "questions": [
+    {
+      "question": "question text",
+      "options": ["option1", "option2", "option3", "option4"],
+      "correctAnswer": 0
+    }
+  ]
+}
+
+Use the same language as the chapter (Kannada or English). Make questions clear and educational. The correctAnswer is the index (0-3) of the correct option. Do not wrap the response in markdown code blocks.`
           },
           {
             role: "user",
@@ -107,7 +110,11 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices[0]?.message?.content;
+    let content = aiData.choices[0]?.message?.content || "";
+    
+    // Strip markdown code blocks if present (AI sometimes wraps JSON in ```json ... ```)
+    content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    
     const parsed = JSON.parse(content);
 
     // Store quiz in database

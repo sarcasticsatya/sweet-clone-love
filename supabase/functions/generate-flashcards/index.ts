@@ -89,7 +89,16 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Generate 10-15 flashcards from the chapter content. Each flashcard should have a question and answer. Format as JSON array with {question, answer} objects. Keep questions and answers concise. Use the same language as the chapter content (Kannada or English).`
+            content: `Generate 10-15 flashcards from the chapter content. Each flashcard should have a question and answer. 
+            
+IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
+{
+  "flashcards": [
+    {"question": "question text", "answer": "answer text"}
+  ]
+}
+
+Keep questions and answers concise and educational. Use the same language as the chapter content (Kannada or English). Do not wrap the response in markdown code blocks.`
           },
           {
             role: "user",
@@ -105,9 +114,13 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices[0]?.message?.content;
+    let content = aiData.choices[0]?.message?.content || "";
+    
+    // Strip markdown code blocks if present (AI sometimes wraps JSON in ```json ... ```)
+    content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    
     const parsed = JSON.parse(content);
-    const flashcardsArray = parsed.flashcards || parsed.cards || [];
+    const flashcardsArray = parsed.flashcards || parsed.cards || parsed.items || [];
 
     // Store flashcards in database
     const flashcardsToInsert = flashcardsArray.map((fc: any) => ({
