@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import PDFParser from "https://esm.sh/pdf-parse@1.1.1";
+import { getDocument } from "https://esm.sh/pdfjs-serverless@0.3.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,28 +55,46 @@ serve(async (req) => {
 
     console.log("Starting PDF text extraction for chapter:", chapterId);
     
-    // Use pdf-parse library to extract text directly from PDF
-    const arrayBuffer = await pdfData.arrayBuffer();
-    const pdfBuffer = new Uint8Array(arrayBuffer);
-    console.log("PDF size:", pdfBuffer.length, "bytes");
-
     try {
-      console.log("Extracting text using pdf-parse library...");
-      const pdfData_parsed = await PDFParser(pdfBuffer);
-      const extractedText = pdfData_parsed.text;
+      // Use pdfjs-serverless to extract text
+      const arrayBuffer = await pdfData.arrayBuffer();
+      const typedArray = new Uint8Array(arrayBuffer);
+      console.log("PDF size:", typedArray.length, "bytes");
 
-      if (!extractedText || extractedText.trim().length === 0) {
+      console.log("Loading PDF with pdfjs-serverless...");
+      const doc = await getDocument(typedArray).promise;
+      const numPages = doc.numPages;
+      console.log("Number of pages:", numPages);
+
+      // Extract text from all pages
+      let extractedText = "";
+      for (let i = 1; i <= numPages; i++) {
+        console.log(`Extracting text from page ${i}/${numPages}...`);
+        const page = await doc.getPage(i);
+        const textContent = await page.getTextContent();
+        
+        const pageText = textContent.items
+          .filter((item: any) => item.str != null)
+          .map((item: any) => item.str as string)
+          .join(" ")
+          .replace(/\s+/g, " ");
+        
+        extractedText += pageText + "\n\n";
+      }
+
+      extractedText = extractedText.trim();
+
+      if (!extractedText || extractedText.length === 0) {
         console.error("No text extracted from PDF - may be scanned/image-based");
         return new Response(
           JSON.stringify({ 
-            error: "No text found in PDF. The PDF may contain only images or scanned content. OCR support coming soon." 
+            error: "No embedded text found in PDF. The PDF may contain only images or scanned content. Please contact admin to enable OCR support." 
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       console.log("Extracted text length:", extractedText.length);
-      console.log("Number of pages:", pdfData_parsed.numpages);
 
       // Update chapter with extracted text
       const { error: updateError } = await supabaseClient
@@ -96,7 +114,7 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           textLength: extractedText.length,
-          pages: pdfData_parsed.numpages 
+          pages: numPages 
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
