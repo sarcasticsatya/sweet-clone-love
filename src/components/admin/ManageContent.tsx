@@ -107,7 +107,7 @@ export const ManageContent = () => {
         .getPublicUrl(fileName);
 
       // Create chapter record
-      const { error: insertError } = await supabase
+      const { data: chapterData, error: insertError } = await supabase
         .from("chapters")
         .insert({
           subject_id: selectedSubjectId,
@@ -116,11 +116,20 @@ export const ManageContent = () => {
           name_kannada: chapterNameKannada,
           pdf_url: publicUrl,
           pdf_storage_path: fileName
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
 
-      toast.success("Chapter uploaded successfully. PDF content extraction will happen soon.");
+      // Trigger PDF text extraction
+      supabase.functions.invoke("extract-pdf-text", {
+        body: { chapterId: chapterData.id }
+      }).then(() => {
+        toast.success("PDF text extraction started");
+      });
+
+      toast.success("Chapter uploaded successfully!");
       setChapterDialogOpen(false);
       setSelectedSubjectId("");
       setChapterNumber("");
