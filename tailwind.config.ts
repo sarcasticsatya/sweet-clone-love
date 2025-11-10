@@ -59,12 +59,7 @@ export default {
         },
       },
       backgroundImage: {
-        'gradient-primary': 'var(--gradient-primary)',
-        'gradient-hero': 'var(--gradient-hero)',
-      },
-      boxShadow: {
-        'glow-primary': 'var(--glow-primary)',
-        'glow-accent': 'var(--glow-accent)',
+        'panel': 'hsl(var(--panel-bg))',
       },
       borderRadius: {
         lg: "var(--radius)",

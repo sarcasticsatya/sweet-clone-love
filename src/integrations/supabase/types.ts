@@ -14,16 +14,356 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chapters: {
+        Row: {
+          chapter_number: number
+          content_extracted: string | null
+          created_at: string
+          id: string
+          name: string
+          name_kannada: string
+          pdf_storage_path: string
+          pdf_url: string
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          chapter_number: number
+          content_extracted?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          name_kannada: string
+          pdf_storage_path: string
+          pdf_url: string
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          chapter_number?: number
+          content_extracted?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          name_kannada?: string
+          pdf_storage_path?: string
+          pdf_url?: string
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          chapter_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+          student_id: string
+        }
+        Insert: {
+          chapter_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          student_id: string
+        }
+        Update: {
+          chapter_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flashcards: {
+        Row: {
+          answer: string
+          chapter_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          question: string
+        }
+        Insert: {
+          answer: string
+          chapter_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          question: string
+        }
+        Update: {
+          answer?: string
+          chapter_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quiz_attempts: {
+        Row: {
+          answers: Json
+          attempted_at: string
+          id: string
+          quiz_id: string
+          score: number
+          student_id: string
+          total_questions: number
+        }
+        Insert: {
+          answers: Json
+          attempted_at?: string
+          id?: string
+          quiz_id: string
+          score: number
+          student_id: string
+          total_questions: number
+        }
+        Update: {
+          answers?: Json
+          attempted_at?: string
+          id?: string
+          quiz_id?: string
+          score?: number
+          student_id?: string
+          total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          chapter_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          questions: Json
+          title: string
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          questions: Json
+          title: string
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          questions?: Json
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_subject_access: {
+        Row: {
+          granted_at: string
+          id: string
+          student_id: string
+          subject_id: string
+        }
+        Insert: {
+          granted_at?: string
+          id?: string
+          student_id: string
+          subject_id: string
+        }
+        Update: {
+          granted_at?: string
+          id?: string
+          student_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_subject_access_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          name_kannada: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          name_kannada: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          name_kannada?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      videos: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          storage_path: string | null
+          subject_id: string
+          title: string
+          title_kannada: string | null
+          updated_at: string
+          video_type: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          storage_path?: string | null
+          subject_id: string
+          title: string
+          title_kannada?: string | null
+          updated_at?: string
+          video_type: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          storage_path?: string | null
+          subject_id?: string
+          title?: string
+          title_kannada?: string | null
+          updated_at?: string
+          video_type?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videos_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +490,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "student"],
+    },
   },
 } as const
