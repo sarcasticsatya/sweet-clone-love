@@ -54,12 +54,20 @@ serve(async (req) => {
 
     console.log("Starting PDF text extraction for chapter:", chapterId);
     
-    // Convert PDF to base64 for AI processing
+    // Convert PDF to base64 for AI processing (handle large files)
     const arrayBuffer = await pdfData.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    const base64Pdf = btoa(String.fromCharCode(...bytes));
-    
     console.log("PDF size:", bytes.length, "bytes");
+    
+    // Convert to base64 in chunks to avoid stack overflow
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode(...chunk);
+    }
+    const base64Pdf = btoa(binaryString);
+    console.log("PDF converted to base64, length:", base64Pdf.length);
 
     // Use Lovable AI with Gemini Pro for better document understanding
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
