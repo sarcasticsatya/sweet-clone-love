@@ -54,20 +54,22 @@ serve(async (req) => {
 
     console.log("Starting PDF text extraction for chapter:", chapterId);
     
-    // Convert PDF to base64 for AI processing (handle large files)
-    const arrayBuffer = await pdfData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    console.log("PDF size:", bytes.length, "bytes");
-    
-    // Convert to base64 in chunks to avoid stack overflow
-    let binaryString = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.slice(i, i + chunkSize);
-      binaryString += String.fromCharCode(...chunk);
+    // Generate signed URL for the PDF (avoid base64 to reduce failures and memory)
+    const { data: signed, error: signedErr } = await supabaseClient
+      .storage
+      .from("chapter-pdfs")
+      .createSignedUrl(chapter.pdf_storage_path, 600);
+
+    if (signedErr || !signed?.signedUrl) {
+      console.error("Failed to create signed URL:", signedErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to access PDF for extraction" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-    const base64Pdf = btoa(binaryString);
-    console.log("PDF converted to base64, length:", base64Pdf.length);
+
+    const fileUrl = signed.signedUrl;
+    console.log("Signed URL generated for PDF");
 
     // Use Lovable AI with Gemini Pro for better document understanding
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -94,12 +96,12 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Extract all text from this PDF document, preserving the exact text as it appears. This includes Kannada script, English text, mathematical formulas, and any other content. Output ONLY the extracted text with no additional commentary, headers, or formatting. Maintain paragraph breaks where they appear in the original document."
+                text: "Extract ONLY textual content from this PDF. Ignore images, diagrams, and formulas. Preserve Kannada and English text exactly as written. Output ONLY the extracted text with no additional commentary. Maintain original paragraph breaks."
               },
               {
                 type: "image_url",
                 image_url: {
-                  url: `data:application/pdf;base64,${base64Pdf}`
+                  url: fileUrl
                 }
               }
             ]
