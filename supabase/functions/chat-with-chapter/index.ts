@@ -15,16 +15,16 @@ serve(async (req) => {
     const { chapterId, message, conversationHistory } = await req.json();
 
     if (!chapterId || !message) {
-      return new Response(
-        JSON.stringify({ error: "Chapter ID and message are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Chapter ID and message are required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Get chapter content
@@ -35,18 +35,18 @@ serve(async (req) => {
       .single();
 
     if (chapterError || !chapter) {
-      return new Response(
-        JSON.stringify({ error: "Chapter not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Chapter not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!chapter.content_extracted) {
       return new Response(
-        JSON.stringify({ 
-          error: "Chapter content not yet extracted. Please contact admin to process this PDF." 
+        JSON.stringify({
+          error: "Chapter content not yet extracted. Please contact admin to process this PDF.",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -63,12 +63,16 @@ serve(async (req) => {
    - If student asks in English, respond in English
    - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar
    - Maintain cultural context appropriate for Karnataka SSLC students
-4. FORMAT YOUR RESPONSE IN CLEAN MARKDOWN:
-   - Use headings (##), lists, bold, italic for clarity
-   - For mathematical expressions, write them in plain text or use simple notation (e.g., "x^2 + 5" or "E = mc²")
-   - DO NOT use LaTeX syntax like $ or $$
-   - Keep formatting simple and readable
-5. ALWAYS end your response with a clear final answer section
+4. RESPONSE FORMAT (IMPORTANT):
+   - Use clean Markdown: headings (##), bullet points, bold, italic.
+   - For mathematical expressions, you MUST provide equations in plain text format such as:
+       - "x^2 + 5x + 6"
+       - "Area = length × breadth"
+       - "E = mc^2"
+   - DO NOT use LaTeX syntax (no $...$ or $$...$$).
+   - Keep formatting simple and readable for school students.
+5. ALWAYS end your response with a **Final Answer** section that concisely answers the question.
+6. DO NOT refuse to output equations. If the chapter contains equations, write them exactly as they appear (in plain text).
 
 CHAPTER: ${chapterName}
 CHAPTER CONTENT:
@@ -78,7 +82,7 @@ ${chapter.content_extracted}`;
     const messages = [
       { role: "system", content: systemPrompt },
       ...(conversationHistory || []),
-      { role: "user", content: message }
+      { role: "user", content: message },
     ];
 
     // Call Lovable AI
@@ -86,7 +90,7 @@ ${chapter.content_extracted}`;
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -99,25 +103,23 @@ ${chapter.content_extracted}`;
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error("AI API error:", aiResponse.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "Failed to get AI response" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to get AI response" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const aiData = await aiResponse.json();
     const aiMessage = aiData.choices[0]?.message?.content || "I couldn't generate a response.";
 
-    return new Response(
-      JSON.stringify({ response: aiMessage }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return new Response(JSON.stringify({ response: aiMessage }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Error in chat-with-chapter:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
