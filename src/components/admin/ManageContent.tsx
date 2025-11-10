@@ -85,6 +85,32 @@ export const ManageContent = () => {
     setLoading(false);
   };
 
+  const handleRetryExtraction = async (chapterId: string) => {
+    setLoading(true);
+    toast.info("Retrying PDF text extraction...");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-pdf-text", {
+        body: { chapterId }
+      });
+
+      if (error) {
+        console.error("PDF extraction error:", error);
+        toast.error("PDF text extraction failed. Check console for details.");
+      } else if (data?.error) {
+        console.error("PDF extraction error:", data.error);
+        toast.error(`PDF extraction failed: ${data.error}`);
+      } else {
+        toast.success("PDF text extracted successfully!");
+        loadSubjects(); // Reload to show updated status
+      }
+    } catch (err) {
+      console.error("PDF extraction error:", err);
+      toast.error("PDF extraction failed. Please check the console.");
+    }
+    setLoading(false);
+  };
+
   const handleUploadChapter = async () => {
     if (!selectedSubjectId || !chapterNumber || !chapterName || !chapterNameKannada || !pdfFile) {
       toast.error("Please fill all fields and select a PDF");
@@ -123,10 +149,26 @@ export const ManageContent = () => {
       if (insertError) throw insertError;
 
       // Trigger PDF text extraction
-      supabase.functions.invoke("extract-pdf-text", {
+      toast.success("Chapter uploaded! Extracting text from PDF...");
+      
+      const extractionPromise = supabase.functions.invoke("extract-pdf-text", {
         body: { chapterId: chapterData.id }
-      }).then(() => {
-        toast.success("PDF text extraction started");
+      });
+      
+      extractionPromise.then(({ data, error }) => {
+        if (error) {
+          console.error("PDF extraction error:", error);
+          toast.error("PDF text extraction failed. Please try uploading again.");
+        } else if (data?.error) {
+          console.error("PDF extraction error:", data.error);
+          toast.error(`PDF extraction failed: ${data.error}`);
+        } else {
+          toast.success("PDF text extracted successfully!");
+          loadSubjects(); // Reload to show updated status
+        }
+      }).catch((err) => {
+        console.error("PDF extraction error:", err);
+        toast.error("PDF extraction failed. Please check the console.");
       });
 
       toast.success("Chapter uploaded successfully!");
@@ -245,13 +287,27 @@ export const ManageContent = () => {
                 <div className="space-y-2 pl-4">
                   {chapters[subject.id]?.length ? (
                     chapters[subject.id].map((chapter) => (
-                      <div key={chapter.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                        <span className="text-sm">
+                      <div key={chapter.id} className="flex items-center justify-between p-2 bg-muted rounded gap-2">
+                        <span className="text-sm flex-1">
                           Chapter {chapter.chapter_number}: {chapter.name_kannada}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {chapter.content_extracted ? "✓ Processed" : "⏳ Pending"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {chapter.content_extracted ? (
+                            <span className="text-xs text-green-600 dark:text-green-400">✓ Processed</span>
+                          ) : (
+                            <>
+                              <span className="text-xs text-orange-600 dark:text-orange-400">⏳ Pending</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRetryExtraction(chapter.id)}
+                                disabled={loading}
+                              >
+                                Retry
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))
                   ) : (

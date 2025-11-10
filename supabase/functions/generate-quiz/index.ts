@@ -61,7 +61,9 @@ serve(async (req) => {
 
     if (!chapter || !chapter.content_extracted) {
       return new Response(
-        JSON.stringify({ error: "Chapter content not available" }),
+        JSON.stringify({ 
+          error: "Chapter content not available yet. The PDF is still being processed. Please wait a moment and try again." 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

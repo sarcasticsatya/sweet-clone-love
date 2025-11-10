@@ -52,12 +52,26 @@ serve(async (req) => {
       );
     }
 
+    console.log("Starting PDF text extraction for chapter:", chapterId);
+    
     // Convert PDF to base64 for AI processing
     const arrayBuffer = await pdfData.arrayBuffer();
-    const base64Pdf = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    const base64Pdf = btoa(String.fromCharCode(...bytes));
+    
+    console.log("PDF size:", bytes.length, "bytes");
 
-    // Use Lovable AI with vision capability to extract text (including Kannada)
+    // Use Lovable AI with Gemini Pro for better document understanding
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not found");
+      return new Response(
+        JSON.stringify({ error: "API key not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Sending PDF to Gemini for text extraction...");
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -65,14 +79,14 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Extract all text from this PDF document. Preserve the text exactly as it appears, including Kannada text. Return ONLY the extracted text with no additional commentary."
+                text: "Extract all text from this PDF document, preserving the exact text as it appears. This includes Kannada script, English text, mathematical formulas, and any other content. Output ONLY the extracted text with no additional commentary, headers, or formatting. Maintain paragraph breaks where they appear in the original document."
               },
               {
                 type: "image_url",
@@ -83,21 +97,39 @@ serve(async (req) => {
             ]
           }
         ],
-        max_tokens: 8000
+        max_tokens: 16000
       }),
     });
 
+    console.log("AI Response status:", aiResponse.status);
+
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI extraction error:", errorText);
+      console.error("AI extraction error:", aiResponse.status, errorText);
       return new Response(
-        JSON.stringify({ error: "Failed to extract text from PDF" }),
+        JSON.stringify({ 
+          error: "Failed to extract text from PDF", 
+          details: `Status: ${aiResponse.status}`,
+          message: errorText 
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const aiData = await aiResponse.json();
-    const extractedText = aiData.choices[0]?.message?.content || "";
+    console.log("AI Response received, extracting content...");
+    
+    const extractedText = aiData.choices?.[0]?.message?.content || "";
+    
+    if (!extractedText) {
+      console.error("No text extracted from PDF");
+      return new Response(
+        JSON.stringify({ error: "No text could be extracted from PDF" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    console.log("Extracted text length:", extractedText.length);
 
     // Update chapter with extracted text
     const { error: updateError } = await supabaseClient
