@@ -1,1 +1,13 @@
 project_id = "lnoeofoucvyopmhcfwes"
+
+[functions.chat-with-chapter]
+verify_jwt = false
+
+[functions.generate-flashcards]
+verify_jwt = false
+
+[functions.generate-quiz]
+verify_jwt = false
+
+[functions.submit-quiz]
+verify_jwt = false

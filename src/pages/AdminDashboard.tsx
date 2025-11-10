@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LogOut, BookOpen, Users, Video, FileText, BarChart } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ManageStudents } from "@/components/admin/ManageStudents";
+import { ManageContent } from "@/components/admin/ManageContent";
+import { ManageVideos } from "@/components/admin/ManageVideos";
+import { ViewReports } from "@/components/admin/ViewReports";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -86,31 +90,19 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="students" className="mt-6">
-            <div className="bg-card rounded-lg border border-border p-6">
-              <h2 className="text-lg font-semibold mb-4">Manage Students</h2>
-              <p className="text-muted-foreground">Student management interface coming soon...</p>
-            </div>
+            <ManageStudents />
           </TabsContent>
 
           <TabsContent value="content" className="mt-6">
-            <div className="bg-card rounded-lg border border-border p-6">
-              <h2 className="text-lg font-semibold mb-4">Manage Subjects & Chapters</h2>
-              <p className="text-muted-foreground">Content management interface coming soon...</p>
-            </div>
+            <ManageContent />
           </TabsContent>
 
           <TabsContent value="videos" className="mt-6">
-            <div className="bg-card rounded-lg border border-border p-6">
-              <h2 className="text-lg font-semibold mb-4">Manage Videos</h2>
-              <p className="text-muted-foreground">Video management interface coming soon...</p>
-            </div>
+            <ManageVideos />
           </TabsContent>
 
           <TabsContent value="reports" className="mt-6">
-            <div className="bg-card rounded-lg border border-border p-6">
-              <h2 className="text-lg font-semibold mb-4">Quiz Reports</h2>
-              <p className="text-muted-foreground">Reports interface coming soon...</p>
-            </div>
+            <ViewReports />
           </TabsContent>
         </Tabs>
       </div>

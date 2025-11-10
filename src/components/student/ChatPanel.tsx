@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 interface ChatPanelProps {
   selectedChapterId: string | null;
@@ -21,25 +24,40 @@ export const ChatPanel = ({ selectedChapterId, selectedSubjectId }: ChatPanelPro
     setMessages([]);
   }, [selectedChapterId]);
 
+  useEffect(() => {
+    // Auto-scroll to bottom
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
   const handleSend = async () => {
     if (!input.trim() || !selectedChapterId) return;
 
     const userMessage = input.trim();
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    const newMessages = [...messages, { role: "user", content: userMessage }];
+    setMessages(newMessages);
     setLoading(true);
 
-    // TODO: Call AI chat endpoint
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "AI chat integration coming soon. Your question will be answered based on the selected chapter content.",
-        },
-      ]);
+    try {
+      const { data, error } = await supabase.functions.invoke("chat-with-chapter", {
+        body: {
+          chapterId: selectedChapterId,
+          message: userMessage,
+          conversationHistory: messages
+        }
+      });
+
+      if (error) throw error;
+
+      setMessages([...newMessages, { role: "assistant", content: data.response }]);
+    } catch (error: any) {
+      toast.error("Failed to get response: " + error.message);
+      setMessages(newMessages);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -86,10 +104,14 @@ export const ChatPanel = ({ selectedChapterId, selectedSubjectId }: ChatPanelPro
                     "max-w-[80%] rounded-lg p-3 text-sm",
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                      : "bg-muted prose prose-sm max-w-none"
                   )}
                 >
-                  {message.content}
+                  {message.role === "assistant" ? (
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  ) : (
+                    message.content
+                  )}
                 </div>
               </div>
             ))}
