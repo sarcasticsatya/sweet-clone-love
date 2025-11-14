@@ -119,11 +119,30 @@ export const ChatPanel = ({ selectedChapterId, selectedSubjectId }: ChatPanelPro
                   )}
                 >
                   {message.role === "assistant" ? (
-                    <div className="prose prose-sm prose-slate max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-background prose-pre:text-foreground prose-li:text-foreground">
+                      <ReactMarkdown
+                        components={{
+                          h2: ({node, ...props}) => <h2 className="text-base font-semibold mt-4 mb-2 first:mt-0" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="text-sm font-semibold mt-3 mb-1.5 first:mt-0" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
+                          ul: ({node, ...props}) => <ul className="mb-3 ml-4 space-y-1.5 list-disc" {...props} />,
+                          ol: ({node, ...props}) => <ol className="mb-3 ml-4 space-y-1.5 list-decimal" {...props} />,
+                          li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
+                          strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                          em: ({node, ...props}) => <em className="italic" {...props} />,
+                          code: ({node, className, children, ...props}) => {
+                            const isInline = !className?.includes('language-');
+                            return isInline ? 
+                              <code className="bg-background px-1.5 py-0.5 rounded text-xs font-mono" {...props}>{children}</code> :
+                              <code className="block bg-background p-2 rounded text-xs my-2 font-mono" {...props}>{children}</code>
+                          }
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
                     </div>
                   ) : (
-                    <div>{message.content}</div>
+                    <div className="whitespace-pre-wrap">{message.content}</div>
                   )}
                 </div>
               </div>
