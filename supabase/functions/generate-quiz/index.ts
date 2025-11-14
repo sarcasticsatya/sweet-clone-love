@@ -81,24 +81,32 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Generate a quiz with 10 multiple-choice questions from the chapter content.
+            content: `Generate exactly 10 multiple-choice questions from the chapter content.
+
+REQUIREMENTS:
+- Questions should cover different topics/concepts from the chapter
+- Each question must have exactly 4 options
+- Options should be plausible but only one clearly correct
+- correctAnswer is the index (0-3) of the correct option
+- Use the same language as the chapter (Kannada or English)
+- Questions should test understanding, not just memorization
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {
   "questions": [
     {
-      "question": "question text",
+      "question": "question text here",
       "options": ["option1", "option2", "option3", "option4"],
       "correctAnswer": 0
     }
   ]
 }
 
-Use the same language as the chapter (Kannada or English). Make questions clear and educational. The correctAnswer is the index (0-3) of the correct option. Do not wrap the response in markdown code blocks.`
+Do NOT wrap the response in markdown code blocks or any other formatting.`
           },
           {
             role: "user",
-            content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted.substring(0, 4000)}`
+            content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
           }
         ],
         response_format: { type: "json_object" }
@@ -115,7 +123,13 @@ Use the same language as the chapter (Kannada or English). Make questions clear 
     // Strip markdown code blocks if present (AI sometimes wraps JSON in ```json ... ```)
     content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     
+    console.log("Quiz AI Response:", content.substring(0, 200));
+    
     const parsed = JSON.parse(content);
+    
+    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+      throw new Error("Invalid quiz format: no questions array");
+    }
 
     // Store quiz in database
     const { data: quiz, error: insertError } = await supabaseClient

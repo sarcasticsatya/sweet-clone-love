@@ -89,20 +89,27 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Generate 10-15 flashcards from the chapter content. Each flashcard should have a question and answer. 
+            content: `Generate exactly 12 unique, diverse flashcards from the chapter content that cover different topics and concepts. 
             
+REQUIREMENTS:
+- Create flashcards that cover DIFFERENT aspects of the chapter (not repeated topics)
+- Questions should be clear, specific, and directly related to the chapter content
+- Answers should be accurate, detailed, and educational
+- Ensure variety: include concept definitions, application questions, and fact-based questions
+- Use the same language as the chapter content (Kannada or English)
+
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {
   "flashcards": [
-    {"question": "question text", "answer": "answer text"}
+    {"question": "question text here", "answer": "detailed answer here"}
   ]
 }
 
-Keep questions and answers concise and educational. Use the same language as the chapter content (Kannada or English). Do not wrap the response in markdown code blocks.`
+Do NOT wrap the response in markdown code blocks or any other formatting.`
           },
           {
             role: "user",
-            content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted.substring(0, 4000)}`
+            content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
           }
         ],
         response_format: { type: "json_object" }
@@ -119,7 +126,13 @@ Keep questions and answers concise and educational. Use the same language as the
     // Strip markdown code blocks if present (AI sometimes wraps JSON in ```json ... ```)
     content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     
+    console.log("Flashcards AI Response:", content.substring(0, 200));
+    
     const parsed = JSON.parse(content);
+    
+    if (!parsed.flashcards || !Array.isArray(parsed.flashcards) || parsed.flashcards.length === 0) {
+      throw new Error("Invalid flashcard format: no flashcards array");
+    }
     const flashcardsArray = parsed.flashcards || parsed.cards || parsed.items || [];
 
     // Store flashcards in database

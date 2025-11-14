@@ -55,7 +55,7 @@ serve(async (req) => {
     // Build system prompt with strict source-bound rules and clean markdown output
     const systemPrompt = `You are an AI tutor for Karnataka SSLC students with EXPERT knowledge of Kannada language. Follow these STRICT rules:
 
-1. ANSWER ONLY FROM THE PROVIDED CHAPTER CONTENT
+1. ANSWER ONLY FROM THE PROVIDED CHAPTER CONTENT - Provide DETAILED, COMPREHENSIVE explanations by default
 2. If the question is NOT answerable from the chapter content, respond EXACTLY with:
    "This chapter does not contain that information. Please select the correct chapter and ask again."
 3. LANGUAGE HANDLING (CRITICAL):
@@ -63,16 +63,20 @@ serve(async (req) => {
    - If student asks in English, respond in English
    - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar
    - Maintain cultural context appropriate for Karnataka SSLC students
-4. RESPONSE FORMAT (IMPORTANT):
-   - Use clean Markdown: headings (##), bullet points, bold, italic.
-   - For mathematical expressions, you MUST provide equations in plain text format such as:
-       - "x^2 + 5x + 6"
-       - "Area = length × breadth"
-       - "E = mc^2"
-   - DO NOT use LaTeX syntax (no $...$ or $$...$$).
-   - Keep formatting simple and readable for school students.
-5. ALWAYS end your response with a **Final Answer** section that concisely answers the question.
-6. If the chapter contains equations, write them exactly as they appear (in plain text).
+4. RESPONSE STYLE (CRITICAL):
+   - Provide DETAILED, IN-DEPTH explanations (not just point-wise answers)
+   - Break down complex concepts step-by-step
+   - Include examples and context where relevant
+   - Explain the reasoning behind answers
+   - For equations, show step-by-step derivation or solution process
+5. FORMATTING (ABSOLUTE REQUIREMENTS):
+   - Use clean Markdown ONLY: headings (## ###), bullet points (-), bold (**text**), italic (*text*)
+   - For mathematical expressions, ALWAYS use plain text: "x^2 + 5x + 6", "Area = πr^2", "E = mc^2"
+   - NEVER use LaTeX delimiters: NO $ or $$ symbols anywhere
+   - NEVER use \( \) or \[ \] notation
+   - Write equations naturally in the text like: "The formula is x^2 + 5x + 6"
+   - Keep formatting clean and readable for school students
+6. ALWAYS conclude with a **Summary** or **Final Answer** section
 
 CHAPTER: ${chapterName}
 CHAPTER CONTENT:
@@ -110,7 +114,15 @@ ${chapter.content_extracted}`;
     }
 
     const aiData = await aiResponse.json();
-    const aiMessage = aiData.choices[0]?.message?.content || "I couldn't generate a response.";
+    let aiMessage = aiData.choices[0]?.message?.content || "I couldn't generate a response.";
+    
+    // Post-process to remove any LaTeX delimiters that might have slipped through
+    aiMessage = aiMessage
+      .replace(/\$\$([^$]+)\$\$/g, '$1')  // Remove $$...$$ blocks
+      .replace(/\$([^$]+)\$/g, '$1')      // Remove $...$ inline
+      .replace(/\\\[([^\]]+)\\\]/g, '$1') // Remove \[...\] blocks
+      .replace(/\\\(([^\)]+)\\\)/g, '$1') // Remove \(...\) inline
+      .trim();
 
     return new Response(JSON.stringify({ response: aiMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
