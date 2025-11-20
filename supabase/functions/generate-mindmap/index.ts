@@ -37,12 +37,6 @@ serve(async (req) => {
       );
     }
 
-    // Delete existing quiz to generate fresh one each session
-    await supabaseClient
-      .from("quizzes")
-      .delete()
-      .eq("chapter_id", chapterId);
-
     // Get chapter content
     const { data: chapter } = await supabaseClient
       .from("chapters")
@@ -62,7 +56,7 @@ serve(async (req) => {
     // Detect if chapter is in Kannada
     const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
 
-    // Generate quiz using AI
+    // Generate mindmap using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -75,85 +69,51 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Generate exactly 10 multiple-choice questions from the chapter content.
+            content: `Create a hierarchical mind map of the chapter content in markdown format.
 
 REQUIREMENTS:
-- Questions should cover different topics/concepts from the chapter
-- Each question must have exactly 4 options
-- Options should be plausible but only one clearly correct
-- correctAnswer is the index (0-3) of the correct option
+- Organize main topics, subtopics, and key concepts in a clear hierarchy
+- Use markdown headers (##, ###, ####) for different levels
+- Use bullet points for details under each concept
+- Include important terms, definitions, and relationships
+- Keep it concise but comprehensive
 ${isKannadaChapter 
-  ? '- This is a KANNADA chapter - Generate ALL quiz content ENTIRELY in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
+  ? '- This is a KANNADA chapter - Create the entire mindmap in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
   : '- Use the same language as the chapter (Kannada or English)'}
-- Questions should test understanding, not just memorization
 
-IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
-{
-  "questions": [
-    {
-      "question": "question text here",
-      "options": ["option1", "option2", "option3", "option4"],
-      "correctAnswer": 0
-    }
-  ]
-}
+Format example:
+## Main Topic 1
+- Key concept A
+  - Detail 1
+  - Detail 2
+- Key concept B
 
-Do NOT wrap the response in markdown code blocks or any other formatting.`
+## Main Topic 2
+...`
           },
           {
             role: "user",
             content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
           }
         ],
-        response_format: { type: "json_object" }
+        max_tokens: 2000,
       }),
     });
 
     if (!aiResponse.ok) {
-      throw new Error("Failed to generate quiz");
+      throw new Error("Failed to generate mindmap");
     }
 
     const aiData = await aiResponse.json();
-    let content = aiData.choices[0]?.message?.content || "";
-    
-    // Strip markdown code blocks if present (AI sometimes wraps JSON in ```json ... ```)
-    content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    
-    console.log("Quiz AI Response:", content.substring(0, 200));
-    
-    const parsed = JSON.parse(content);
-    
-    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
-      throw new Error("Invalid quiz format: no questions array");
-    }
-
-    // Store quiz in database
-    const { data: quiz, error: insertError } = await supabaseClient
-      .from("quizzes")
-      .insert({
-        chapter_id: chapterId,
-        title: `${chapter.name_kannada || chapter.name} Quiz`,
-        questions: parsed.questions,
-        created_by: user.id
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error("Error inserting quiz:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to save quiz" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const mindmap = aiData.choices[0]?.message?.content || "";
 
     return new Response(
-      JSON.stringify({ quiz }),
+      JSON.stringify({ mindmap }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
-    console.error("Error in generate-quiz:", error);
+    console.error("Error in generate-mindmap:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

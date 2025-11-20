@@ -39,26 +39,11 @@ serve(async (req) => {
       );
     }
 
-    // Check if flashcards already exist for this chapter
-    const { data: existing } = await supabaseClient
+    // Delete existing flashcards to generate fresh ones each session
+    await supabaseClient
       .from("flashcards")
-      .select("id")
-      .eq("chapter_id", chapterId)
-      .limit(1);
-
-    if (existing && existing.length > 0) {
-      // Return existing flashcards
-      const { data: flashcards } = await supabaseClient
-        .from("flashcards")
-        .select("*")
-        .eq("chapter_id", chapterId)
-        .order("created_at");
-
-      return new Response(
-        JSON.stringify({ flashcards }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      .delete()
+      .eq("chapter_id", chapterId);
 
     // Get chapter content
     const { data: chapter } = await supabaseClient
@@ -75,6 +60,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Detect if chapter is in Kannada
+    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
 
     // Generate flashcards using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -96,7 +84,9 @@ REQUIREMENTS:
 - Questions should be clear, specific, and directly related to the chapter content
 - Answers should be accurate, detailed, and educational
 - Ensure variety: include concept definitions, application questions, and fact-based questions
-- Use the same language as the chapter content (Kannada or English)
+${isKannadaChapter 
+  ? '- This is a KANNADA chapter - Generate ALL flashcards ENTIRELY in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
+  : '- Use the same language as the chapter content (Kannada or English)'}
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {
