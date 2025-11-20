@@ -53,8 +53,10 @@ serve(async (req) => {
       );
     }
 
-    // Detect if chapter is in Kannada
-    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
+    // Detect if chapter is in Kannada - check both name and content
+    const hasKannadaInName = /[\u0C80-\u0CFF]/.test(chapter.name_kannada || "");
+    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
+    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
 
     // Generate mindmap using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -69,7 +71,15 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Create a hierarchical mind map of the chapter content in markdown format.
+            content: `You are a mind map generator for Karnataka SSLC students. Create a hierarchical mind map of the chapter content in markdown format.
+
+${isKannadaChapter ? `**CRITICAL LANGUAGE REQUIREMENT:**
+YOU MUST CREATE THE ENTIRE MINDMAP IN KANNADA (ಕನ್ನಡ) LANGUAGE ONLY.
+- All headings MUST be in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
+- All content MUST be in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
+- Use proper Kannada grammar and vocabulary
+- This is a KANNADA chapter - DO NOT use English at all
+` : ''}
 
 REQUIREMENTS:
 - Organize main topics, subtopics, and key concepts in a clear hierarchy
@@ -77,9 +87,6 @@ REQUIREMENTS:
 - Use bullet points for details under each concept
 - Include important terms, definitions, and relationships
 - Keep it concise but comprehensive
-${isKannadaChapter 
-  ? '- This is a KANNADA chapter - Create the entire mindmap in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
-  : '- Use the same language as the chapter (Kannada or English)'}
 
 Format example:
 ## Main Topic 1
