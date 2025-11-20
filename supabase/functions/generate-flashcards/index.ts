@@ -61,18 +61,8 @@ serve(async (req) => {
       );
     }
 
-    // Detect if chapter is in Kannada - check both name and content
-    const hasKannadaInName = /[\u0C80-\u0CFF]/.test(chapter.name_kannada || "");
-    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
-    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
-    
-    console.log("Flashcards - Chapter detection:", {
-      name: chapter.name,
-      name_kannada: chapter.name_kannada,
-      hasKannadaInName,
-      hasKannadaInContent,
-      isKannadaChapter
-    });
+    // Detect if chapter is in Kannada
+    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
 
     // Generate flashcards using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -87,21 +77,16 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a flashcard generator for Karnataka SSLC students. Generate exactly 12 unique, diverse flashcards from the chapter content that cover different topics and concepts.
-
-${isKannadaChapter ? `**CRITICAL LANGUAGE REQUIREMENT:**
-YOU MUST GENERATE ALL FLASHCARDS IN KANNADA (ಕನ್ನಡ) LANGUAGE ONLY.
-- All questions MUST be in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
-- All answers MUST be in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
-- Use proper Kannada grammar and vocabulary
-- This is a KANNADA chapter - DO NOT use English at all
-` : ''}
-
+            content: `Generate exactly 12 unique, diverse flashcards from the chapter content that cover different topics and concepts. 
+            
 REQUIREMENTS:
 - Create flashcards that cover DIFFERENT aspects of the chapter (not repeated topics)
 - Questions should be clear, specific, and directly related to the chapter content
 - Answers should be accurate, detailed, and educational
 - Ensure variety: include concept definitions, application questions, and fact-based questions
+${isKannadaChapter 
+  ? '- This is a KANNADA chapter - Generate ALL flashcards ENTIRELY in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
+  : '- Use the same language as the chapter content (Kannada or English)'}
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {

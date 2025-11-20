@@ -59,19 +59,8 @@ serve(async (req) => {
       );
     }
 
-    // Detect if chapter is in Kannada - check both name and content
-    const hasKannadaInName = /[\u0C80-\u0CFF]/.test(chapter.name_kannada || "");
-    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
-    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
-    
-    console.log("Chapter detection:", {
-      name: chapter.name,
-      name_kannada: chapter.name_kannada,
-      hasKannadaInName,
-      hasKannadaInContent,
-      isKannadaChapter,
-      contentPreview: chapter.content_extracted.substring(0, 100)
-    });
+    // Detect if chapter is in Kannada
+    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
 
     // Generate quiz using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -86,21 +75,16 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a quiz generator for Karnataka SSLC students. Generate exactly 10 multiple-choice questions from the chapter content.
-
-${isKannadaChapter ? `**CRITICAL LANGUAGE REQUIREMENT:**
-YOU MUST GENERATE THE ENTIRE QUIZ IN KANNADA (ಕನ್ನಡ) LANGUAGE ONLY.
-- All questions MUST be in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
-- All options MUST be in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
-- Use proper Kannada grammar and vocabulary
-- This is a KANNADA chapter - DO NOT use English at all
-` : ''}
+            content: `Generate exactly 10 multiple-choice questions from the chapter content.
 
 REQUIREMENTS:
 - Questions should cover different topics/concepts from the chapter
 - Each question must have exactly 4 options
 - Options should be plausible but only one clearly correct
 - correctAnswer is the index (0-3) of the correct option
+${isKannadaChapter 
+  ? '- This is a KANNADA chapter - Generate ALL quiz content ENTIRELY in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
+  : '- Use the same language as the chapter (Kannada or English)'}
 - Questions should test understanding, not just memorization
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):

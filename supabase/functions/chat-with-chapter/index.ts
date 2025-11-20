@@ -52,18 +52,8 @@ serve(async (req) => {
 
     const chapterName = chapter.name_kannada || chapter.name;
 
-    // Detect if chapter is in Kannada - check both name and content
-    const hasKannadaInName = /[\u0C80-\u0CFF]/.test(chapter.name_kannada || "");
-    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
-    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
-    
-    console.log("Chat - Chapter detection:", {
-      name: chapter.name,
-      name_kannada: chapter.name_kannada,
-      hasKannadaInName,
-      hasKannadaInContent,
-      isKannadaChapter
-    });
+    // Detect if chapter is in Kannada (check if name_kannada exists and content has Kannada script)
+    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
     
     // Build system prompt with strict source-bound rules and clean markdown output
     const systemPrompt = `You are an AI tutor for Karnataka SSLC students with EXPERT knowledge of Kannada language. Follow these STRICT rules:
@@ -71,10 +61,9 @@ serve(async (req) => {
 1. ANSWER ONLY FROM THE PROVIDED CHAPTER CONTENT - Provide DETAILED, COMPREHENSIVE explanations by default
 2. If the question is NOT answerable from the chapter content, respond EXACTLY with:
    ${isKannadaChapter ? '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ. ದಯವಿಟ್ಟು ಸರಿಯಾದ ಅಧ್ಯಾಯವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಮತ್ತೆ ಕೇಳಿ."' : '"This chapter does not contain that information. Please select the correct chapter and ask again."'}
-
-3. **CRITICAL LANGUAGE REQUIREMENT:**
+3. LANGUAGE HANDLING (CRITICAL):
    ${isKannadaChapter 
-     ? '- This is a KANNADA chapter - You MUST respond ENTIRELY in Kannada (ಕನ್ನಡ) REGARDLESS of the language the student uses\n   - Even if student asks in English, translate their question internally and respond ONLY in fluent, natural Kannada\n   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar\n   - DO NOT use English at all in your response' 
+     ? '- This is a KANNADA chapter - You MUST respond ENTIRELY in Kannada (ಕನ್ನಡ) REGARDLESS of the language the student uses\n   - Even if student asks in English, translate their question and respond in fluent, natural Kannada\n   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar' 
      : '- If student asks in Kannada (ಕನ್ನಡ), respond ENTIRELY in fluent, natural Kannada\n   - If student asks in English, respond in English\n   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar when using Kannada'}
    - Maintain cultural context appropriate for Karnataka SSLC students
 4. RESPONSE STYLE (CRITICAL):
