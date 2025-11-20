@@ -7,9 +7,12 @@ import { LogOut, BookOpen } from "lucide-react";
 import { SourcesPanel } from "@/components/student/SourcesPanel";
 import { ChatPanel } from "@/components/student/ChatPanel";
 import { ToolsPanel } from "@/components/student/ToolsPanel";
+import { MobileNav } from "@/components/student/MobileNav";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [user, setUser] = useState<any>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -67,34 +70,51 @@ const StudentDashboard = () => {
         </Button>
       </header>
 
-      {/* Three-panel NotebookLM layout - responsive */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-muted/10">
-        {/* Left: Sources Panel - full width on mobile, fixed on desktop */}
-        <div className="md:w-80 w-full md:block border-b md:border-b-0 md:border-r border-border bg-card shadow-sm">
-          <SourcesPanel
+      {/* Desktop: Three-panel layout */}
+      {!isMobile && (
+        <div className="flex-1 flex overflow-hidden bg-muted/10">
+          <div className="w-80 border-r border-border bg-card shadow-sm">
+            <SourcesPanel
+              selectedChapterId={selectedChapterId}
+              selectedSubjectId={selectedSubjectId}
+              onSelectChapter={setSelectedChapterId}
+              onSelectSubject={setSelectedSubjectId}
+            />
+          </div>
+
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <ChatPanel
+              selectedChapterId={selectedChapterId}
+              selectedSubjectId={selectedSubjectId}
+            />
+          </div>
+
+          <div className="w-80 border-l border-border bg-card shadow-sm">
+            <ToolsPanel
+              selectedChapterId={selectedChapterId}
+              selectedSubjectId={selectedSubjectId}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile: Full-screen chat with bottom navigation */}
+      {isMobile && (
+        <>
+          <div className="flex-1 flex flex-col overflow-hidden pb-16">
+            <ChatPanel
+              selectedChapterId={selectedChapterId}
+              selectedSubjectId={selectedSubjectId}
+            />
+          </div>
+          <MobileNav
             selectedChapterId={selectedChapterId}
             selectedSubjectId={selectedSubjectId}
             onSelectChapter={setSelectedChapterId}
             onSelectSubject={setSelectedSubjectId}
           />
-        </div>
-
-        {/* Center: Chat Panel - scrollable on mobile */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <ChatPanel
-            selectedChapterId={selectedChapterId}
-            selectedSubjectId={selectedSubjectId}
-          />
-        </div>
-
-        {/* Right: Tools Panel - full width on mobile, fixed on desktop */}
-        <div className="md:w-80 w-full md:block border-t md:border-t-0 md:border-l border-border bg-card shadow-sm">
-          <ToolsPanel
-            selectedChapterId={selectedChapterId}
-            selectedSubjectId={selectedSubjectId}
-          />
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

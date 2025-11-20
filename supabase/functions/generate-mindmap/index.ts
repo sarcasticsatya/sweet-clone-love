@@ -37,6 +37,20 @@ serve(async (req) => {
       );
     }
 
+    // Check if mindmap already exists for this chapter
+    const { data: existingMindmap } = await supabaseClient
+      .from("mindmaps")
+      .select("mindmap_data")
+      .eq("chapter_id", chapterId)
+      .single();
+
+    if (existingMindmap) {
+      return new Response(
+        JSON.stringify({ mindmap: existingMindmap.mindmap_data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get chapter content
     const { data: chapter } = await supabaseClient
       .from("chapters")
@@ -121,6 +135,19 @@ Do NOT wrap the response in markdown code blocks or any other formatting.`
     console.log("Mindmap AI Response:", content.substring(0, 200));
     
     const mindmapData = JSON.parse(content);
+
+    // Save mindmap to database for permanent storage
+    const { error: insertError } = await supabaseClient
+      .from("mindmaps")
+      .insert({
+        chapter_id: chapterId,
+        mindmap_data: mindmapData
+      });
+
+    if (insertError) {
+      console.error("Error saving mindmap:", insertError);
+      // Still return the mindmap even if save fails
+    }
 
     return new Response(
       JSON.stringify({ mindmap: mindmapData }),
