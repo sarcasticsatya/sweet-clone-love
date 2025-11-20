@@ -74,30 +74,51 @@ serve(async (req) => {
         "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
-        model: isKannadaChapter ? "claude-sonnet-4-5" : "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `Generate exactly 10 multiple-choice questions from the chapter content.
+            content: `You are a quiz generator. Generate exactly 10 multiple-choice questions from the chapter content.
 
-REQUIREMENTS:
+${isKannadaChapter 
+  ? `CRITICAL LANGUAGE REQUIREMENT - READ THIS CAREFULLY:
+==========================================
+The chapter is written in KANNADA language (ಕನ್ನಡ).
+You MUST generate the ENTIRE quiz in KANNADA language ONLY.
+
+MANDATORY RULES:
+1. Write ALL questions in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
+2. Write ALL 4 options for each question in Kannada script
+3. DO NOT use English words AT ALL
+4. DO NOT mix languages
+5. Use proper Kannada Unicode characters (U+0C80-U+0CFF)
+
+EXAMPLE OF CORRECT KANNADA QUIZ:
+{
+  "question": "ರಾಸಾಯನಿಕ ಕ್ರಿಯೆ ಯಾವಾಗ ನಡೆಯುತ್ತದೆ?",
+  "options": [
+    "ರಾಸಾಯನಿಕ ಬದಲಾವಣೆ ಆದಾಗ",
+    "ಭೌತಿಕ ಬದಲಾವಣೆ ಆದಾಗ",
+    "ತಾಪಮಾನ ಹೆಚ್ಚಾದಾಗ",
+    "ಒತ್ತಡ ಕಡಿಮೆಯಾದಾಗ"
+  ],
+  "correctAnswer": 0
+}
+
+EXAMPLE OF WRONG (DO NOT DO THIS):
+{
+  "question": "When does a chemical reaction occur?",  ← WRONG! This is English
+  "options": ["When chemical change", ...]  ← WRONG! This is English
+}
+
+Remember: The source chapter is in Kannada, so your quiz MUST be in Kannada.`
+  : `The chapter is in English. Generate all questions and options in English.`}
+
+QUIZ REQUIREMENTS:
 - Questions should cover different topics/concepts from the chapter
 - Each question must have exactly 4 options
 - Options should be plausible but only one clearly correct
 - correctAnswer is the index (0-3) of the correct option
-${isKannadaChapter 
-  ? `- ABSOLUTELY CRITICAL - NON-NEGOTIABLE: This is a KANNADA language chapter
-- You MUST write EVERYTHING in Kannada script (ಕನ್ನಡ ಲಿಪಿ) ONLY
-- NOT A SINGLE ENGLISH WORD is allowed - not even one word like "is", "the", "and"
-- ALL questions must be 100% in Kannada: ಪ್ರಶ್ನೆಗಳು
-- ALL options must be 100% in Kannada: ಆಯ್ಕೆಗಳು
-- Use ONLY Kannada Unicode characters (U+0C80 to U+0CFF)
-- Example WRONG: "What is photosynthesis?" - THIS HAS ENGLISH
-- Example CORRECT: "ದ್ಯುತಿಸಂಶ್ಲೇಷಣೆ ಎಂದರೇನು?" - THIS IS PURE KANNADA
-- If you write ANY English word, the quiz will be REJECTED
-- Translate ALL scientific terms to Kannada (e.g., "oxygen" = "ಆಮ್ಲಜನಕ")
-- Think in Kannada, write in Kannada, output ONLY Kannada` 
-  : '- Use the same language as the chapter (Kannada or English)'}
 - Questions should test understanding, not just memorization
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
@@ -115,7 +136,9 @@ Do NOT wrap the response in markdown code blocks or any other formatting.`
           },
           {
             role: "user",
-            content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
+            content: isKannadaChapter 
+              ? `This is a Kannada language chapter. Generate quiz questions in KANNADA ONLY.\n\nChapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
+              : `Chapter: ${chapter.name}\n\nContent:\n${chapter.content_extracted}`
           }
         ],
         response_format: { type: "json_object" }
