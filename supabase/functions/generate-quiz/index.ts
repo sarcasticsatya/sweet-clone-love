@@ -64,6 +64,13 @@ serve(async (req) => {
     const hasKannadaInName = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
     const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
     const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
+    
+    console.log("=== LANGUAGE DETECTION ===");
+    console.log("Chapter name_kannada:", chapter.name_kannada);
+    console.log("Has Kannada in name:", hasKannadaInName);
+    console.log("Has Kannada in content:", hasKannadaInContent);
+    console.log("IS KANNADA CHAPTER:", isKannadaChapter);
+    console.log("Content preview:", chapter.content_extracted?.substring(0, 200));
 
     // Generate quiz using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -78,67 +85,79 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a quiz generator. Generate exactly 10 multiple-choice questions from the chapter content.
+            content: isKannadaChapter 
+              ? `You are a quiz generator for KANNADA language content.
 
-${isKannadaChapter 
-  ? `CRITICAL LANGUAGE REQUIREMENT - READ THIS CAREFULLY:
 ==========================================
-The chapter is written in KANNADA language (ಕನ್ನಡ).
-You MUST generate the ENTIRE quiz in KANNADA language ONLY.
+CRITICAL INSTRUCTION - KANNADA LANGUAGE ONLY
+==========================================
 
-MANDATORY RULES:
-1. Write ALL questions in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
-2. Write ALL 4 options for each question in Kannada script
-3. DO NOT use English words AT ALL
-4. DO NOT mix languages
-5. Use proper Kannada Unicode characters (U+0C80-U+0CFF)
+The source chapter is written in KANNADA (ಕನ್ನಡ ಭಾಷೆ).
 
-EXAMPLE OF CORRECT KANNADA QUIZ:
+YOU MUST GENERATE THE ENTIRE QUIZ IN KANNADA LANGUAGE.
+DO NOT USE ENGLISH. NOT EVEN ONE ENGLISH WORD.
+
+RULES YOU MUST FOLLOW:
+✓ Write question in Kannada: ಪ್ರಶ್ನೆ
+✓ Write all 4 options in Kannada: ಆಯ್ಕೆಗಳು
+✓ Use Kannada Unicode (U+0C80-U+0CFF) characters only
+✗ DO NOT write in English
+✗ DO NOT mix English and Kannada
+
+CORRECT EXAMPLE (FOLLOW THIS):
 {
   "question": "ರಾಸಾಯನಿಕ ಕ್ರಿಯೆ ಯಾವಾಗ ನಡೆಯುತ್ತದೆ?",
   "options": [
     "ರಾಸಾಯನಿಕ ಬದಲಾವಣೆ ಆದಾಗ",
-    "ಭೌತಿಕ ಬದಲಾವಣೆ ಆದಾಗ",
-    "ತಾಪಮಾನ ಹೆಚ್ಚಾದಾಗ",
-    "ಒತ್ತಡ ಕಡಿಮೆಯಾದಾಗ"
+    "ಭೌತಿಕ ಬದಲಾವಣೆ ಮಾತ್ರ ಆದಾಗ",
+    "ತಾಪಮಾನ ಬದಲಾದಾಗ",
+    "ಯಾವುದೂ ಇಲ್ಲ"
   ],
   "correctAnswer": 0
 }
 
-EXAMPLE OF WRONG (DO NOT DO THIS):
+WRONG EXAMPLE (DO NOT DO THIS):
 {
-  "question": "When does a chemical reaction occur?",  ← WRONG! This is English
-  "options": ["When chemical change", ...]  ← WRONG! This is English
+  "question": "When does chemical reaction occur?",  ← ENGLISH - WRONG!
+  "options": ["When there is change", ...]  ← ENGLISH - WRONG!
 }
 
-Remember: The source chapter is in Kannada, so your quiz MUST be in Kannada.`
-  : `The chapter is in English. Generate all questions and options in English.`}
+Generate exactly 10 multiple-choice questions.
+Each question must have exactly 4 options.
+correctAnswer is the index (0-3) of the correct option.
 
-QUIZ REQUIREMENTS:
-- Questions should cover different topics/concepts from the chapter
-- Each question must have exactly 4 options
-- Options should be plausible but only one clearly correct
-- correctAnswer is the index (0-3) of the correct option
-- Questions should test understanding, not just memorization
-
-IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
+Return ONLY valid JSON with this structure:
 {
   "questions": [
     {
-      "question": "question text here",
+      "question": "kannada question here",
+      "options": ["kannada option1", "kannada option2", "kannada option3", "kannada option4"],
+      "correctAnswer": 0
+    }
+  ]
+}`
+              : `You are a quiz generator for English language content.
+
+Generate exactly 10 multiple-choice questions in ENGLISH from the chapter content.
+Each question must have exactly 4 options.
+correctAnswer is the index (0-3) of the correct option.
+
+Return ONLY valid JSON with this structure:
+{
+  "questions": [
+    {
+      "question": "english question here",
       "options": ["option1", "option2", "option3", "option4"],
       "correctAnswer": 0
     }
   ]
-}
-
-Do NOT wrap the response in markdown code blocks or any other formatting.`
+}`
           },
           {
             role: "user",
             content: isKannadaChapter 
-              ? `This is a Kannada language chapter. Generate quiz questions in KANNADA ONLY.\n\nChapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
-              : `Chapter: ${chapter.name}\n\nContent:\n${chapter.content_extracted}`
+              ? `⚠️ IMPORTANT: This chapter is in KANNADA language. You MUST generate the quiz in KANNADA ONLY. DO NOT USE ENGLISH.\n\n${chapter.content_extracted}`
+              : `Generate quiz in English from this chapter:\n\n${chapter.content_extracted}`
           }
         ],
         response_format: { type: "json_object" }
