@@ -53,8 +53,10 @@ serve(async (req) => {
       );
     }
 
-    // Detect if chapter is in Kannada
-    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
+    // Detect if chapter is in Kannada - check both name and content
+    const hasKannadaInName = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
+    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
+    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
 
     // Generate mindmap using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

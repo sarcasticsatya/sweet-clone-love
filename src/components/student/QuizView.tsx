@@ -92,7 +92,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
   if (!quiz) {
     return (
-      <div className="p-4 text-center">
+      <div className="p-3 md:p-4 text-center">
         <p className="text-sm text-muted-foreground mb-4">
           No quiz available yet
         </p>
@@ -105,10 +105,10 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
   if (submitted && result) {
     return (
-      <div className="p-4 space-y-4">
+      <div className="p-3 md:p-4 space-y-4">
         <Card>
-          <CardContent className="p-6 text-center">
-            <div className="text-4xl font-bold mb-2">{result.percentage}%</div>
+          <CardContent className="p-4 md:p-6 text-center">
+            <div className="text-3xl md:text-4xl font-bold mb-2">{result.percentage}%</div>
             <div className="text-sm text-muted-foreground">
               {result.score} out of {result.totalQuestions} correct
             </div>
@@ -125,14 +125,14 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3 md:p-4 space-y-4">
       <div className="text-xs text-muted-foreground">
         Question {currentQuestionIndex + 1} of {questions.length}
       </div>
 
       <Card>
-        <CardContent className="p-4">
-          <p className="font-medium mb-4 text-sm">{currentQuestion.question}</p>
+        <CardContent className="p-3 md:p-4">
+          <p className="font-medium mb-4 text-sm md:text-base break-words leading-relaxed">{currentQuestion.question}</p>
           <RadioGroup
             value={answers[currentQuestionIndex]?.toString()}
             onValueChange={(value) => 
@@ -140,9 +140,9 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
             }
           >
             {currentQuestion.options.map((option: string, idx: number) => (
-              <div key={idx} className="flex items-center space-x-2 mb-2">
-                <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
-                <Label htmlFor={`option-${idx}`} className="text-sm cursor-pointer">
+              <div key={idx} className="flex items-start space-x-2 mb-3">
+                <RadioGroupItem value={idx.toString()} id={`option-${idx}`} className="mt-1 flex-shrink-0" />
+                <Label htmlFor={`option-${idx}`} className="text-sm cursor-pointer break-words leading-relaxed">
                   {option}
                 </Label>
               </div>

@@ -62,7 +62,7 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
 
   if (flashcards.length === 0) {
     return (
-      <div className="p-4 text-center">
+      <div className="p-3 md:p-4 text-center">
         <p className="text-sm text-muted-foreground mb-4">
           No flashcards available yet
         </p>
@@ -76,7 +76,7 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
   const currentCard = flashcards[currentIndex];
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3 md:p-4 space-y-4">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Card {currentIndex + 1} of {flashcards.length}</span>
         <Button size="sm" variant="ghost" onClick={loadFlashcards}>
@@ -85,14 +85,14 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
       </div>
 
       <Card 
-        className="cursor-pointer hover:shadow-md transition-shadow min-h-[200px] flex items-center justify-center"
+        className="cursor-pointer hover:shadow-md transition-shadow min-h-[180px] md:min-h-[200px] flex items-center justify-center"
         onClick={() => setShowAnswer(!showAnswer)}
       >
-        <CardContent className="p-6 text-center">
+        <CardContent className="p-4 md:p-6 text-center w-full">
           <p className="text-sm font-medium mb-2 text-muted-foreground">
             {showAnswer ? "Answer" : "Question"}
           </p>
-          <p className="text-base">
+          <p className="text-sm md:text-base break-words leading-relaxed">
             {showAnswer ? currentCard.answer : currentCard.question}
           </p>
           {!showAnswer && (

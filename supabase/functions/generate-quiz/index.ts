@@ -59,8 +59,10 @@ serve(async (req) => {
       );
     }
 
-    // Detect if chapter is in Kannada
-    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
+    // Detect if chapter is in Kannada - check both name and content
+    const hasKannadaInName = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
+    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
+    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
 
     // Generate quiz using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -83,7 +85,7 @@ REQUIREMENTS:
 - Options should be plausible but only one clearly correct
 - correctAnswer is the index (0-3) of the correct option
 ${isKannadaChapter 
-  ? '- CRITICAL: This is a KANNADA chapter - You MUST generate ALL quiz content (questions AND all options) COMPLETELY in Kannada (ಕನ್ನಡ) script ONLY\n- DO NOT use any English words or mixed language\n- Use proper Kannada script with correct grammar\n- Every single word in questions and options must be in Kannada' 
+  ? '- CRITICAL: This is a KANNADA chapter - You MUST generate ALL quiz content (questions AND all options) COMPLETELY in Kannada (ಕನ್ನಡ) script ONLY\n- DO NOT use any English words or mixed language\n- Use proper Kannada Unicode script (\\u0C80-\\u0CFF range)\n- Every single word in questions and options must be in proper Kannada script\n- If you receive English text, translate it to Kannada first\n- Example Kannada text: ಪ್ರಶ್ನೆ, ಉತ್ತರ, ವಿಜ್ಞಾನ' 
   : '- Use the same language as the chapter (Kannada or English)'}
 - Questions should test understanding, not just memorization
 
@@ -97,6 +99,8 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdow
     }
   ]
 }
+
+CRITICAL for Kannada: Use proper UTF-8 Kannada Unicode characters. Do NOT use corrupted encodings.
 
 Do NOT wrap the response in markdown code blocks or any other formatting.`
           },
