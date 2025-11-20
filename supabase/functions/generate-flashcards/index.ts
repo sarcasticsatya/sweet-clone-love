@@ -76,7 +76,7 @@ serve(async (req) => {
         "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: isKannadaChapter ? "claude-sonnet-4-5" : "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
@@ -88,13 +88,17 @@ REQUIREMENTS:
 - Answers should be accurate, detailed, and educational
 - Ensure variety: include concept definitions, application questions, and fact-based questions
 ${isKannadaChapter 
-  ? `- CRITICAL: This is a KANNADA chapter - You MUST generate ALL flashcard content in KANNADA ONLY
-- Use ONLY Kannada script (Unicode range U+0C80 to U+0CFF): ಕನ್ನಡ ಅಕ್ಷರಗಳು
-- DO NOT use English, Latin characters, or any corrupted encoding
-- Example valid Kannada: ಪ್ರಶ್ನೆ, ಉತ್ತರ, ವಿಜ್ಞಾನ, ಗಣಿತ
-- Both question AND answer must be completely in proper Kannada Unicode
-- If you generate any English text, you MUST translate it to Kannada before responding
-- Check your output: if you see characters like ªÉÄVß or similar, that is WRONG - regenerate in proper Kannada` 
+  ? `- ABSOLUTELY CRITICAL - NON-NEGOTIABLE: This is a KANNADA language chapter
+- You MUST write EVERYTHING in Kannada script (ಕನ್ನಡ ಲಿಪಿ) ONLY
+- NOT A SINGLE ENGLISH WORD is allowed - not even one word
+- ALL questions must be 100% in Kannada
+- ALL answers must be 100% in Kannada
+- Use ONLY Kannada Unicode characters (U+0C80 to U+0CFF)
+- Example WRONG: "What is the function?" - THIS HAS ENGLISH
+- Example CORRECT: "ಕಾರ್ಯವೇನು?" - THIS IS PURE KANNADA
+- If you write ANY English word, the flashcards will be REJECTED
+- Translate ALL terms to Kannada
+- Think in Kannada, write in Kannada, output ONLY Kannada` 
   : '- Use the same language as the chapter content (Kannada or English)'}
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
