@@ -59,11 +59,12 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
           style: {
             background: level === 0 ? "hsl(var(--primary))" : level === 1 ? "hsl(var(--secondary))" : "hsl(var(--accent))",
             color: level === 0 ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))",
-            border: "1px solid hsl(var(--border))",
-            borderRadius: "8px",
-            padding: "12px 20px",
+            border: "2px solid hsl(var(--primary) / 0.5)",
+            borderRadius: "12px",
+            padding: "14px 24px",
             fontSize: level === 0 ? "16px" : "14px",
             fontWeight: level === 0 ? "600" : "500",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           },
         };
       });
@@ -74,10 +75,16 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
         target: edge.target,
         type: "smoothstep",
         animated: true,
-        style: { stroke: "hsl(var(--border))", strokeWidth: 2 },
+        style: { 
+          stroke: "hsl(var(--primary))", 
+          strokeWidth: 3,
+          opacity: 0.8
+        },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: "hsl(var(--border))",
+          color: "hsl(var(--primary))",
+          width: 25,
+          height: 25,
         },
       }));
 
@@ -96,7 +103,7 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
+      <div className="p-3 md:p-4 border-b border-border">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <Network className="w-4 h-4" />
