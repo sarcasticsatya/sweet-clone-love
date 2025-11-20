@@ -76,30 +76,45 @@ serve(async (req) => {
         "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
-        model: isKannadaChapter ? "claude-sonnet-4-5" : "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `Generate exactly 12 unique, diverse flashcards from the chapter content that cover different topics and concepts. 
+            content: `You are a flashcard generator. Generate exactly 12 unique, diverse flashcards from the chapter content that cover different topics and concepts.
 
-REQUIREMENTS:
+${isKannadaChapter 
+  ? `CRITICAL LANGUAGE REQUIREMENT - READ THIS CAREFULLY:
+==========================================
+The chapter is written in KANNADA language (ಕನ್ನಡ).
+You MUST generate ALL flashcards in KANNADA language ONLY.
+
+MANDATORY RULES:
+1. Write ALL questions in Kannada script (ಕನ್ನಡ ಲಿಪಿ)
+2. Write ALL answers in Kannada script
+3. DO NOT use English words AT ALL
+4. DO NOT mix languages
+5. Use proper Kannada Unicode characters (U+0C80-U+0CFF)
+
+EXAMPLE OF CORRECT KANNADA FLASHCARD:
+{
+  "question": "ದ್ಯುತಿಸಂಶ್ಲೇಷಣೆ ಎಂದರೇನು?",
+  "answer": "ಸಸ್ಯಗಳು ಸೂರ್ಯನ ಬೆಳಕಿನ ಸಹಾಯದಿಂದ ಆಹಾರವನ್ನು ತಯಾರಿಸುವ ಪ್ರಕ್ರಿಯೆ"
+}
+
+EXAMPLE OF WRONG (DO NOT DO THIS):
+{
+  "question": "What is photosynthesis?",  ← WRONG! This is English
+  "answer": "Process by which plants..."  ← WRONG! This is English
+}
+
+Remember: The source chapter is in Kannada, so your flashcards MUST be in Kannada.`
+  : `The chapter is in English. Generate all flashcards in English.`}
+
+FLASHCARD REQUIREMENTS:
 - Create flashcards that cover DIFFERENT aspects of the chapter (not repeated topics)
 - Questions should be clear, specific, and directly related to the chapter content
 - Answers should be accurate, detailed, and educational
 - Ensure variety: include concept definitions, application questions, and fact-based questions
-${isKannadaChapter 
-  ? `- ABSOLUTELY CRITICAL - NON-NEGOTIABLE: This is a KANNADA language chapter
-- You MUST write EVERYTHING in Kannada script (ಕನ್ನಡ ಲಿಪಿ) ONLY
-- NOT A SINGLE ENGLISH WORD is allowed - not even one word
-- ALL questions must be 100% in Kannada
-- ALL answers must be 100% in Kannada
-- Use ONLY Kannada Unicode characters (U+0C80 to U+0CFF)
-- Example WRONG: "What is the function?" - THIS HAS ENGLISH
-- Example CORRECT: "ಕಾರ್ಯವೇನು?" - THIS IS PURE KANNADA
-- If you write ANY English word, the flashcards will be REJECTED
-- Translate ALL terms to Kannada
-- Think in Kannada, write in Kannada, output ONLY Kannada` 
-  : '- Use the same language as the chapter content (Kannada or English)'}
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {
@@ -112,7 +127,9 @@ Do NOT wrap the response in markdown code blocks or any other formatting.`
           },
           {
             role: "user",
-            content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
+            content: isKannadaChapter 
+              ? `This is a Kannada language chapter. Generate flashcards in KANNADA ONLY.\n\nChapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
+              : `Chapter: ${chapter.name}\n\nContent:\n${chapter.content_extracted}`
           }
         ],
         response_format: { type: "json_object" }
