@@ -13,36 +13,36 @@ interface ToolsPanelProps {
 
 export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelProps) => {
   return (
-    <div className="w-80 border-l border-border bg-card flex flex-col shadow-sm">
-      <div className="px-4 py-3 border-b border-border">
-        <h2 className="font-medium text-sm text-foreground">Study Tools</h2>
-        <p className="text-[11px] text-muted-foreground mt-0.5">Flashcards, quizzes & videos</p>
+    <div className="flex flex-col h-full max-h-[40vh] md:max-h-full">
+      <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-border flex-shrink-0">
+        <h2 className="font-medium text-xs md:text-sm text-foreground">Study Tools</h2>
+        <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5">Flashcards, quizzes & videos</p>
       </div>
 
       {!selectedChapterId ? (
-        <div className="p-6 text-center text-xs text-muted-foreground">
+        <div className="p-4 md:p-6 text-center text-[10px] md:text-xs text-muted-foreground">
           Select a chapter to access study tools
         </div>
       ) : (
-        <Tabs defaultValue="flashcards" className="w-full flex-1 flex flex-col">
-          <TabsList className="w-full grid grid-cols-4 rounded-none border-b bg-transparent h-12">
+        <Tabs defaultValue="flashcards" className="w-full flex-1 flex flex-col overflow-hidden">
+          <TabsList className="w-full grid grid-cols-4 rounded-none border-b bg-transparent h-10 md:h-12 flex-shrink-0">
             <TabsTrigger 
               value="flashcards" 
-              className="rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="rounded-none text-[10px] md:text-xs data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
             >
-              <Brain className="w-4 h-4" />
+              <Brain className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </TabsTrigger>
             <TabsTrigger 
               value="quiz" 
-              className="rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="rounded-none text-[10px] md:text-xs data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
             >
-              <HelpCircle className="w-4 h-4" />
+              <HelpCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </TabsTrigger>
             <TabsTrigger 
               value="mindmap" 
-              className="rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="rounded-none text-[10px] md:text-xs data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
             >
-              <Network className="w-4 h-4" />
+              <Network className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </TabsTrigger>
             <TabsTrigger 
               value="videos" 

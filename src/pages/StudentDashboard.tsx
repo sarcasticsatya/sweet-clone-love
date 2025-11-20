@@ -51,43 +51,49 @@ const StudentDashboard = () => {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* NotebookLM-style Header */}
-      <header className="border-b border-border px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-primary rounded flex items-center justify-center">
-            <BookOpen className="w-4 h-4 text-primary-foreground" />
+      <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center">
+            <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-base font-medium">NotebookLM</h1>
-            <p className="text-[10px] text-muted-foreground">Karnataka SSLC Edition</p>
+            <h1 className="text-sm md:text-base font-medium">NotebookLM</h1>
+            <p className="text-[9px] md:text-[10px] text-muted-foreground">Karnataka SSLC Edition</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-8 text-xs">
-          <LogOut className="w-3.5 h-3.5 mr-1.5" />
-          Sign Out
+        <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-7 md:h-8 text-[10px] md:text-xs">
+          <LogOut className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
+          <span className="hidden md:inline">Sign Out</span>
         </Button>
       </header>
 
-      {/* Three-panel NotebookLM layout */}
-      <div className="flex-1 flex overflow-hidden bg-muted/10">
-        {/* Left: Sources Panel */}
-        <SourcesPanel
-          selectedChapterId={selectedChapterId}
-          selectedSubjectId={selectedSubjectId}
-          onSelectChapter={setSelectedChapterId}
-          onSelectSubject={setSelectedSubjectId}
-        />
+      {/* Three-panel NotebookLM layout - responsive */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-muted/10">
+        {/* Left: Sources Panel - full width on mobile, fixed on desktop */}
+        <div className="md:w-80 w-full md:block border-b md:border-b-0 md:border-r border-border bg-card shadow-sm">
+          <SourcesPanel
+            selectedChapterId={selectedChapterId}
+            selectedSubjectId={selectedSubjectId}
+            onSelectChapter={setSelectedChapterId}
+            onSelectSubject={setSelectedSubjectId}
+          />
+        </div>
 
-        {/* Center: Chat Panel */}
-        <ChatPanel
-          selectedChapterId={selectedChapterId}
-          selectedSubjectId={selectedSubjectId}
-        />
+        {/* Center: Chat Panel - scrollable on mobile */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <ChatPanel
+            selectedChapterId={selectedChapterId}
+            selectedSubjectId={selectedSubjectId}
+          />
+        </div>
 
-        {/* Right: Tools Panel */}
-        <ToolsPanel
-          selectedChapterId={selectedChapterId}
-          selectedSubjectId={selectedSubjectId}
-        />
+        {/* Right: Tools Panel - full width on mobile, fixed on desktop */}
+        <div className="md:w-80 w-full md:block border-t md:border-t-0 md:border-l border-border bg-card shadow-sm">
+          <ToolsPanel
+            selectedChapterId={selectedChapterId}
+            selectedSubjectId={selectedSubjectId}
+          />
+        </div>
       </div>
     </div>
   );
