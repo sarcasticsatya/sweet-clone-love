@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json; charset=utf-8",
 };
 
 serve(async (req) => {
@@ -72,7 +73,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
@@ -87,7 +88,13 @@ REQUIREMENTS:
 - Answers should be accurate, detailed, and educational
 - Ensure variety: include concept definitions, application questions, and fact-based questions
 ${isKannadaChapter 
-  ? '- CRITICAL: This is a KANNADA chapter - You MUST generate ALL flashcard content (questions AND answers) COMPLETELY in Kannada (ಕನ್ನಡ) script ONLY\n- DO NOT use any English words or mixed language\n- Use proper Kannada Unicode script (\\u0C80-\\u0CFF range)\n- Every single word must be in proper Kannada script\n- If you receive English text, translate it to Kannada first\n- Example Kannada text: ಪ್ರಶ್ನೆ, ಉತ್ತರ, ವಿಜ್ಞಾನ' 
+  ? `- CRITICAL: This is a KANNADA chapter - You MUST generate ALL flashcard content in KANNADA ONLY
+- Use ONLY Kannada script (Unicode range U+0C80 to U+0CFF): ಕನ್ನಡ ಅಕ್ಷರಗಳು
+- DO NOT use English, Latin characters, or any corrupted encoding
+- Example valid Kannada: ಪ್ರಶ್ನೆ, ಉತ್ತರ, ವಿಜ್ಞಾನ, ಗಣಿತ
+- Both question AND answer must be completely in proper Kannada Unicode
+- If you generate any English text, you MUST translate it to Kannada before responding
+- Check your output: if you see characters like ªÉÄVß or similar, that is WRONG - regenerate in proper Kannada` 
   : '- Use the same language as the chapter content (Kannada or English)'}
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
@@ -96,8 +103,6 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdow
     {"question": "question text here", "answer": "detailed answer here"}
   ]
 }
-
-CRITICAL for Kannada: Use proper UTF-8 Kannada Unicode characters. Do NOT use corrupted encodings.
 
 Do NOT wrap the response in markdown code blocks or any other formatting.`
           },
@@ -127,6 +132,21 @@ Do NOT wrap the response in markdown code blocks or any other formatting.`
     if (!parsed.flashcards || !Array.isArray(parsed.flashcards) || parsed.flashcards.length === 0) {
       throw new Error("Invalid flashcard format: no flashcards array");
     }
+    
+    // Validate Kannada encoding if it's a Kannada chapter
+    if (isKannadaChapter) {
+      const sampleText = parsed.flashcards[0]?.question || "";
+      // Check if text contains proper Kannada Unicode (U+0C80-U+0CFF)
+      const hasProperKannada = /[\u0C80-\u0CFF]/.test(sampleText);
+      // Check for corrupted encoding markers
+      const hasCorruptedChars = /[ªÃÄÉß®¥½°]/.test(sampleText);
+      
+      if (!hasProperKannada || hasCorruptedChars) {
+        console.error("Detected corrupted Kannada encoding in flashcards. Sample:", sampleText.substring(0, 100));
+        throw new Error("Flashcards generated with corrupted encoding. Please try again.");
+      }
+    }
+    
     const flashcardsArray = parsed.flashcards || parsed.cards || parsed.items || [];
 
     // Store flashcards in database
