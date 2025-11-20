@@ -83,7 +83,7 @@ REQUIREMENTS:
 - Options should be plausible but only one clearly correct
 - correctAnswer is the index (0-3) of the correct option
 ${isKannadaChapter 
-  ? '- This is a KANNADA chapter - Generate ALL quiz content ENTIRELY in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
+  ? '- CRITICAL: This is a KANNADA chapter - You MUST generate ALL quiz content (questions AND all options) COMPLETELY in Kannada (ಕನ್ನಡ) script ONLY\n- DO NOT use any English words or mixed language\n- Use proper Kannada script with correct grammar\n- Every single word in questions and options must be in Kannada' 
   : '- Use the same language as the chapter (Kannada or English)'}
 - Questions should test understanding, not just memorization
 

@@ -78,14 +78,14 @@ serve(async (req) => {
           {
             role: "system",
             content: `Generate exactly 12 unique, diverse flashcards from the chapter content that cover different topics and concepts. 
-            
+
 REQUIREMENTS:
 - Create flashcards that cover DIFFERENT aspects of the chapter (not repeated topics)
 - Questions should be clear, specific, and directly related to the chapter content
 - Answers should be accurate, detailed, and educational
 - Ensure variety: include concept definitions, application questions, and fact-based questions
 ${isKannadaChapter 
-  ? '- This is a KANNADA chapter - Generate ALL flashcards ENTIRELY in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
+  ? '- CRITICAL: This is a KANNADA chapter - You MUST generate ALL flashcard content (questions AND answers) COMPLETELY in Kannada (ಕನ್ನಡ) script ONLY\n- DO NOT use any English words or mixed language\n- Use proper Kannada script with correct grammar\n- Every single word must be in Kannada' 
   : '- Use the same language as the chapter content (Kannada or English)'}
 
 IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):

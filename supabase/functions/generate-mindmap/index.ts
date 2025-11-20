@@ -69,27 +69,32 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Create a hierarchical mind map of the chapter content in markdown format.
+            content: `Create a hierarchical mind map structure of the chapter content as a JSON object suitable for visual rendering.
 
 REQUIREMENTS:
-- Organize main topics, subtopics, and key concepts in a clear hierarchy
-- Use markdown headers (##, ###, ####) for different levels
-- Use bullet points for details under each concept
-- Include important terms, definitions, and relationships
-- Keep it concise but comprehensive
+- Identify 4-6 main topics from the chapter as primary nodes
+- For each main topic, identify 2-4 key subtopics or concepts as child nodes
+- Keep node labels concise (2-5 words maximum)
+- Include relationships and connections between concepts
+- Structure should be clear and logical for visual display
 ${isKannadaChapter 
-  ? '- This is a KANNADA chapter - Create the entire mindmap in Kannada (ಕನ್ನಡ)\n- Use proper Kannada script with correct grammar' 
+  ? '- CRITICAL: This is a KANNADA chapter - ALL node labels MUST be COMPLETELY in Kannada (ಕನ್ನಡ) script ONLY\n- DO NOT use any English words\n- Use proper Kannada script with correct grammar' 
   : '- Use the same language as the chapter (Kannada or English)'}
 
-Format example:
-## Main Topic 1
-- Key concept A
-  - Detail 1
-  - Detail 2
-- Key concept B
+IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
+{
+  "nodes": [
+    { "id": "root", "label": "Chapter Title", "type": "root" },
+    { "id": "topic1", "label": "Main Topic 1", "type": "main" },
+    { "id": "subtopic1_1", "label": "Subtopic 1.1", "type": "sub" }
+  ],
+  "edges": [
+    { "source": "root", "target": "topic1" },
+    { "source": "topic1", "target": "subtopic1_1" }
+  ]
+}
 
-## Main Topic 2
-...`
+Do NOT wrap the response in markdown code blocks or any other formatting.`
           },
           {
             role: "user",
@@ -97,6 +102,7 @@ Format example:
           }
         ],
         max_tokens: 2000,
+        response_format: { type: "json_object" }
       }),
     });
 
@@ -105,10 +111,17 @@ Format example:
     }
 
     const aiData = await aiResponse.json();
-    const mindmap = aiData.choices[0]?.message?.content || "";
+    let content = aiData.choices[0]?.message?.content || "";
+    
+    // Strip markdown code blocks if present
+    content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    
+    console.log("Mindmap AI Response:", content.substring(0, 200));
+    
+    const mindmapData = JSON.parse(content);
 
     return new Response(
-      JSON.stringify({ mindmap }),
+      JSON.stringify({ mindmap: mindmapData }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
