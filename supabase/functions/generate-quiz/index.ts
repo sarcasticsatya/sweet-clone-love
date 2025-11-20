@@ -74,7 +74,7 @@ serve(async (req) => {
         "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: isKannadaChapter ? "claude-sonnet-4-5" : "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
@@ -86,14 +86,17 @@ REQUIREMENTS:
 - Options should be plausible but only one clearly correct
 - correctAnswer is the index (0-3) of the correct option
 ${isKannadaChapter 
-  ? `- ABSOLUTELY CRITICAL: This chapter is in KANNADA language
-- You MUST generate EVERY SINGLE WORD in Kannada script ONLY: ಕನ್ನಡ
-- DO NOT use ANY English words, not even one word
-- WRONG example: "What is photosynthesis?" or "ಫೋಟೋಸಿಂಥಸಿಸ್ ಎಂದರೇನು?"
-- CORRECT example: "ದ್ಯುತಿಸಂಶ್ಲೇಷಣೆ ಎಂದರೇನು?"
-- Use ONLY Unicode Kannada (U+0C80-U+0CFF): ಅ ಆ ಇ ಈ ಉ ಊ ಋ ೠ ಎ ಏ ಐ ಒ ಓ ಔ ಕ ಖ ಗ ಘ ಙ ಚ ಛ ಜ ಝ ಞ ಟ ಠ ಡ ಢ ಣ ತ ಥ ದ ಧ ನ ಪ ಫ ಬ ಭ ಮ ಯ ರ ಲ ವ ಶ ಷ ಸ ಹ ಳ
-- If you catch yourself writing English, STOP and rewrite in Kannada
-- Questions, options, everything must be pure Kannada with NO exceptions` 
+  ? `- ABSOLUTELY CRITICAL - NON-NEGOTIABLE: This is a KANNADA language chapter
+- You MUST write EVERYTHING in Kannada script (ಕನ್ನಡ ಲಿಪಿ) ONLY
+- NOT A SINGLE ENGLISH WORD is allowed - not even one word like "is", "the", "and"
+- ALL questions must be 100% in Kannada: ಪ್ರಶ್ನೆಗಳು
+- ALL options must be 100% in Kannada: ಆಯ್ಕೆಗಳು
+- Use ONLY Kannada Unicode characters (U+0C80 to U+0CFF)
+- Example WRONG: "What is photosynthesis?" - THIS HAS ENGLISH
+- Example CORRECT: "ದ್ಯುತಿಸಂಶ್ಲೇಷಣೆ ಎಂದರೇನು?" - THIS IS PURE KANNADA
+- If you write ANY English word, the quiz will be REJECTED
+- Translate ALL scientific terms to Kannada (e.g., "oxygen" = "ಆಮ್ಲಜನಕ")
+- Think in Kannada, write in Kannada, output ONLY Kannada` 
   : '- Use the same language as the chapter (Kannada or English)'}
 - Questions should test understanding, not just memorization
 
