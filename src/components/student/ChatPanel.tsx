@@ -87,7 +87,7 @@ export const ChatPanel = ({
                   Ask anything about this chapter
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Powered by Gemini AI with context from your selected PDF
+                  Powered by AI with context from your selected PDF
                 </p>
               </div>
             </div>
