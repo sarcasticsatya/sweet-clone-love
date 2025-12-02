@@ -19,18 +19,16 @@ const AdminDashboard = () => {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     if (!session) {
       navigate("/auth");
       return;
     }
 
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", session.user.id)
-      .single();
+    const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).single();
 
     if (roleData?.role !== "admin") {
       toast.error("Access denied. Admins only.");
@@ -58,7 +56,7 @@ const AdminDashboard = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Karnataka SSLC Platform</p>
+            <p className="text-sm text-muted-foreground">Nythic AI Edtech Platform</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={handleSignOut}>
