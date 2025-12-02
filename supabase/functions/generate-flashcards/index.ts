@@ -7,6 +7,120 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
+function safeParseJSON(content: string): any {
+  let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.log("JSON parse failed, attempting recovery...");
+    
+    // Try to extract flashcard objects manually
+    const flashcards: any[] = [];
+    const cardRegex = /\{\s*"question"\s*:\s*"([^"]+)"\s*,\s*"answer"\s*:\s*"([^"]+)"\s*\}/g;
+    
+    let match;
+    while ((match = cardRegex.exec(cleaned)) !== null) {
+      flashcards.push({
+        question: match[1],
+        answer: match[2]
+      });
+    }
+    
+    if (flashcards.length >= 5) {
+      console.log(`Recovered ${flashcards.length} flashcards`);
+      return { flashcards };
+    }
+    
+    throw new Error("Could not parse flashcards JSON");
+  }
+}
+
+async function generateFlashcardsFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
+  const maxRetries = 2;
+  
+  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: isKannadaChapter 
+            ? `Generate exactly 8 flashcards in KANNADA (ಕನ್ನಡ).
+
+Rules:
+- Questions and answers must be in Kannada script
+- Use Kannada Unicode characters (U+0C80-U+0CFF)
+
+Return ONLY valid JSON:
+{"flashcards":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","answer":"ಕನ್ನಡ ಉತ್ತರ"}]}`
+            : `Generate exactly 8 flashcards in English.
+
+Return ONLY valid JSON:
+{"flashcards":[{"question":"Question?","answer":"Answer"}]}`
+        },
+        {
+          role: "user",
+          content: `Generate flashcards from:\n\n${chapter.content_extracted.substring(0, 6000)}`
+        }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errText = await aiResponse.text();
+    console.error("AI API error:", errText);
+    throw new Error("AI API failed");
+  }
+
+  const aiData = await aiResponse.json();
+  const content = aiData.choices[0]?.message?.content || "";
+  
+  console.log("AI Response length:", content.length);
+  console.log("AI Response preview:", content.substring(0, 300));
+  
+  try {
+    const parsed = safeParseJSON(content);
+    
+    if (!parsed.flashcards || !Array.isArray(parsed.flashcards) || parsed.flashcards.length === 0) {
+      throw new Error("No flashcards in response");
+    }
+    
+    // Validate flashcards have question and answer
+    const validCards = parsed.flashcards.filter((fc: any) => 
+      fc.question && typeof fc.question === "string" && 
+      fc.answer && typeof fc.answer === "string"
+    );
+    
+    if (validCards.length < 3) {
+      throw new Error("Too few valid flashcards");
+    }
+    
+    // For Kannada, just verify some Kannada text exists
+    if (isKannadaChapter) {
+      const allText = validCards.map((fc: any) => fc.question + fc.answer).join(" ");
+      if (!/[\u0C80-\u0CFF]/.test(allText)) {
+        throw new Error("No Kannada text found");
+      }
+    }
+    
+    return { flashcards: validCards };
+  } catch (parseError) {
+    console.error("Parse error:", parseError);
+    if (retryCount < maxRetries) {
+      console.log(`Retrying... attempt ${retryCount + 2}`);
+      return generateFlashcardsFromAI(chapter, isKannadaChapter, apiKey, retryCount + 1);
+    }
+    throw parseError;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -19,28 +133,26 @@ serve(async (req) => {
     if (!chapterId) {
       return new Response(
         JSON.stringify({ error: "Chapter ID is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get user from auth header
     const token = authHeader?.replace("Bearer ", "");
     const { data: { user } } = await supabaseClient.auth.getUser(token || "");
 
     if (!user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    // Delete existing flashcards to generate fresh ones each session
+    // Delete existing flashcards
     await supabaseClient
       .from("flashcards")
       .delete()
@@ -55,142 +167,26 @@ serve(async (req) => {
 
     if (!chapter || !chapter.content_extracted) {
       return new Response(
-        JSON.stringify({ 
-          error: "Chapter content not available yet. The PDF is still being processed. Please wait a moment and try again." 
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Chapter content not available" }),
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // Detect if chapter is in Kannada - check both name and content
-    const hasKannadaInName = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
-    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
-    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
-    
-    console.log("=== FLASHCARDS LANGUAGE DETECTION ===");
-    console.log("Chapter name_kannada:", chapter.name_kannada);
-    console.log("Has Kannada in name:", hasKannadaInName);
-    console.log("Has Kannada in content:", hasKannadaInContent);
+    // Detect Kannada by name_kannada field
+    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
     console.log("IS KANNADA CHAPTER:", isKannadaChapter);
-    console.log("Content preview:", chapter.content_extracted?.substring(0, 200));
 
-    // Generate flashcards using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json; charset=utf-8",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: isKannadaChapter 
-              ? `You are a flashcard generator for KANNADA language content.
-
-==========================================
-CRITICAL INSTRUCTION - KANNADA LANGUAGE ONLY
-==========================================
-
-The source chapter is written in KANNADA (ಕನ್ನಡ ಭಾಷೆ).
-
-YOU MUST GENERATE ALL FLASHCARDS IN KANNADA LANGUAGE.
-DO NOT USE ENGLISH. NOT EVEN ONE ENGLISH WORD.
-
-RULES YOU MUST FOLLOW:
-✓ Write question in Kannada: ಪ್ರಶ್ನೆ
-✓ Write answer in Kannada: ಉತ್ತರ
-✓ Use Kannada Unicode (U+0C80-U+0CFF) characters only
-✗ DO NOT write in English
-✗ DO NOT mix English and Kannada
-
-CORRECT EXAMPLE (FOLLOW THIS):
-{
-  "question": "ದ್ಯುತಿಸಂಶ್ಲೇಷಣೆ ಎಂದರೇನು?",
-  "answer": "ಸಸ್ಯಗಳು ಸೂರ್ಯನ ಬೆಳಕಿನ ಸಹಾಯದಿಂದ ಆಹಾರವನ್ನು ತಯಾರಿಸುವ ಪ್ರಕ್ರಿಯೆ"
-}
-
-WRONG EXAMPLE (DO NOT DO THIS):
-{
-  "question": "What is photosynthesis?",  ← ENGLISH - WRONG!
-  "answer": "Process by which..."  ← ENGLISH - WRONG!
-}
-
-Generate exactly 12 unique flashcards covering different topics.
-Questions and answers must be in Kannada.
-
-Return ONLY valid JSON with this structure:
-{
-  "flashcards": [
-    {
-      "question": "kannada question here",
-      "answer": "kannada answer here"
-    }
-  ]
-}`
-              : `You are a flashcard generator for English language content.
-
-Generate exactly 12 unique flashcards in ENGLISH covering different topics.
-
-Return ONLY valid JSON with this structure:
-{
-  "flashcards": [
-    {
-      "question": "english question here",
-      "answer": "english answer here"
-    }
-  ]
-}`
-          },
-          {
-            role: "user",
-            content: isKannadaChapter 
-              ? `⚠️ IMPORTANT: This chapter is in KANNADA language. You MUST generate flashcards in KANNADA ONLY. DO NOT USE ENGLISH.\n\n${chapter.content_extracted}`
-              : `Generate flashcards in English from this chapter:\n\n${chapter.content_extracted}`
-          }
-        ],
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      throw new Error("Failed to generate flashcards");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const aiData = await aiResponse.json();
-    let content = aiData.choices[0]?.message?.content || "";
+    const parsed = await generateFlashcardsFromAI(chapter, isKannadaChapter, LOVABLE_API_KEY);
     
-    // Strip markdown code blocks if present (AI sometimes wraps JSON in ```json ... ```)
-    content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    
-    console.log("Flashcards AI Response:", content.substring(0, 200));
-    
-    const parsed = JSON.parse(content);
-    
-    if (!parsed.flashcards || !Array.isArray(parsed.flashcards) || parsed.flashcards.length === 0) {
-      throw new Error("Invalid flashcard format: no flashcards array");
-    }
-    
-    // Validate Kannada encoding if it's a Kannada chapter
-    if (isKannadaChapter) {
-      const sampleText = parsed.flashcards[0]?.question || "";
-      // Check if text contains proper Kannada Unicode (U+0C80-U+0CFF)
-      const hasProperKannada = /[\u0C80-\u0CFF]/.test(sampleText);
-      // Check for corrupted encoding markers
-      const hasCorruptedChars = /[ªÃÄÉß®¥½°]/.test(sampleText);
-      
-      if (!hasProperKannada || hasCorruptedChars) {
-        console.error("Detected corrupted Kannada encoding in flashcards. Sample:", sampleText.substring(0, 100));
-        throw new Error("Flashcards generated with corrupted encoding. Please try again.");
-      }
-    }
-    
-    const flashcardsArray = parsed.flashcards || parsed.cards || parsed.items || [];
+    console.log("Successfully parsed", parsed.flashcards.length, "flashcards");
 
-    // Store flashcards in database
-    const flashcardsToInsert = flashcardsArray.map((fc: any) => ({
+    // Store flashcards
+    const flashcardsToInsert = parsed.flashcards.map((fc: any) => ({
       chapter_id: chapterId,
       question: fc.question,
       answer: fc.answer,
@@ -203,23 +199,23 @@ Return ONLY valid JSON with this structure:
       .select();
 
     if (insertError) {
-      console.error("Error inserting flashcards:", insertError);
+      console.error("Insert error:", insertError);
       return new Response(
         JSON.stringify({ error: "Failed to save flashcards" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: corsHeaders }
       );
     }
 
     return new Response(
       JSON.stringify({ flashcards: insertedFlashcards }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: corsHeaders }
     );
 
   } catch (error) {
     console.error("Error in generate-flashcards:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
