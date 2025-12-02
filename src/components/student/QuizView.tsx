@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Eye, RotateCcw, Loader2, History, Trophy } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, RotateCcw, Loader2, History, Trophy, Brain, Sparkles } from "lucide-react";
 
 interface QuizViewProps {
   chapterId: string;
@@ -20,13 +20,50 @@ interface QuizAttempt {
   attempted_at: string;
 }
 
+// Educational loading animation component
+const QuizLoadingAnimation = () => (
+  <div className="flex flex-col items-center justify-center p-6 md:p-8 gap-4">
+    <div className="relative">
+      {/* Animated brain icon */}
+      <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
+        <Brain className="w-8 h-8 md:w-10 md:h-10 text-primary animate-bounce" />
+      </div>
+      {/* Orbiting sparkles */}
+      <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+        <Sparkles className="w-4 h-4 text-yellow-500 absolute -top-1 left-1/2 -translate-x-1/2" />
+      </div>
+      <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '1s' }}>
+        <Sparkles className="w-3 h-3 text-blue-500 absolute -right-1 top-1/2 -translate-y-1/2" />
+      </div>
+      <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '2s' }}>
+        <Sparkles className="w-3 h-3 text-green-500 absolute -left-1 top-1/2 -translate-y-1/2" />
+      </div>
+    </div>
+    <div className="text-center space-y-2">
+      <p className="text-sm md:text-base font-medium text-foreground">Generating Quiz</p>
+      <p className="text-xs md:text-sm text-muted-foreground animate-pulse">
+        Creating questions from your chapter...
+      </p>
+    </div>
+    {/* Progress dots */}
+    <div className="flex gap-1.5">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="w-2 h-2 rounded-full bg-primary animate-bounce"
+          style={{ animationDelay: `${i * 0.15}s` }}
+        />
+      ))}
+    </div>
+  </div>
+);
+
 export const QuizView = ({ chapterId }: QuizViewProps) => {
   const [quiz, setQuiz] = useState<any>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [pastAttempts, setPastAttempts] = useState<QuizAttempt[]>([]);
@@ -40,7 +77,6 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Get quiz for this chapter
       const { data: quizData } = await supabase
         .from("quizzes")
         .select("id")
@@ -67,7 +103,6 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
     setLoading(true);
     setSubmitted(false);
     setShowSolutions(false);
-    setShowHistory(false);
     setResult(null);
     setAnswers({});
     setCurrentQuestionIndex(0);
@@ -118,7 +153,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
       setResult(data);
       setSubmitted(true);
       toast.success(`Quiz completed! Score: ${data.percentage}%`);
-      loadPastAttempts(); // Refresh history
+      loadPastAttempts();
     } catch (error: any) {
       toast.error("Failed to submit quiz: " + error.message);
     } finally {
@@ -130,14 +165,9 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
     ? (Object.keys(answers).length / quiz.questions.length) * 100 
     : 0;
 
-  // Loading state
+  // Loading state with educational animation
   if (loading && !quiz) {
-    return (
-      <div className="flex flex-col items-center justify-center p-6 gap-3">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        <p className="text-xs text-muted-foreground">Generating quiz...</p>
-      </div>
-    );
+    return <QuizLoadingAnimation />;
   }
 
   // Initial state - no quiz loaded
@@ -148,20 +178,20 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
     return (
       <ScrollArea className="h-full">
-        <div className="p-3 space-y-4">
+        <div className="p-3 md:p-4 space-y-4">
           {/* Best score badge */}
           {bestScore !== null && (
-            <div className="flex items-center justify-center gap-2 p-3 bg-primary/10 rounded-lg">
-              <Trophy className="w-4 h-4 text-primary" />
-              <span className="text-xs font-medium">Best Score: {bestScore}%</span>
+            <div className="flex items-center justify-center gap-2 p-3 md:p-4 bg-primary/10 rounded-lg">
+              <Trophy className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+              <span className="text-xs md:text-sm font-medium">Best Score: {bestScore}%</span>
             </div>
           )}
 
           <div className="text-center space-y-3">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs md:text-sm text-muted-foreground">
               Test your knowledge with a quiz
             </p>
-            <Button size="sm" onClick={loadQuiz} disabled={loading} className="w-full">
+            <Button size="default" onClick={loadQuiz} disabled={loading} className="w-full">
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Start New Quiz
             </Button>
@@ -170,15 +200,15 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
           {/* Past attempts */}
           {pastAttempts.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <History className="w-3 h-3" />
+              <div className="flex items-center gap-2 text-xs md:text-sm font-medium text-muted-foreground">
+                <History className="w-3 h-3 md:w-4 md:h-4" />
                 Recent Attempts
               </div>
               <div className="space-y-2">
                 {pastAttempts.slice(0, 5).map((attempt) => {
                   const pct = Math.round((attempt.score / attempt.total_questions) * 100);
                   return (
-                    <div key={attempt.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-xs">
+                    <div key={attempt.id} className="flex items-center justify-between p-2 md:p-3 bg-muted/50 rounded-lg text-xs md:text-sm">
                       <span className="text-muted-foreground">
                         {new Date(attempt.attempted_at).toLocaleDateString()}
                       </span>
@@ -208,10 +238,10 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
     const questions = quiz.questions || [];
     return (
       <ScrollArea className="h-full">
-        <div className="p-3 space-y-3">
+        <div className="p-3 md:p-4 space-y-3 md:space-y-4">
           <div className="flex items-center justify-between sticky top-0 bg-card py-2 z-10">
-            <h3 className="font-semibold text-xs">Solutions</h3>
-            <Button variant="outline" size="sm" onClick={() => setShowSolutions(false)} className="h-7 text-xs">
+            <h3 className="font-semibold text-sm md:text-base">Solutions</h3>
+            <Button variant="outline" size="sm" onClick={() => setShowSolutions(false)}>
               Back
             </Button>
           </div>
@@ -222,22 +252,22 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
             
             return (
               <Card key={idx} className={`border-l-4 ${isCorrect ? 'border-l-green-500' : 'border-l-red-500'}`}>
-                <CardContent className="p-3">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-start gap-2 mb-2">
-                    <span className="text-[10px] font-medium bg-muted px-1.5 py-0.5 rounded">Q{idx + 1}</span>
+                    <span className="text-xs md:text-sm font-medium bg-muted px-1.5 py-0.5 rounded">Q{idx + 1}</span>
                     {isCorrect ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                      <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-500 flex-shrink-0" />
                     )}
                   </div>
-                  <p className="font-medium mb-2 text-xs leading-relaxed">{q.question}</p>
-                  <div className="space-y-1.5">
+                  <p className="font-medium mb-3 text-sm md:text-base leading-relaxed">{q.question}</p>
+                  <div className="space-y-2">
                     {q.options.map((option: string, optIdx: number) => {
                       const isUserAnswer = userAnswer === optIdx;
                       const isCorrectAnswer = q.correctAnswer === optIdx;
                       
-                      let className = "p-2 rounded text-xs ";
+                      let className = "p-2 md:p-3 rounded text-xs md:text-sm ";
                       if (isCorrectAnswer) {
                         className += "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200";
                       } else if (isUserAnswer) {
@@ -258,8 +288,8 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
             );
           })}
           
-          <Button onClick={loadQuiz} className="w-full" size="sm">
-            <RotateCcw className="w-3 h-3 mr-2" />
+          <Button onClick={loadQuiz} className="w-full">
+            <RotateCcw className="w-4 h-4 mr-2" />
             Take New Quiz
           </Button>
         </div>
@@ -275,24 +305,24 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
     
     return (
       <ScrollArea className="h-full">
-        <div className="p-3 space-y-4">
+        <div className="p-3 md:p-4 space-y-4">
           <Card>
-            <CardContent className="p-4">
-              <div className="text-center mb-4">
-                <div className={`text-4xl font-bold mb-1 ${scoreColor}`}>
+            <CardContent className="p-4 md:p-6">
+              <div className="text-center mb-4 md:mb-6">
+                <div className={`text-4xl md:text-5xl font-bold mb-1 ${scoreColor}`}>
                   {percentage}%
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-sm md:text-base text-muted-foreground">
                   {result.score} of {result.totalQuestions} correct
                 </div>
               </div>
               
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs md:text-sm text-muted-foreground">
                   <span>Score</span>
                   <span>{percentage}%</span>
                 </div>
-                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-3 bg-muted rounded-full overflow-hidden">
                   <div 
                     className={`h-full ${progressColor} transition-all duration-500`}
                     style={{ width: `${percentage}%` }}
@@ -300,25 +330,25 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
                 </div>
               </div>
               
-              <div className="mt-3 p-2 rounded bg-muted/50 text-center">
+              <div className="mt-4 p-3 rounded bg-muted/50 text-center">
                 {percentage >= 70 ? (
-                  <p className="text-xs text-green-600 font-medium">🎉 Excellent!</p>
+                  <p className="text-sm md:text-base text-green-600 font-medium">🎉 Excellent!</p>
                 ) : percentage >= 50 ? (
-                  <p className="text-xs text-yellow-600 font-medium">👍 Good effort!</p>
+                  <p className="text-sm md:text-base text-yellow-600 font-medium">👍 Good effort!</p>
                 ) : (
-                  <p className="text-xs text-red-600 font-medium">📚 Keep practicing!</p>
+                  <p className="text-sm md:text-base text-red-600 font-medium">📚 Keep practicing!</p>
                 )}
               </div>
             </CardContent>
           </Card>
           
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowSolutions(true)} className="text-xs">
-              <Eye className="w-3 h-3 mr-1" />
+            <Button variant="outline" onClick={() => setShowSolutions(true)}>
+              <Eye className="w-4 h-4 mr-2" />
               Solutions
             </Button>
-            <Button size="sm" onClick={loadQuiz} className="text-xs">
-              <RotateCcw className="w-3 h-3 mr-1" />
+            <Button onClick={loadQuiz}>
+              <RotateCcw className="w-4 h-4 mr-2" />
               New Quiz
             </Button>
           </div>
@@ -333,23 +363,23 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-3 space-y-3">
+      <div className="p-3 md:p-4 space-y-3 md:space-y-4">
         {/* Progress */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-muted-foreground">
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs md:text-sm text-muted-foreground">
             <span>Progress</span>
             <span>{Object.keys(answers).length}/{questions.length}</span>
           </div>
-          <Progress value={progress} className="h-1.5" />
+          <Progress value={progress} className="h-2" />
         </div>
         
-        <div className="text-[10px] text-muted-foreground">
+        <div className="text-xs md:text-sm text-muted-foreground">
           Q{currentQuestionIndex + 1} of {questions.length}
         </div>
 
         <Card>
-          <CardContent className="p-3">
-            <p className="font-medium mb-3 text-xs leading-relaxed">
+          <CardContent className="p-3 md:p-4">
+            <p className="font-medium mb-4 text-sm md:text-base leading-relaxed">
               {currentQuestion.question}
             </p>
             <RadioGroup
@@ -359,9 +389,9 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
               }
             >
               {currentQuestion.options.map((option: string, idx: number) => (
-                <div key={idx} className="flex items-start space-x-2 mb-2">
+                <div key={idx} className="flex items-start space-x-3 mb-3">
                   <RadioGroupItem value={idx.toString()} id={`opt-${idx}`} className="mt-0.5 flex-shrink-0" />
-                  <Label htmlFor={`opt-${idx}`} className="text-xs cursor-pointer leading-relaxed">
+                  <Label htmlFor={`opt-${idx}`} className="text-sm md:text-base cursor-pointer leading-relaxed">
                     {option}
                   </Label>
                 </div>
@@ -375,41 +405,38 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
           {currentQuestionIndex > 0 && (
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
-              className="flex-1 text-xs"
+              className="flex-1"
             >
               Previous
             </Button>
           )}
           {currentQuestionIndex < questions.length - 1 ? (
             <Button
-              size="sm"
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-              className="flex-1 text-xs"
+              className="flex-1"
             >
               Next
             </Button>
           ) : (
             <Button
-              size="sm"
               onClick={handleSubmit}
               disabled={loading || Object.keys(answers).length !== questions.length}
-              className="flex-1 text-xs"
+              className="flex-1"
             >
-              {loading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Submit
             </Button>
           )}
         </div>
 
         {/* Question dots */}
-        <div className="flex flex-wrap gap-1 justify-center">
+        <div className="flex flex-wrap gap-1.5 justify-center">
           {questions.map((_: any, idx: number) => (
             <button
               key={idx}
               onClick={() => setCurrentQuestionIndex(idx)}
-              className={`w-6 h-6 rounded text-[10px] transition-colors ${
+              className={`w-7 h-7 md:w-8 md:h-8 rounded text-xs md:text-sm transition-colors ${
                 idx === currentQuestionIndex
                   ? "bg-primary text-primary-foreground"
                   : answers[idx] !== undefined

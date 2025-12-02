@@ -257,6 +257,63 @@ export type Database = {
           },
         ]
       }
+      student_profiles: {
+        Row: {
+          city: string
+          created_at: string
+          date_of_birth: string
+          first_name: string
+          id: string
+          is_verified: boolean
+          medium: string
+          parent_email: string
+          parent_mobile: string
+          personal_email: string
+          school_name: string
+          surname: string
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          date_of_birth: string
+          first_name: string
+          id?: string
+          is_verified?: boolean
+          medium: string
+          parent_email: string
+          parent_mobile: string
+          personal_email: string
+          school_name: string
+          surname: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          date_of_birth?: string
+          first_name?: string
+          id?: string
+          is_verified?: boolean
+          medium?: string
+          parent_email?: string
+          parent_mobile?: string
+          personal_email?: string
+          school_name?: string
+          surname?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       student_subject_access: {
         Row: {
           granted_at: string
