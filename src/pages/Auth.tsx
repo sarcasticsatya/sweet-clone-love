@@ -97,7 +97,7 @@ const Auth = () => {
         throw new Error("Please fill in all fields");
       }
 
-      // Create auth user
+      // Create auth user - pass all student data via metadata for trigger
       const { error, data } = await supabase.auth.signUp({
         email: signupData.personalEmail,
         password: signupData.password,
@@ -106,6 +106,12 @@ const Auth = () => {
             full_name: `${signupData.firstName} ${signupData.surname}`,
             first_name: signupData.firstName,
             surname: signupData.surname,
+            date_of_birth: signupData.dateOfBirth,
+            city: signupData.city,
+            school_name: signupData.schoolName,
+            medium: signupData.medium,
+            parent_mobile: signupData.parentMobile,
+            parent_email: signupData.parentEmail,
           },
           emailRedirectTo: `${window.location.origin}/auth`,
         },
@@ -113,28 +119,9 @@ const Auth = () => {
 
       if (error) throw error;
 
+      // Trigger auto-creates student_profiles via handle_new_student_profile()
+      // We only need to assign the student role here
       if (data.user) {
-        // Create student profile
-        const { error: profileError } = await supabase
-          .from("student_profiles")
-          .insert({
-            user_id: data.user.id,
-            first_name: signupData.firstName,
-            surname: signupData.surname,
-            date_of_birth: signupData.dateOfBirth,
-            city: signupData.city,
-            school_name: signupData.schoolName,
-            medium: signupData.medium,
-            parent_mobile: signupData.parentMobile,
-            parent_email: signupData.parentEmail,
-            personal_email: signupData.personalEmail,
-          });
-
-        if (profileError) {
-          console.error("Profile creation error:", profileError);
-        }
-
-        // Assign student role
         const { error: roleError } = await supabase
           .from("user_roles")
           .insert({
