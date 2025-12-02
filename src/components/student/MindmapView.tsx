@@ -1,43 +1,42 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Network } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, Network, Download, ChevronRight, ChevronDown, Maximize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import ReactFlow, {
-  Node,
-  Edge,
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  MarkerType,
-} from "reactflow";
-import "reactflow/dist/style.css";
+import { cn } from "@/lib/utils";
 
 interface MindmapViewProps {
   chapterId: string;
 }
 
+interface TreeNode {
+  id: string;
+  label: string;
+  children: TreeNode[];
+  type: "root" | "main" | "sub";
+}
+
 export const MindmapView = ({ chapterId }: MindmapViewProps) => {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [treeData, setTreeData] = useState<TreeNode | null>(null);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [rawData, setRawData] = useState<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setNodes([]);
-    setEdges([]);
+    setTreeData(null);
+    setExpandedNodes(new Set());
     if (chapterId) {
       loadMindmap();
     }
-  }, [chapterId, setNodes, setEdges]);
+  }, [chapterId]);
 
   const loadMindmap = async () => {
     if (!chapterId) return;
     
     setLoading(true);
     try {
-      // Check if mindmap already exists in database
       const { data: existingMindmap, error } = await supabase
         .from("mindmaps")
         .select("mindmap_data")
@@ -45,10 +44,14 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
         .single();
 
       if (existingMindmap && !error) {
-        // Load existing mindmap
         const mindmapData = existingMindmap.mindmap_data as any;
-        const { nodes: rawNodes, edges: rawEdges } = mindmapData;
-        displayMindmap(rawNodes, rawEdges);
+        setRawData(mindmapData);
+        const tree = convertToTree(mindmapData.nodes, mindmapData.edges);
+        setTreeData(tree);
+        // Auto-expand root
+        if (tree) {
+          setExpandedNodes(new Set([tree.id]));
+        }
       }
     } catch (error) {
       console.error("Error loading mindmap:", error);
@@ -66,128 +69,194 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
 
       if (error) throw error;
 
-      const { nodes: rawNodes, edges: rawEdges } = data.mindmap;
-      displayMindmap(rawNodes, rawEdges);
-      toast.success("Mind map generated and saved!");
+      setRawData(data.mindmap);
+      const tree = convertToTree(data.mindmap.nodes, data.mindmap.edges);
+      setTreeData(tree);
+      if (tree) {
+        setExpandedNodes(new Set([tree.id]));
+      }
+      toast.success("Mind map generated!");
     } catch (error) {
       console.error("Error generating mindmap:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to generate mind map"
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to generate");
     } finally {
       setLoading(false);
     }
   };
 
-  const displayMindmap = (rawNodes: any[], rawEdges: any[]) => {
-    // Convert to ReactFlow format with layout
-    const layoutedNodes: Node[] = rawNodes.map((node: any, index: number) => {
-      const level = node.type === "root" ? 0 : node.type === "main" ? 1 : 2;
-      const nodesAtLevel = rawNodes.filter((n: any) => {
-        const nLevel = n.type === "root" ? 0 : n.type === "main" ? 1 : 2;
-        return nLevel === level;
-      });
-      const indexAtLevel = nodesAtLevel.findIndex((n: any) => n.id === node.id);
-      
-      return {
+  const convertToTree = (nodes: any[], edges: any[]): TreeNode | null => {
+    if (!nodes || nodes.length === 0) return null;
+
+    const nodeMap = new Map<string, TreeNode>();
+    nodes.forEach(node => {
+      nodeMap.set(node.id, {
         id: node.id,
-        data: { label: node.label },
-        position: {
-          x: level * 300,
-          y: indexAtLevel * 150 + (level === 0 ? 200 : 0),
-        },
-        style: {
-          background: level === 0 ? "hsl(var(--primary))" : level === 1 ? "hsl(var(--secondary))" : "hsl(var(--accent))",
-          color: level === 0 ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))",
-          border: "2px solid hsl(var(--primary) / 0.5)",
-          borderRadius: "12px",
-          padding: "14px 24px",
-          fontSize: level === 0 ? "16px" : "14px",
-          fontWeight: level === 0 ? "600" : "500",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        },
-      };
+        label: node.label,
+        type: node.type || "sub",
+        children: []
+      });
     });
 
-    const layoutedEdges: Edge[] = rawEdges.map((edge: any) => ({
-      id: `${edge.source}-${edge.target}`,
-      source: edge.source,
-      target: edge.target,
-      type: "smoothstep",
-      animated: true,
-      style: { 
-        stroke: "hsl(var(--primary))", 
-        strokeWidth: 3,
-        opacity: 0.8
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: "hsl(var(--primary))",
-        width: 25,
-        height: 25,
-      },
-    }));
+    const rootNode = nodes.find(n => n.type === "root");
+    if (!rootNode) return null;
 
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
+    edges.forEach(edge => {
+      const parent = nodeMap.get(edge.source);
+      const child = nodeMap.get(edge.target);
+      if (parent && child) {
+        parent.children.push(child);
+      }
+    });
+
+    return nodeMap.get(rootNode.id) || null;
+  };
+
+  const toggleNode = (nodeId: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    if (!rawData) return;
+    const allIds = new Set<string>(rawData.nodes.map((n: any) => n.id as string));
+    setExpandedNodes(allIds);
+  };
+
+  const exportAsImage = async () => {
+    if (!containerRef.current || !treeData) {
+      toast.error("Nothing to export");
+      return;
+    }
+
+    try {
+      // Create a simple text-based export
+      const exportText = generateTextExport(treeData, "");
+      const blob = new Blob([exportText], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "mindmap.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Mind map exported!");
+    } catch (error) {
+      toast.error("Export failed");
+    }
+  };
+
+  const generateTextExport = (node: TreeNode, indent: string): string => {
+    let result = `${indent}${node.label}\n`;
+    node.children.forEach(child => {
+      result += generateTextExport(child, indent + "  ");
+    });
+    return result;
+  };
+
+  const TreeNodeComponent = ({ node, level = 0 }: { node: TreeNode; level?: number }) => {
+    const isExpanded = expandedNodes.has(node.id);
+    const hasChildren = node.children.length > 0;
+
+    const bgColor = level === 0 
+      ? "bg-primary text-primary-foreground" 
+      : level === 1 
+        ? "bg-secondary text-secondary-foreground" 
+        : "bg-muted";
+
+    return (
+      <div className="select-none">
+        <button
+          onClick={() => toggleNode(node.id)}
+          className={cn(
+            "flex items-center gap-2 w-full text-left p-2 rounded-lg transition-all",
+            "hover:opacity-80 active:scale-[0.98]",
+            bgColor,
+            level === 0 && "font-semibold text-sm",
+            level === 1 && "font-medium text-xs ml-4",
+            level >= 2 && "text-xs ml-8"
+          )}
+        >
+          {hasChildren && (
+            <span className="flex-shrink-0">
+              {isExpanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+            </span>
+          )}
+          {!hasChildren && <span className="w-3" />}
+          <span className="leading-tight">{node.label}</span>
+        </button>
+        
+        {isExpanded && hasChildren && (
+          <div className="mt-1 space-y-1 border-l-2 border-primary/20 ml-3 pl-2">
+            {node.children.map(child => (
+              <TreeNodeComponent key={child.id} node={child} level={level + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 md:p-4 border-b border-border">
+      <div className="p-3 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-sm flex items-center gap-2">
-            <Network className="w-4 h-4" />
+          <h3 className="font-semibold text-xs flex items-center gap-2">
+            <Network className="w-3.5 h-3.5" />
             Mind Map
           </h3>
+          {treeData && (
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={expandAll} className="h-6 w-6 p-0">
+                <Maximize2 className="w-3 h-3" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={exportAsImage} className="h-6 w-6 p-0">
+                <Download className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Visual concept map of key topics
+        <p className="text-[10px] text-muted-foreground">
+          Tap topics to expand/collapse
         </p>
-        {nodes.length === 0 && (
-          <Button 
-            onClick={generateMindmap} 
-            disabled={loading}
-            className="w-full"
-            size="sm"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              "Generate Mind Map"
-            )}
-          </Button>
-        )}
       </div>
 
-      <div className="flex-1 bg-muted/20">
-        {nodes.length > 0 ? (
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            fitView
-            attributionPosition="bottom-left"
-          >
-            <Background />
-            <Controls />
-            <MiniMap />
-          </ReactFlow>
-        ) : (
-          <div className="flex items-center justify-center h-full text-center">
-            <div className="space-y-2">
-              <Network className="w-12 h-12 text-muted-foreground/50 mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                Click "Generate Mind Map" to create a visual concept map
+      <ScrollArea className="flex-1" ref={containerRef}>
+        <div className="p-3">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <p className="text-xs text-muted-foreground">
+                {treeData ? "Loading..." : "Generating mind map..."}
               </p>
             </div>
-          </div>
-        )}
-      </div>
+          ) : treeData ? (
+            <div className="space-y-1">
+              <TreeNodeComponent node={treeData} />
+            </div>
+          ) : (
+            <div className="text-center py-8 space-y-3">
+              <Network className="w-10 h-10 text-muted-foreground/50 mx-auto" />
+              <p className="text-xs text-muted-foreground">
+                Generate a visual concept map
+              </p>
+              <Button size="sm" onClick={generateMindmap} disabled={loading} className="text-xs">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : null}
+                Generate Mind Map
+              </Button>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 };

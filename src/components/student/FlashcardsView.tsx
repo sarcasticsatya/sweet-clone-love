@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw, Loader2 } from "lucide-react";
 
 interface FlashcardsViewProps {
   chapterId: string;
@@ -21,6 +21,9 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
 
   const loadFlashcards = async () => {
     setLoading(true);
+    setCurrentIndex(0);
+    setShowAnswer(false);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -33,7 +36,6 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
       });
 
       if (error) throw error;
-
       setFlashcards(data.flashcards || []);
     } catch (error: any) {
       toast.error("Failed to load flashcards: " + error.message);
@@ -54,19 +56,20 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <p className="text-sm text-muted-foreground">Generating flashcards...</p>
+      <div className="flex flex-col items-center justify-center p-6 gap-2">
+        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+        <p className="text-xs text-muted-foreground">Generating flashcards...</p>
       </div>
     );
   }
 
   if (flashcards.length === 0) {
     return (
-      <div className="p-3 md:p-4 text-center">
-        <p className="text-sm text-muted-foreground mb-4">
+      <div className="p-3 text-center">
+        <p className="text-xs text-muted-foreground mb-3">
           No flashcards available yet
         </p>
-        <Button size="sm" onClick={loadFlashcards}>
+        <Button size="sm" onClick={loadFlashcards} className="text-xs">
           Generate Flashcards
         </Button>
       </div>
@@ -76,47 +79,65 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
   const currentCard = flashcards[currentIndex];
 
   return (
-    <div className="p-3 md:p-4 space-y-4">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+    <div className="p-3 space-y-3">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>Card {currentIndex + 1} of {flashcards.length}</span>
-        <Button size="sm" variant="ghost" onClick={loadFlashcards}>
+        <Button size="sm" variant="ghost" onClick={loadFlashcards} className="h-6 w-6 p-0">
           <RotateCcw className="w-3 h-3" />
         </Button>
       </div>
 
       <Card 
-        className="cursor-pointer hover:shadow-md transition-shadow min-h-[180px] md:min-h-[200px] flex items-center justify-center"
+        className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] min-h-[140px] flex items-center justify-center"
         onClick={() => setShowAnswer(!showAnswer)}
       >
-        <CardContent className="p-4 md:p-6 text-center w-full">
-          <p className="text-sm font-medium mb-2 text-muted-foreground">
+        <CardContent className="p-4 text-center w-full">
+          <p className="text-[10px] font-medium mb-2 text-muted-foreground">
             {showAnswer ? "Answer" : "Question"}
           </p>
-          <p className="text-sm md:text-base break-words leading-relaxed">
+          <p className="text-xs leading-relaxed">
             {showAnswer ? currentCard.answer : currentCard.question}
           </p>
           {!showAnswer && (
-            <p className="text-xs text-muted-foreground mt-4">
-              Tap to reveal answer
+            <p className="text-[10px] text-muted-foreground mt-3">
+              Tap to reveal
             </p>
           )}
         </CardContent>
       </Card>
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2">
         <Button
           size="sm"
           variant="outline"
           onClick={handlePrevious}
           disabled={flashcards.length <= 1}
+          className="flex-1 h-8"
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
+        
+        {/* Progress dots */}
+        <div className="flex gap-1 overflow-hidden max-w-[120px]">
+          {flashcards.slice(0, 8).map((_, idx) => (
+            <div
+              key={idx}
+              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                idx === currentIndex ? "bg-primary" : "bg-muted"
+              }`}
+            />
+          ))}
+          {flashcards.length > 8 && (
+            <span className="text-[8px] text-muted-foreground">+{flashcards.length - 8}</span>
+          )}
+        </div>
+        
         <Button
           size="sm"
           variant="outline"
           onClick={handleNext}
           disabled={flashcards.length <= 1}
+          className="flex-1 h-8"
         >
           <ChevronRight className="w-4 h-4" />
         </Button>
