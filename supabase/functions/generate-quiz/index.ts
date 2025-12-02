@@ -7,6 +7,136 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
+// Helper function to safely parse JSON with recovery attempts
+function safeParseJSON(content: string): any {
+  // Remove markdown code blocks
+  let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.log("Initial parse failed, attempting recovery...");
+    
+    // Try to find the last complete question and truncate there
+    const questionsMatch = cleaned.match(/"questions"\s*:\s*\[/);
+    if (questionsMatch) {
+      // Find all complete question objects
+      const completeQuestions: any[] = [];
+      const questionRegex = /\{\s*"question"\s*:\s*"[^"]+"\s*,\s*"options"\s*:\s*\[\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"[^"]+"\s*\]\s*,\s*"correctAnswer"\s*:\s*\d+\s*\}/g;
+      
+      let match;
+      while ((match = questionRegex.exec(cleaned)) !== null) {
+        try {
+          const q = JSON.parse(match[0]);
+          if (q.question && q.options?.length === 4 && typeof q.correctAnswer === "number") {
+            completeQuestions.push(q);
+          }
+        } catch {
+          // Skip invalid question
+        }
+      }
+      
+      if (completeQuestions.length >= 5) {
+        console.log(`Recovered ${completeQuestions.length} complete questions`);
+        return { questions: completeQuestions };
+      }
+    }
+    
+    throw new Error("Could not parse quiz JSON: " + (e as Error).message);
+  }
+}
+
+async function generateQuizFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
+  const maxRetries = 2;
+  
+  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: isKannadaChapter 
+            ? `You are a quiz generator. Generate exactly 5 multiple-choice questions in KANNADA (ಕನ್ನಡ).
+
+Rules:
+- Questions and options must be in Kannada script
+- Each question has exactly 4 options
+- correctAnswer is index 0-3
+
+Return ONLY valid JSON:
+{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0}]}`
+            : `Generate exactly 5 multiple-choice questions in English.
+Each question has exactly 4 options. correctAnswer is index 0-3.
+
+Return ONLY valid JSON:
+{"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0}]}`
+        },
+        {
+          role: "user",
+          content: `Generate quiz from:\n\n${chapter.content_extracted.substring(0, 6000)}`
+        }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errText = await aiResponse.text();
+    console.error("AI API error:", errText);
+    throw new Error("AI API failed");
+  }
+
+  const aiData = await aiResponse.json();
+  const content = aiData.choices[0]?.message?.content || "";
+  
+  console.log("AI Response length:", content.length);
+  console.log("AI Response preview:", content.substring(0, 400));
+  
+  try {
+    const parsed = safeParseJSON(content);
+    
+    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+      throw new Error("No questions in response");
+    }
+    
+    // Validate and clean questions
+    const validQuestions = parsed.questions.filter((q: any) => {
+      return q.question && 
+             Array.isArray(q.options) && 
+             q.options.length === 4 &&
+             typeof q.correctAnswer === "number" &&
+             q.correctAnswer >= 0 && 
+             q.correctAnswer <= 3;
+    });
+    
+    if (validQuestions.length < 3) {
+      throw new Error("Too few valid questions");
+    }
+    
+    // For Kannada chapters, verify Kannada text exists
+    if (isKannadaChapter) {
+      const allText = validQuestions.map((q: any) => q.question + q.options.join(" ")).join(" ");
+      if (!/[\u0C80-\u0CFF]/.test(allText)) {
+        throw new Error("No Kannada text found");
+      }
+    }
+    
+    return { questions: validQuestions };
+  } catch (parseError) {
+    console.error("Parse error:", parseError);
+    if (retryCount < maxRetries) {
+      console.log(`Retrying... attempt ${retryCount + 2}`);
+      return generateQuizFromAI(chapter, isKannadaChapter, apiKey, retryCount + 1);
+    }
+    throw parseError;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,7 +168,7 @@ serve(async (req) => {
       );
     }
 
-    // Delete existing quiz to generate fresh one each session
+    // Delete existing quiz
     await supabaseClient
       .from("quizzes")
       .delete()
@@ -53,128 +183,25 @@ serve(async (req) => {
 
     if (!chapter || !chapter.content_extracted) {
       return new Response(
-        JSON.stringify({ 
-          error: "Chapter content not available yet. The PDF is still being processed." 
-        }),
+        JSON.stringify({ error: "Chapter content not available" }),
         { status: 400, headers: corsHeaders }
       );
     }
 
-    // Detect if chapter is in Kannada - check name_kannada field
-    const hasKannadaInName = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
-    const isKannadaChapter = hasKannadaInName;
-    
-    console.log("=== LANGUAGE DETECTION ===");
-    console.log("Chapter name_kannada:", chapter.name_kannada);
+    // Detect Kannada by name_kannada field
+    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
     console.log("IS KANNADA CHAPTER:", isKannadaChapter);
 
-    // Generate quiz using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json; charset=utf-8",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: isKannadaChapter 
-              ? `You are a quiz generator for KANNADA language content.
-
-CRITICAL: Generate ALL quiz content in KANNADA (ಕನ್ನಡ) language.
-
-Rules:
-- Questions MUST be in Kannada script (ಕನ್ನಡ)
-- All 4 options MUST be in Kannada script
-- Use Kannada Unicode characters (U+0C80-U+0CFF)
-- Scientific formulas (like CO₂, H₂O) can remain as-is
-- Numbers can be in either format
-
-Generate exactly 10 multiple-choice questions.
-Each question has 4 options.
-correctAnswer is index (0-3) of correct option.
-
-Return ONLY valid JSON:
-{
-  "questions": [
-    {
-      "question": "ಕನ್ನಡ ಪ್ರಶ್ನೆ?",
-      "options": ["ಆಯ್ಕೆ ೧", "ಆಯ್ಕೆ ೨", "ಆಯ್ಕೆ ೩", "ಆಯ್ಕೆ ೪"],
-      "correctAnswer": 0
-    }
-  ]
-}`
-              : `You are a quiz generator for English language content.
-
-Generate exactly 10 multiple-choice questions in ENGLISH.
-Each question has 4 options.
-correctAnswer is index (0-3) of correct option.
-
-Return ONLY valid JSON:
-{
-  "questions": [
-    {
-      "question": "English question?",
-      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-      "correctAnswer": 0
-    }
-  ]
-}`
-          },
-          {
-            role: "user",
-            content: isKannadaChapter 
-              ? `Generate a KANNADA quiz from this chapter content:\n\n${chapter.content_extracted.substring(0, 8000)}`
-              : `Generate an English quiz from this chapter:\n\n${chapter.content_extracted.substring(0, 8000)}`
-          }
-        ],
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI API error:", errText);
-      throw new Error("Failed to generate quiz from AI");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const aiData = await aiResponse.json();
-    let content = aiData.choices[0]?.message?.content || "";
+    const parsed = await generateQuizFromAI(chapter, isKannadaChapter, LOVABLE_API_KEY);
     
-    // Strip markdown code blocks if present
-    content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    
-    console.log("Quiz AI Response preview:", content.substring(0, 300));
-    
-    const parsed = JSON.parse(content);
-    
-    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
-      throw new Error("Invalid quiz format: no questions array");
-    }
+    console.log("Successfully parsed", parsed.questions.length, "questions");
 
-    // Basic validation - ensure questions have required fields
-    for (const q of parsed.questions) {
-      if (!q.question || !Array.isArray(q.options) || q.options.length !== 4) {
-        throw new Error("Invalid question format");
-      }
-      if (typeof q.correctAnswer !== "number" || q.correctAnswer < 0 || q.correctAnswer > 3) {
-        q.correctAnswer = 0; // Default to first option if invalid
-      }
-    }
-
-    // For Kannada chapters, verify at least some Kannada text exists
-    if (isKannadaChapter) {
-      const allText = parsed.questions.map((q: any) => q.question + q.options.join(" ")).join(" ");
-      if (!/[\u0C80-\u0CFF]/.test(allText)) {
-        console.error("No Kannada characters found in quiz");
-        throw new Error("Quiz generation failed - no Kannada text. Please try again.");
-      }
-    }
-
-    // Store quiz in database
+    // Store quiz
     const { data: quiz, error: insertError } = await supabaseClient
       .from("quizzes")
       .insert({
@@ -187,7 +214,7 @@ Return ONLY valid JSON:
       .single();
 
     if (insertError) {
-      console.error("Error inserting quiz:", insertError);
+      console.error("Insert error:", insertError);
       return new Response(
         JSON.stringify({ error: "Failed to save quiz" }),
         { status: 500, headers: corsHeaders }
