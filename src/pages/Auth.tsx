@@ -101,7 +101,7 @@ const Auth = () => {
               <BookOpen className="w-6 h-6 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Karnataka SSLC EdTech</CardTitle>
+          <CardTitle className="text-2xl font-bold">Nythic AI</CardTitle>
           <CardDescription>Sign in to access your learning platform</CardDescription>
         </CardHeader>
         <CardContent>
