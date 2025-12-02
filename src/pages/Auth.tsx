@@ -132,6 +132,23 @@ const Auth = () => {
         if (roleError) {
           console.error("Role assignment error:", roleError);
         }
+
+        // Send custom verification email via Resend
+        try {
+          const response = await supabase.functions.invoke("send-verification-email", {
+            body: {
+              email: signupData.personalEmail,
+              firstName: signupData.firstName,
+              type: "signup",
+            },
+          });
+
+          if (response.error) {
+            console.error("Verification email error:", response.error);
+          }
+        } catch (emailError) {
+          console.error("Failed to send verification email:", emailError);
+        }
       }
 
       setShowVerificationMessage(true);

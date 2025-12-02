@@ -50,15 +50,19 @@ const NotVerified = () => {
     
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: userEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth`,
-        }
+      // Use custom Resend edge function
+      const response = await supabase.functions.invoke("send-verification-email", {
+        body: {
+          email: userEmail,
+          firstName: "", // We don't have the name here, but it's optional
+          type: "resend",
+        },
       });
 
-      if (error) throw error;
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to send email");
+      }
+
       toast.success("Verification email sent! Please check your inbox.");
     } catch (error: any) {
       toast.error(error.message || "Failed to resend verification email");
