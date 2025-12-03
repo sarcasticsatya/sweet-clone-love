@@ -96,6 +96,36 @@ export type Database = {
           },
         ]
       }
+      email_verification_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          token: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       flashcards: {
         Row: {
           answer: string
@@ -262,6 +292,7 @@ export type Database = {
           city: string
           created_at: string
           date_of_birth: string
+          email_verified: boolean
           first_name: string
           id: string
           is_verified: boolean
@@ -280,6 +311,7 @@ export type Database = {
           city: string
           created_at?: string
           date_of_birth: string
+          email_verified?: boolean
           first_name: string
           id?: string
           is_verified?: boolean
@@ -298,6 +330,7 @@ export type Database = {
           city?: string
           created_at?: string
           date_of_birth?: string
+          email_verified?: boolean
           first_name?: string
           id?: string
           is_verified?: boolean

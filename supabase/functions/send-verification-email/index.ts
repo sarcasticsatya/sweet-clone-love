@@ -11,7 +11,15 @@ const corsHeaders = {
 interface VerificationEmailRequest {
   email: string;
   firstName: string;
+  userId: string;
   type: "signup" | "resend";
+}
+
+// Generate a secure random token
+function generateToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 serve(async (req) => {
@@ -21,42 +29,45 @@ serve(async (req) => {
   }
 
   try {
-    const { email, firstName, type }: VerificationEmailRequest = await req.json();
+    const { email, firstName, userId, type }: VerificationEmailRequest = await req.json();
     
-    console.log(`Sending verification email to ${email} (type: ${type})`);
+    console.log(`Sending verification email to ${email} (type: ${type}, userId: ${userId})`);
 
-    if (!email) {
-      throw new Error("Email is required");
+    if (!email || !userId) {
+      throw new Error("Email and userId are required");
     }
 
-    // Create Supabase admin client to generate verification link
+    // Create Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Generate magic link for email verification
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: email,
-      options: {
-        redirectTo: `${req.headers.get("origin") || "https://nythicai.com"}/auth`,
-      },
-    });
-
-    if (linkError) {
-      console.error("Error generating verification link:", linkError);
-      throw new Error(`Failed to generate verification link: ${linkError.message}`);
-    }
-
-    const verificationLink = linkData.properties?.action_link;
+    // Generate custom verification token
+    const token = generateToken();
     
-    if (!verificationLink) {
-      throw new Error("No verification link generated");
+    // Store token in database
+    const { error: tokenError } = await supabaseAdmin
+      .from("email_verification_tokens")
+      .insert({
+        user_id: userId,
+        token: token,
+        email: email,
+      });
+
+    if (tokenError) {
+      console.error("Error storing verification token:", tokenError);
+      throw new Error(`Failed to store verification token: ${tokenError.message}`);
     }
 
-    console.log("Verification link generated successfully");
+    console.log("Verification token stored successfully");
+
+    // Build verification link to your domain
+    const baseUrl = "https://nythicai.com";
+    const verificationLink = `${baseUrl}/verify-email?token=${token}`;
+
+    console.log("Verification link generated:", verificationLink);
 
     // Send branded verification email via Resend
     const resendResponse = await fetch("https://api.resend.com/emails", {
@@ -113,6 +124,10 @@ serve(async (req) => {
                         </p>
                         <p style="margin: 8px 0 0; font-size: 12px; color: #a1a1aa; word-break: break-all;">
                           ${verificationLink}
+                        </p>
+                        
+                        <p style="margin: 16px 0 0; font-size: 12px; color: #71717a;">
+                          This link expires in 24 hours.
                         </p>
                         
                         <!-- Footer -->
