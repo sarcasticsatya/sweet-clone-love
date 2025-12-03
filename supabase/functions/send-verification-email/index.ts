@@ -66,7 +66,7 @@ serve(async (req) => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Nythic AI <onboarding@resend.dev>",
+        from: "Nythic AI <noreply@nythicai.com>",
         to: [email],
         subject: "Verify your Nythic AI account",
         html: `
