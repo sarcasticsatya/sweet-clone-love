@@ -34,20 +34,20 @@ const Auth = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        checkUserStatusAndRedirect(session.user.id, session.user.email_confirmed_at);
+        checkUserStatusAndRedirect(session.user.id);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        checkUserStatusAndRedirect(session.user.id, session.user.email_confirmed_at);
+        checkUserStatusAndRedirect(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkUserStatusAndRedirect = async (userId: string, emailConfirmed: string | null) => {
+  const checkUserStatusAndRedirect = async (userId: string) => {
     // Check user role
     const { data: roleData } = await supabase
       .from("user_roles")
@@ -60,21 +60,21 @@ const Auth = () => {
       return;
     }
 
-    // For students, check verification status
+    // For students, check verification status from student_profiles
     if (roleData?.role === "student") {
-      // Check if email is verified
-      if (!emailConfirmed) {
+      const { data: studentProfile } = await supabase
+        .from("student_profiles")
+        .select("is_verified, email_verified")
+        .eq("user_id", userId)
+        .single();
+
+      // Check if email is verified (from our custom system)
+      if (studentProfile && !studentProfile.email_verified) {
         navigate("/not-verified");
         return;
       }
 
       // Check if admin has verified the student
-      const { data: studentProfile } = await supabase
-        .from("student_profiles")
-        .select("is_verified")
-        .eq("user_id", userId)
-        .single();
-
       if (studentProfile && !studentProfile.is_verified) {
         navigate("/not-verified");
         return;
@@ -139,6 +139,7 @@ const Auth = () => {
             body: {
               email: signupData.personalEmail,
               firstName: signupData.firstName,
+              userId: data.user.id,
               type: "signup",
             },
           });

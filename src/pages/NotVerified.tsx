@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, ShieldAlert, Mail, RefreshCw, LogOut } from "lucide-react";
+import { ShieldAlert, Mail, RefreshCw, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 const NotVerified = () => {
   const navigate = useNavigate();
+  const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string>("");
   const [emailVerified, setEmailVerified] = useState(false);
   const [adminVerified, setAdminVerified] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,36 +27,38 @@ const NotVerified = () => {
       return;
     }
 
+    setUserId(session.user.id);
     setUserEmail(session.user.email || null);
-    setEmailVerified(!!session.user.email_confirmed_at);
 
-    // Check admin verification
+    // Check student profile for both email_verified and is_verified (admin)
     const { data: studentProfile } = await supabase
       .from("student_profiles")
-      .select("is_verified")
+      .select("is_verified, email_verified, first_name")
       .eq("user_id", session.user.id)
       .single();
 
     if (studentProfile) {
-      setAdminVerified(studentProfile.is_verified);
+      setEmailVerified(studentProfile.email_verified || false);
+      setAdminVerified(studentProfile.is_verified || false);
+      setFirstName(studentProfile.first_name || "");
     }
 
     // If both verified, redirect to student dashboard
-    if (session.user.email_confirmed_at && studentProfile?.is_verified) {
+    if (studentProfile?.email_verified && studentProfile?.is_verified) {
       navigate("/student");
     }
   };
 
   const handleResendVerification = async () => {
-    if (!userEmail) return;
+    if (!userEmail || !userId) return;
     
     setLoading(true);
     try {
-      // Use custom Resend edge function
       const response = await supabase.functions.invoke("send-verification-email", {
         body: {
           email: userEmail,
-          firstName: "", // We don't have the name here, but it's optional
+          firstName: firstName,
+          userId: userId,
           type: "resend",
         },
       });
@@ -73,7 +77,6 @@ const NotVerified = () => {
 
   const handleRefresh = async () => {
     setLoading(true);
-    await supabase.auth.refreshSession();
     await checkStatus();
     setLoading(false);
     toast.info("Status refreshed");
