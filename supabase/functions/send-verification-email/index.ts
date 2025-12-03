@@ -41,7 +41,7 @@ serve(async (req) => {
       type: "magiclink",
       email: email,
       options: {
-        redirectTo: `${req.headers.get("origin") || "https://lnoeofoucvyopmhcfwes.lovableproject.com"}/auth`,
+        redirectTo: `${req.headers.get("origin") || "https://nythicai.com"}/auth`,
       },
     });
 
