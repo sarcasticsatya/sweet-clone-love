@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, BookOpen, Users, Video, FileText, BarChart } from "lucide-react";
+import { LogOut, BookOpen, Users, Video, FileText, BarChart, Download } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageStudents } from "@/components/admin/ManageStudents";
 import { ManageContent } from "@/components/admin/ManageContent";
 import { ManageVideos } from "@/components/admin/ManageVideos";
 import { ViewReports } from "@/components/admin/ViewReports";
+import { DataExport } from "@/components/admin/DataExport";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -68,7 +69,7 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="container mx-auto p-6">
         <Tabs defaultValue="students" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
             <TabsTrigger value="students">
               <Users className="w-4 h-4 mr-2" />
               Students
@@ -84,6 +85,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="reports">
               <BarChart className="w-4 h-4 mr-2" />
               Reports
+            </TabsTrigger>
+            <TabsTrigger value="export">
+              <Download className="w-4 h-4 mr-2" />
+              Export
             </TabsTrigger>
           </TabsList>
 
@@ -101,6 +106,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="reports" className="mt-6">
             <ViewReports />
+          </TabsContent>
+
+          <TabsContent value="export" className="mt-6">
+            <DataExport />
           </TabsContent>
         </Tabs>
       </div>
