@@ -9,6 +9,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotVerified from "./pages/NotVerified";
 import VerifyEmail from "./pages/VerifyEmail";
+import SelectCourse from "./pages/SelectCourse";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/not-verified" element={<NotVerified />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/select-course" element={<SelectCourse />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

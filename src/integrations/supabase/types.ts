@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      bundle_subjects: {
+        Row: {
+          bundle_id: string
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          bundle_id: string
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          bundle_id?: string
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_subjects_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "course_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundle_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapters: {
         Row: {
           chapter_number: number
@@ -95,6 +128,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      course_bundles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          name_kannada: string | null
+          price_inr: number
+          validity_days: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          name_kannada?: string | null
+          price_inr: number
+          validity_days?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          name_kannada?: string | null
+          price_inr?: number
+          validity_days?: number
+        }
+        Relationships: []
       }
       email_verification_tokens: {
         Row: {
@@ -347,6 +413,53 @@ export type Database = {
         }
         Relationships: []
       }
+      student_purchases: {
+        Row: {
+          amount_paid: number
+          bundle_id: string
+          expires_at: string
+          id: string
+          payment_method: string
+          payment_status: string
+          purchased_at: string
+          stripe_payment_id: string | null
+          stripe_session_id: string | null
+          student_id: string
+        }
+        Insert: {
+          amount_paid: number
+          bundle_id: string
+          expires_at: string
+          id?: string
+          payment_method?: string
+          payment_status?: string
+          purchased_at?: string
+          stripe_payment_id?: string | null
+          stripe_session_id?: string | null
+          student_id: string
+        }
+        Update: {
+          amount_paid?: number
+          bundle_id?: string
+          expires_at?: string
+          id?: string
+          payment_method?: string
+          payment_status?: string
+          purchased_at?: string
+          stripe_payment_id?: string | null
+          stripe_session_id?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_purchases_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "course_bundles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_subject_access: {
         Row: {
           granted_at: string
@@ -431,6 +544,7 @@ export type Database = {
           id: string
           storage_path: string | null
           subject_id: string
+          timestamps: Json | null
           title: string
           title_kannada: string | null
           updated_at: string
@@ -443,6 +557,7 @@ export type Database = {
           id?: string
           storage_path?: string | null
           subject_id: string
+          timestamps?: Json | null
           title: string
           title_kannada?: string | null
           updated_at?: string
@@ -455,6 +570,7 @@ export type Database = {
           id?: string
           storage_path?: string | null
           subject_id?: string
+          timestamps?: Json | null
           title?: string
           title_kannada?: string | null
           updated_at?: string
