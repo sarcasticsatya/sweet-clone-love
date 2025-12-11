@@ -80,6 +80,20 @@ const Auth = () => {
         return;
       }
 
+      // Check if student has an active course purchase
+      const { data: purchase } = await supabase
+        .from("student_purchases")
+        .select("*")
+        .eq("student_id", userId)
+        .eq("payment_status", "completed")
+        .gt("expires_at", new Date().toISOString())
+        .single();
+
+      if (!purchase) {
+        navigate("/select-course");
+        return;
+      }
+
       navigate("/student");
     }
   };

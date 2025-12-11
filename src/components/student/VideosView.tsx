@@ -2,14 +2,26 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ExternalLink, Play } from "lucide-react";
+import { VideoPlayer } from "./VideoPlayer";
+import { Play } from "lucide-react";
+
+interface Video {
+  id: string;
+  title: string;
+  title_kannada: string | null;
+  description: string | null;
+  video_url: string;
+  video_type: string;
+  timestamps: any;
+}
 
 interface VideosViewProps {
   subjectId: string | null;
 }
 
 export const VideosView = ({ subjectId }: VideosViewProps) => {
-  const [videos, setVideos] = useState<any[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
   useEffect(() => {
     if (subjectId) {
@@ -27,6 +39,7 @@ export const VideosView = ({ subjectId }: VideosViewProps) => {
       .order("created_at", { ascending: false });
 
     setVideos(data || []);
+    setSelectedVideo(null);
   };
 
   if (!subjectId) {
@@ -45,52 +58,61 @@ export const VideosView = ({ subjectId }: VideosViewProps) => {
     );
   }
 
-  const getYouTubeEmbedUrl = (url: string) => {
-    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
-  };
+  // If a video is selected, show the player
+  if (selectedVideo) {
+    return (
+      <ScrollArea className="h-full">
+        <div className="p-4 space-y-4">
+          <button
+            onClick={() => setSelectedVideo(null)}
+            className="text-sm text-primary hover:underline"
+          >
+            ← Back to video list
+          </button>
 
+          <VideoPlayer
+            videoUrl={selectedVideo.video_url}
+            videoType={selectedVideo.video_type as "youtube" | "upload"}
+            title={selectedVideo.title_kannada || selectedVideo.title}
+            description={selectedVideo.description}
+            timestamps={selectedVideo.timestamps}
+          />
+        </div>
+      </ScrollArea>
+    );
+  }
+
+  // Video list view
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-3">
         {videos.map((video) => (
-          <Card key={video.id} className="overflow-hidden">
+          <Card
+            key={video.id}
+            className="overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => setSelectedVideo(video)}
+          >
             <CardContent className="p-0">
-              {video.video_type === "youtube" ? (
-                <div className="aspect-video">
-                  {getYouTubeEmbedUrl(video.video_url) ? (
-                    <iframe
-                      src={getYouTubeEmbedUrl(video.video_url)!}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <a 
-                        href={video.video_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-primary hover:underline"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Open Video
-                      </a>
-                    </div>
-                  )}
+              <div className="relative aspect-video bg-muted">
+                {video.video_type === "youtube" ? (
+                  <YoutubeThumnail url={video.video_url} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
+                    <Play className="w-12 h-12 text-muted-foreground/50" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                  <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
+                    <Play className="w-6 h-6 text-primary-foreground ml-0.5" />
+                  </div>
                 </div>
-              ) : (
-                <video controls className="w-full">
-                  <source src={video.video_url} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
-              )}
+              </div>
               <div className="p-3">
-                <h4 className="font-medium text-sm">
+                <h4 className="font-medium text-sm line-clamp-2">
                   {video.title_kannada || video.title}
                 </h4>
                 {video.description && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                     {video.description}
                   </p>
                 )}
@@ -100,5 +122,26 @@ export const VideosView = ({ subjectId }: VideosViewProps) => {
         ))}
       </div>
     </ScrollArea>
+  );
+};
+
+// YouTube thumbnail component
+const YoutubeThumnail = ({ url }: { url: string }) => {
+  const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
+  
+  if (!videoId) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Play className="w-12 h-12 text-muted-foreground/50" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+      alt="Video thumbnail"
+      className="w-full h-full object-cover"
+    />
   );
 };
