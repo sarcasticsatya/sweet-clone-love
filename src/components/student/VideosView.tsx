@@ -16,36 +16,39 @@ interface Video {
 }
 
 interface VideosViewProps {
-  subjectId: string | null;
+  chapterId: string | null;
 }
 
-export const VideosView = ({ subjectId }: VideosViewProps) => {
+export const VideosView = ({ chapterId }: VideosViewProps) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
   useEffect(() => {
-    if (subjectId) {
+    if (chapterId) {
       loadVideos();
+    } else {
+      setVideos([]);
+      setSelectedVideo(null);
     }
-  }, [subjectId]);
+  }, [chapterId]);
 
   const loadVideos = async () => {
-    if (!subjectId) return;
+    if (!chapterId) return;
 
     const { data } = await supabase
       .from("videos")
-      .select("*")
-      .eq("subject_id", subjectId)
+      .select("id, title, title_kannada, description, video_url, video_type, timestamps")
+      .eq("chapter_id", chapterId)
       .order("created_at", { ascending: false });
 
     setVideos(data || []);
     setSelectedVideo(null);
   };
 
-  if (!subjectId) {
+  if (!chapterId) {
     return (
       <div className="p-4 text-center text-sm text-muted-foreground">
-        Select a chapter to see subject videos
+        Select a chapter to see videos
       </div>
     );
   }
@@ -53,7 +56,7 @@ export const VideosView = ({ subjectId }: VideosViewProps) => {
   if (videos.length === 0) {
     return (
       <div className="p-4 text-center text-sm text-muted-foreground">
-        No videos available for this subject yet
+        No videos available for this chapter yet
       </div>
     );
   }
@@ -95,7 +98,7 @@ export const VideosView = ({ subjectId }: VideosViewProps) => {
             <CardContent className="p-0">
               <div className="relative aspect-video bg-muted">
                 {video.video_type === "youtube" ? (
-                  <YoutubeThumnail url={video.video_url} />
+                  <YoutubeThumbnail url={video.video_url} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
                     <Play className="w-12 h-12 text-muted-foreground/50" />
@@ -126,7 +129,7 @@ export const VideosView = ({ subjectId }: VideosViewProps) => {
 };
 
 // YouTube thumbnail component
-const YoutubeThumnail = ({ url }: { url: string }) => {
+const YoutubeThumbnail = ({ url }: { url: string }) => {
   const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
   
   if (!videoId) {

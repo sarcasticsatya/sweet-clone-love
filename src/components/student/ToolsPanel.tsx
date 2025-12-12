@@ -71,9 +71,7 @@ export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelP
           </TabsContent>
 
           <TabsContent value="videos" className="flex-1 m-0 overflow-hidden">
-            <ScrollArea className="h-full">
-              <VideosView subjectId={selectedSubjectId} />
-            </ScrollArea>
+            <VideosView chapterId={selectedChapterId} />
           </TabsContent>
         </Tabs>
       )}

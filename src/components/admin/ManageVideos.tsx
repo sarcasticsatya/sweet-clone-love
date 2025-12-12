@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export const ManageVideos = () => {
   const [videos, setVideos] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [chapters, setChapters] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,6 +26,7 @@ export const ManageVideos = () => {
 
   // Form state
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [selectedChapterId, setSelectedChapterId] = useState("");
   const [title, setTitle] = useState("");
   const [titleKannada, setTitleKannada] = useState("");
   const [description, setDescription] = useState("");
@@ -35,15 +37,19 @@ export const ManageVideos = () => {
   // Edit state
   const [editingVideo, setEditingVideo] = useState<any>(null);
 
+  // Filtered chapters based on selected subject
+  const filteredChapters = chapters.filter(ch => ch.subject_id === selectedSubjectId);
+
   useEffect(() => {
     loadVideos();
     loadSubjects();
+    loadChapters();
   }, []);
 
   const loadVideos = async () => {
     const { data } = await supabase
       .from("videos")
-      .select("*, subjects(*)")
+      .select("*, chapters(*, subjects(*))")
       .order("created_at", { ascending: false });
     
     setVideos(data || []);
@@ -58,9 +64,18 @@ export const ManageVideos = () => {
     setSubjects(data || []);
   };
 
+  const loadChapters = async () => {
+    const { data } = await supabase
+      .from("chapters")
+      .select("*")
+      .order("chapter_number");
+    
+    setChapters(data || []);
+  };
+
   const handleUploadVideo = async () => {
-    if (!selectedSubjectId || !title) {
-      toast.error("Please fill all required fields");
+    if (!selectedChapterId || !title) {
+      toast.error("Please select a chapter and provide a title");
       return;
     }
 
@@ -84,7 +99,7 @@ export const ManageVideos = () => {
         setUploadProgress(0);
 
         const fileExt = videoFile.name.split(".").pop();
-        const fileName = `${selectedSubjectId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileName = `${selectedChapterId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
         // Upload with progress tracking using XMLHttpRequest
         const { data: { session } } = await supabase.auth.getSession();
@@ -129,7 +144,7 @@ export const ManageVideos = () => {
       const { error } = await supabase
         .from("videos")
         .insert({
-          subject_id: selectedSubjectId,
+          chapter_id: selectedChapterId,
           title,
           title_kannada: titleKannada || null,
           description: description || null,
@@ -153,7 +168,7 @@ export const ManageVideos = () => {
   };
 
   const handleEditVideo = async () => {
-    if (!editingVideo || !selectedSubjectId || !title) {
+    if (!editingVideo || !selectedChapterId || !title) {
       toast.error("Please fill all required fields");
       return;
     }
@@ -161,7 +176,7 @@ export const ManageVideos = () => {
     setLoading(true);
     try {
       const updateData: any = {
-        subject_id: selectedSubjectId,
+        chapter_id: selectedChapterId,
         title,
         title_kannada: titleKannada || null,
         description: description || null,
@@ -215,7 +230,10 @@ export const ManageVideos = () => {
 
   const openEditDialog = (video: any) => {
     setEditingVideo(video);
-    setSelectedSubjectId(video.subject_id);
+    // Set subject first so chapters filter properly
+    const subjectId = video.chapters?.subject_id || "";
+    setSelectedSubjectId(subjectId);
+    setSelectedChapterId(video.chapter_id);
     setTitle(video.title);
     setTitleKannada(video.title_kannada || "");
     setDescription(video.description || "");
@@ -226,6 +244,7 @@ export const ManageVideos = () => {
 
   const resetForm = () => {
     setSelectedSubjectId("");
+    setSelectedChapterId("");
     setTitle("");
     setTitleKannada("");
     setDescription("");
@@ -258,7 +277,10 @@ export const ManageVideos = () => {
               <div className="space-y-4">
                 <div>
                   <Label>Subject</Label>
-                  <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                  <Select value={selectedSubjectId} onValueChange={(val) => {
+                    setSelectedSubjectId(val);
+                    setSelectedChapterId("");
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Choose subject" />
                     </SelectTrigger>
@@ -266,6 +288,21 @@ export const ManageVideos = () => {
                       {subjects.map((subject) => (
                         <SelectItem key={subject.id} value={subject.id}>
                           {subject.name_kannada} ({subject.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Chapter</Label>
+                  <Select value={selectedChapterId} onValueChange={setSelectedChapterId} disabled={!selectedSubjectId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedSubjectId ? "Choose chapter" : "Select subject first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredChapters.map((chapter) => (
+                        <SelectItem key={chapter.id} value={chapter.id}>
+                          Chapter {chapter.chapter_number}: {chapter.name_kannada}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -389,7 +426,10 @@ export const ManageVideos = () => {
             <div className="space-y-4">
               <div>
                 <Label>Subject</Label>
-                <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                <Select value={selectedSubjectId} onValueChange={(val) => {
+                  setSelectedSubjectId(val);
+                  setSelectedChapterId("");
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose subject" />
                   </SelectTrigger>
@@ -397,6 +437,21 @@ export const ManageVideos = () => {
                     {subjects.map((subject) => (
                       <SelectItem key={subject.id} value={subject.id}>
                         {subject.name_kannada} ({subject.name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Chapter</Label>
+                <Select value={selectedChapterId} onValueChange={setSelectedChapterId} disabled={!selectedSubjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={selectedSubjectId ? "Choose chapter" : "Select subject first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredChapters.map((chapter) => (
+                      <SelectItem key={chapter.id} value={chapter.id}>
+                        Chapter {chapter.chapter_number}: {chapter.name_kannada}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -453,7 +508,7 @@ export const ManageVideos = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
-              <TableHead>Subject</TableHead>
+              <TableHead>Chapter</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -469,7 +524,14 @@ export const ManageVideos = () => {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{video.subjects?.name_kannada}</TableCell>
+                <TableCell>
+                  <div>
+                    <div className="text-sm">{video.chapters?.name_kannada}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {video.chapters?.subjects?.name_kannada}
+                    </div>
+                  </div>
+                </TableCell>
                 <TableCell>
                   <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
                     {video.video_type}
@@ -487,11 +549,7 @@ export const ManageVideos = () => {
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -504,10 +562,7 @@ export const ManageVideos = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteVideo(video)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
+                          <AlertDialogAction onClick={() => handleDeleteVideo(video)}>
                             Delete
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -519,6 +574,12 @@ export const ManageVideos = () => {
             ))}
           </TableBody>
         </Table>
+
+        {videos.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No videos uploaded yet. Click "Add Video" to get started.
+          </div>
+        )}
       </CardContent>
     </Card>
   );
