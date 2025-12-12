@@ -48,20 +48,39 @@ const Auth = () => {
   }, []);
 
   const checkUserStatusAndRedirect = async (userId: string) => {
-    // Check user role
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single();
+    // Check user role - retry a few times for newly created users (trigger may take a moment)
+    let roleData = null;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (!roleData && attempts < maxAttempts) {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+      
+      roleData = data;
+      
+      if (!roleData && attempts < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      attempts++;
+    }
 
-    if (roleData?.role === "admin") {
+    if (!roleData) {
+      toast.error("Account setup incomplete. Please try signing in again.");
+      await supabase.auth.signOut();
+      return;
+    }
+
+    if (roleData.role === "admin") {
       navigate("/admin");
       return;
     }
 
     // For students, check verification status from student_profiles
-    if (roleData?.role === "student") {
+    if (roleData.role === "student") {
       const { data: studentProfile } = await supabase
         .from("student_profiles")
         .select("is_verified, email_verified")
@@ -133,19 +152,9 @@ const Auth = () => {
 
       if (error) throw error;
 
-      // Trigger auto-creates student_profiles via handle_new_student_profile()
-      // We only need to assign the student role here
+      // Role is now auto-assigned by database trigger (handle_new_user_role)
+      // We just need to send the verification email
       if (data.user) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: data.user.id,
-            role: "student"
-          });
-
-        if (roleError) {
-          console.error("Role assignment error:", roleError);
-        }
 
         // Send custom verification email via Resend
         try {
