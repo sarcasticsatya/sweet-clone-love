@@ -79,22 +79,16 @@ const Auth = () => {
       return;
     }
 
-    // For students, check verification status from student_profiles
+    // For students, check email verification status from student_profiles
     if (roleData.role === "student") {
       const { data: studentProfile } = await supabase
         .from("student_profiles")
-        .select("is_verified, email_verified")
+        .select("email_verified")
         .eq("user_id", userId)
         .single();
 
       // Check if email is verified (from our custom system)
       if (studentProfile && !studentProfile.email_verified) {
-        navigate("/not-verified");
-        return;
-      }
-
-      // Check if admin has verified the student
-      if (studentProfile && !studentProfile.is_verified) {
         navigate("/not-verified");
         return;
       }

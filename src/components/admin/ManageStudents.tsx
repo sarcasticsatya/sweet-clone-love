@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Users, Plus, CheckCircle2, XCircle, Eye, Shield, Loader2 } from "lucide-react";
+import { Users, Plus, CheckCircle2, XCircle, Eye } from "lucide-react";
 
 interface StudentProfile {
   id: string;
@@ -23,7 +23,7 @@ interface StudentProfile {
   parent_mobile: string;
   parent_email: string;
   personal_email: string;
-  is_verified: boolean;
+  email_verified: boolean;
   created_at: string;
 }
 
@@ -37,7 +37,6 @@ export const ManageStudents = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(false);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadStudents();
@@ -109,29 +108,6 @@ export const ManageStudents = () => {
       loadStudents();
     }
     setLoading(false);
-  };
-
-  const handleVerifyStudent = async (userId: string, verify: boolean) => {
-    setVerifyingId(userId);
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    const { error } = await supabase
-      .from("student_profiles")
-      .update({ 
-        is_verified: verify,
-        verified_by: verify ? session?.user?.id : null,
-        verified_at: verify ? new Date().toISOString() : null
-      })
-      .eq("user_id", userId);
-
-    if (error) {
-      toast.error("Failed to update verification status");
-    } else {
-      toast.success(verify ? "Student verified successfully" : "Student verification revoked");
-      loadStudentProfiles();
-    }
-    setVerifyingId(null);
   };
 
   const viewStudentDetails = (profile: StudentProfile) => {
@@ -230,15 +206,15 @@ export const ManageStudents = () => {
                       {profile?.school_name || "-"}
                     </TableCell>
                     <TableCell>
-                      {profile?.is_verified ? (
+                      {profile?.email_verified ? (
                         <Badge variant="default" className="bg-green-500">
                           <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Verified
+                          Email Verified
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
                           <XCircle className="w-3 h-3 mr-1" />
-                          Pending
+                          Pending Email
                         </Badge>
                       )}
                     </TableCell>
@@ -255,44 +231,15 @@ export const ManageStudents = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {profile && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => viewStudentDetails(profile)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        )}
-                        {profile && !profile.is_verified && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleVerifyStudent(student.user_id, true)}
-                            disabled={verifyingId === student.user_id}
-                            className="text-green-600 border-green-600 hover:bg-green-50"
-                          >
-                            {verifyingId === student.user_id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Shield className="w-4 h-4 mr-1" />
-                            )}
-                            Verify
-                          </Button>
-                        )}
-                        {profile?.is_verified && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleVerifyStudent(student.user_id, false)}
-                            disabled={verifyingId === student.user_id}
-                            className="text-red-600 hover:bg-red-50"
-                          >
-                            Revoke
-                          </Button>
-                        )}
-                      </div>
+                      {profile && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => viewStudentDetails(profile)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -359,8 +306,8 @@ export const ManageStudents = () => {
 
                 <div className="pt-2 border-t">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Verification Status</span>
-                    {selectedProfile.is_verified ? (
+                    <span className="text-sm text-muted-foreground">Email Status</span>
+                    {selectedProfile.email_verified ? (
                       <Badge variant="default" className="bg-green-500">Verified</Badge>
                     ) : (
                       <Badge variant="secondary">Pending</Badge>
