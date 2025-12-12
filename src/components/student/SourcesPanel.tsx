@@ -36,13 +36,8 @@ export const SourcesPanel = ({
       .eq("student_id", session.user.id);
 
     if (!accessData?.length) {
-      // If no access records, show all subjects (for demo)
-      const { data: subjectsData } = await supabase
-        .from("subjects")
-        .select("*")
-        .order("name");
-      
-      setSubjects(subjectsData || []);
+      // No access - show empty (parent component handles the waiting state)
+      setSubjects([]);
       return;
     }
 
