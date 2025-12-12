@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Plus, Upload, Trash2 } from "lucide-react";
+import { FileText, Plus, Upload, Trash2, Pencil } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const ManageContent = () => {
@@ -16,12 +16,15 @@ export const ManageContent = () => {
   const [chapters, setChapters] = useState<Record<string, any[]>>({});
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   const [chapterDialogOpen, setChapterDialogOpen] = useState(false);
+  const [editSubjectDialogOpen, setEditSubjectDialogOpen] = useState(false);
+  const [editChapterDialogOpen, setEditChapterDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Subject form
   const [subjectName, setSubjectName] = useState("");
   const [subjectNameKannada, setSubjectNameKannada] = useState("");
   const [subjectDescription, setSubjectDescription] = useState("");
+  const [editingSubject, setEditingSubject] = useState<any>(null);
 
   // Chapter form
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
@@ -29,6 +32,7 @@ export const ManageContent = () => {
   const [chapterName, setChapterName] = useState("");
   const [chapterNameKannada, setChapterNameKannada] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [editingChapter, setEditingChapter] = useState<any>(null);
 
   useEffect(() => {
     loadSubjects();
@@ -78,12 +82,53 @@ export const ManageContent = () => {
     } else {
       toast.success("Subject created successfully");
       setSubjectDialogOpen(false);
-      setSubjectName("");
-      setSubjectNameKannada("");
-      setSubjectDescription("");
+      resetSubjectForm();
       loadSubjects();
     }
     setLoading(false);
+  };
+
+  const handleEditSubject = async () => {
+    if (!editingSubject || !subjectName || !subjectNameKannada) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase
+      .from("subjects")
+      .update({
+        name: subjectName,
+        name_kannada: subjectNameKannada,
+        description: subjectDescription
+      })
+      .eq("id", editingSubject.id);
+
+    if (error) {
+      toast.error("Failed to update subject");
+    } else {
+      toast.success("Subject updated successfully");
+      setEditSubjectDialogOpen(false);
+      setEditingSubject(null);
+      resetSubjectForm();
+      loadSubjects();
+    }
+    setLoading(false);
+  };
+
+  const openEditSubjectDialog = (subject: any) => {
+    setEditingSubject(subject);
+    setSubjectName(subject.name);
+    setSubjectNameKannada(subject.name_kannada);
+    setSubjectDescription(subject.description || "");
+    setEditSubjectDialogOpen(true);
+  };
+
+  const resetSubjectForm = () => {
+    setSubjectName("");
+    setSubjectNameKannada("");
+    setSubjectDescription("");
+    setEditingSubject(null);
   };
 
   const handleDeleteSubject = async (subjectId: string, subjectName: string) => {
@@ -135,6 +180,53 @@ export const ManageContent = () => {
       toast.error(error.message || "Failed to delete chapter");
     }
     setLoading(false);
+  };
+
+  const handleEditChapter = async () => {
+    if (!editingChapter || !chapterNumber || !chapterName || !chapterNameKannada) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("chapters")
+        .update({
+          chapter_number: parseInt(chapterNumber),
+          name: chapterName,
+          name_kannada: chapterNameKannada
+        })
+        .eq("id", editingChapter.id);
+
+      if (error) throw error;
+
+      toast.success("Chapter updated successfully");
+      setEditChapterDialogOpen(false);
+      setEditingChapter(null);
+      resetChapterForm();
+      loadChapters(editingChapter.subject_id);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update chapter");
+    }
+    setLoading(false);
+  };
+
+  const openEditChapterDialog = (chapter: any) => {
+    setEditingChapter(chapter);
+    setChapterNumber(chapter.chapter_number.toString());
+    setChapterName(chapter.name);
+    setChapterNameKannada(chapter.name_kannada);
+    setEditChapterDialogOpen(true);
+  };
+
+  const resetChapterForm = () => {
+    setSelectedSubjectId("");
+    setChapterNumber("");
+    setChapterName("");
+    setChapterNameKannada("");
+    setPdfFile(null);
+    setEditingChapter(null);
   };
 
   const handleRetryExtraction = async (chapterId: string) => {
@@ -225,11 +317,7 @@ export const ManageContent = () => {
 
       toast.success("Chapter uploaded successfully!");
       setChapterDialogOpen(false);
-      setSelectedSubjectId("");
-      setChapterNumber("");
-      setChapterName("");
-      setChapterNameKannada("");
-      setPdfFile(null);
+      resetChapterForm();
       loadSubjects();
     } catch (error: any) {
       toast.error(error.message || "Failed to upload chapter");
@@ -329,6 +417,73 @@ export const ManageContent = () => {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Edit Subject Dialog */}
+        <Dialog open={editSubjectDialogOpen} onOpenChange={(open) => {
+          setEditSubjectDialogOpen(open);
+          if (!open) {
+            setEditingSubject(null);
+            resetSubjectForm();
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Subject</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Subject Name (English)</Label>
+                <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} />
+              </div>
+              <div>
+                <Label>Subject Name (Kannada)</Label>
+                <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} />
+              </div>
+              <div>
+                <Label>Description (Optional)</Label>
+                <Input value={subjectDescription} onChange={(e) => setSubjectDescription(e.target.value)} />
+              </div>
+              <Button onClick={handleEditSubject} disabled={loading} className="w-full">
+                Save Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Chapter Dialog */}
+        <Dialog open={editChapterDialogOpen} onOpenChange={(open) => {
+          setEditChapterDialogOpen(open);
+          if (!open) {
+            setEditingChapter(null);
+            resetChapterForm();
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Chapter</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Chapter Number</Label>
+                <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
+              </div>
+              <div>
+                <Label>Chapter Name (English)</Label>
+                <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
+              </div>
+              <div>
+                <Label>Chapter Name (Kannada)</Label>
+                <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                To replace the PDF, delete this chapter and upload a new one.
+              </p>
+              <Button onClick={handleEditChapter} disabled={loading} className="w-full">
+                Save Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Accordion type="single" collapsible className="w-full">
           {subjects.map((subject) => (
             <AccordionItem key={subject.id} value={subject.id}>
@@ -336,6 +491,17 @@ export const ManageContent = () => {
                 <AccordionTrigger className="flex-1">
                   {subject.name_kannada} ({subject.name})
                 </AccordionTrigger>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditSubjectDialog(subject);
+                  }}
+                  className="mr-1"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -390,6 +556,13 @@ export const ManageContent = () => {
                               </Button>
                             </>
                           )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openEditChapterDialog(chapter)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button

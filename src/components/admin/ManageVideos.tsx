@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,13 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Video, Plus, ExternalLink, Upload, Loader2 } from "lucide-react";
+import { Video, Plus, ExternalLink, Upload, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const ManageVideos = () => {
   const [videos, setVideos] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -29,6 +31,9 @@ export const ManageVideos = () => {
   const [videoType, setVideoType] = useState("youtube");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
+
+  // Edit state
+  const [editingVideo, setEditingVideo] = useState<any>(null);
 
   useEffect(() => {
     loadVideos();
@@ -147,6 +152,78 @@ export const ManageVideos = () => {
     setUploadProgress(0);
   };
 
+  const handleEditVideo = async () => {
+    if (!editingVideo || !selectedSubjectId || !title) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updateData: any = {
+        subject_id: selectedSubjectId,
+        title,
+        title_kannada: titleKannada || null,
+        description: description || null,
+      };
+
+      // Only update URL if it's a YouTube video and URL changed
+      if (editingVideo.video_type === "youtube" && youtubeUrl !== editingVideo.video_url) {
+        updateData.video_url = youtubeUrl;
+      }
+
+      const { error } = await supabase
+        .from("videos")
+        .update(updateData)
+        .eq("id", editingVideo.id);
+
+      if (error) throw error;
+
+      toast.success("Video updated successfully");
+      setEditDialogOpen(false);
+      setEditingVideo(null);
+      resetForm();
+      loadVideos();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update video");
+    }
+    setLoading(false);
+  };
+
+  const handleDeleteVideo = async (video: any) => {
+    setLoading(true);
+    try {
+      // Delete from storage if uploaded
+      if (video.storage_path) {
+        await supabase.storage.from("subject-videos").remove([video.storage_path]);
+      }
+
+      const { error } = await supabase
+        .from("videos")
+        .delete()
+        .eq("id", video.id);
+
+      if (error) throw error;
+
+      toast.success("Video deleted successfully");
+      loadVideos();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete video");
+    }
+    setLoading(false);
+  };
+
+  const openEditDialog = (video: any) => {
+    setEditingVideo(video);
+    setSelectedSubjectId(video.subject_id);
+    setTitle(video.title);
+    setTitleKannada(video.title_kannada || "");
+    setDescription(video.description || "");
+    setVideoType(video.video_type);
+    setYoutubeUrl(video.video_url);
+    setEditDialogOpen(true);
+  };
+
   const resetForm = () => {
     setSelectedSubjectId("");
     setTitle("");
@@ -156,6 +233,7 @@ export const ManageVideos = () => {
     setYoutubeUrl("");
     setVideoFile(null);
     setUploadProgress(0);
+    setEditingVideo(null);
   };
 
   return (
@@ -296,6 +374,81 @@ export const ManageVideos = () => {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Edit Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) {
+            setEditingVideo(null);
+            resetForm();
+          }
+        }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Video</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Subject</Label>
+                <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name_kannada} ({subject.name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Title (English)</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+              </div>
+              <div>
+                <Label>Title (Kannada - Optional)</Label>
+                <Input value={titleKannada} onChange={(e) => setTitleKannada(e.target.value)} />
+              </div>
+              <div>
+                <Label>Description with Timestamps (Optional)</Label>
+                <Textarea 
+                  value={description} 
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={`Video overview
+
+0:00 - Introduction
+2:30 - Main concept explanation
+5:45 - Example problem 1
+10:20 - Summary`}
+                  rows={5}
+                />
+              </div>
+              {editingVideo?.video_type === "youtube" && (
+                <div>
+                  <Label>YouTube URL</Label>
+                  <Input 
+                    value={youtubeUrl} 
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                </div>
+              )}
+              {editingVideo?.video_type === "upload" && (
+                <p className="text-sm text-muted-foreground">
+                  To replace the video file, delete this video and upload a new one.
+                </p>
+              )}
+              <Button onClick={handleEditVideo} disabled={loading} className="w-full">
+                {loading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                Save Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -323,11 +476,44 @@ export const ManageVideos = () => {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Button size="sm" variant="ghost" asChild>
-                    <a href={video.video_url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" asChild>
+                      <a href={video.video_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => openEditDialog(video)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Video</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{video.title}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteVideo(video)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
