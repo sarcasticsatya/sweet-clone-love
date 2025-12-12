@@ -32,27 +32,23 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    // Check if user just signed out - skip auto-login
+    // Check if user just signed out - skip initial auto-login check
     const justSignedOut = sessionStorage.getItem('just_signed_out');
     if (justSignedOut) {
       sessionStorage.removeItem('just_signed_out');
-      // Clear any stale session
-      supabase.auth.signOut();
-      return;
+      // Don't check existing session, just set up listener for new logins
+    } else {
+      // Only check existing session if not just signed out
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          checkUserStatusAndRedirect(session.user.id);
+        }
+      });
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        checkUserStatusAndRedirect(session.user.id);
-      }
-    });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Don't auto-redirect on SIGNED_OUT event
-      if (event === 'SIGNED_OUT') {
-        return;
-      }
-      if (session) {
+      // Only redirect on actual sign-in events, not on initial load or sign-out
+      if (event === 'SIGNED_IN' && session) {
         checkUserStatusAndRedirect(session.user.id);
       }
     });
