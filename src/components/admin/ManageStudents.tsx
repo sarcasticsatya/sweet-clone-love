@@ -300,31 +300,41 @@ export const ManageStudents = () => {
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Select Subjects to Assign:</Label>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                  {subjects.map((subject) => (
-                    <div 
-                      key={subject.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedSubjects.includes(subject.id) 
-                          ? 'bg-primary/10 border-primary' 
-                          : 'hover:bg-muted/50'
-                      }`}
-                      onClick={() => toggleSubject(subject.id)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Checkbox 
-                          checked={selectedSubjects.includes(subject.id)}
-                          onCheckedChange={() => toggleSubject(subject.id)}
-                        />
-                        <div>
-                          <p className="font-medium text-sm">{subject.name_kannada}</p>
-                          <p className="text-xs text-muted-foreground">{subject.name}</p>
+                  {subjects.map((subject) => {
+                    const isSelected = selectedSubjects.includes(subject.id);
+                    return (
+                      <label 
+                        key={subject.id}
+                        htmlFor={`subject-${subject.id}`}
+                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                          isSelected 
+                            ? 'bg-primary/10 border-primary' 
+                            : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox 
+                            id={`subject-${subject.id}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedSubjects(prev => [...prev, subject.id]);
+                              } else {
+                                setSelectedSubjects(prev => prev.filter(id => id !== subject.id));
+                              }
+                            }}
+                          />
+                          <div>
+                            <p className="font-medium text-sm">{subject.name_kannada}</p>
+                            <p className="text-xs text-muted-foreground">{subject.name}</p>
+                          </div>
                         </div>
-                      </div>
-                      {selectedSubjects.includes(subject.id) && (
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                      )}
-                    </div>
-                  ))}
+                        {isSelected && (
+                          <CheckCircle2 className="w-5 h-5 text-primary" />
+                        )}
+                      </label>
+                    );
+                  })}
                   {subjects.length === 0 && (
                     <p className="text-center py-4 text-muted-foreground text-sm">
                       No subjects available. Add subjects first.
