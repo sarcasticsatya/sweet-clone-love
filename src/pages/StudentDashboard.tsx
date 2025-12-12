@@ -35,8 +35,9 @@ const StudentDashboard = () => {
     setUser(session.user);
   };
   const handleSignOut = async () => {
+    setUser(null);
     await supabase.auth.signOut();
-    navigate("/auth");
+    navigate("/auth", { replace: true });
   };
   if (!user) return null;
   return (
