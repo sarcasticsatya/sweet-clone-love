@@ -23,6 +23,14 @@ interface VideoPlayerProps {
   timestamps?: Timestamp[] | null;
 }
 
+// Declare YouTube API types
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
 export const VideoPlayer = ({
   videoUrl,
   videoType,
@@ -32,6 +40,7 @@ export const VideoPlayer = ({
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -39,10 +48,74 @@ export const VideoPlayer = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [youtubeReady, setYoutubeReady] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Parse timestamps from description if not provided directly
   const parsedTimestamps = timestamps || parseTimestampsFromDescription(description);
+
+  // Load YouTube IFrame API
+  useEffect(() => {
+    if (videoType !== "youtube") return;
+
+    // Check if API is already loaded
+    if (window.YT && window.YT.Player) {
+      initYoutubePlayer();
+      return;
+    }
+
+    // Load the API script
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName("script")[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    window.onYouTubeIframeAPIReady = () => {
+      initYoutubePlayer();
+    };
+
+    return () => {
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.destroy();
+      }
+    };
+  }, [videoType, videoUrl]);
+
+  const initYoutubePlayer = () => {
+    const videoId = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
+    if (!videoId) return;
+
+    // Wait for the container to be ready
+    const container = document.getElementById("youtube-player");
+    if (!container) {
+      setTimeout(initYoutubePlayer, 100);
+      return;
+    }
+
+    youtubePlayerRef.current = new window.YT.Player("youtube-player", {
+      videoId,
+      playerVars: {
+        rel: 0,
+        modestbranding: 1,
+        playsinline: 1,
+      },
+      events: {
+        onReady: () => {
+          setYoutubeReady(true);
+        },
+        onStateChange: (event: any) => {
+          setIsPlaying(event.data === window.YT.PlayerState.PLAYING);
+        },
+      },
+    });
+  };
+
+  const seekYoutubeToTime = (seconds: number) => {
+    if (youtubePlayerRef.current && youtubeReady) {
+      youtubePlayerRef.current.seekTo(seconds, true);
+      youtubePlayerRef.current.playVideo();
+    }
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -171,18 +244,12 @@ export const VideoPlayer = ({
   // YouTube embed handling
   if (videoType === "youtube") {
     const videoId = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
-    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?rel=0` : null;
 
     return (
       <div className="space-y-4">
         <div ref={containerRef} className="relative aspect-video bg-black rounded-lg overflow-hidden">
-          {embedUrl ? (
-            <iframe
-              src={embedUrl}
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-            />
+          {videoId ? (
+            <div id="youtube-player" className="w-full h-full" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
               Invalid YouTube URL
@@ -194,7 +261,7 @@ export const VideoPlayer = ({
           <h3 className="font-semibold text-foreground">{title}</h3>
           {description && (
             <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {renderDescriptionWithTimestamps(description, seekToTimestamp)}
+              {renderDescriptionWithTimestamps(description, seekYoutubeToTime)}
             </div>
           )}
         </div>
@@ -209,10 +276,8 @@ export const VideoPlayer = ({
                   variant="outline"
                   size="sm"
                   className="text-xs"
-                  onClick={() => {
-                    // For YouTube, we'd need to use YouTube API - this is a placeholder
-                    console.log(`Seek to ${ts.time}s: ${ts.label}`);
-                  }}
+                  onClick={() => seekYoutubeToTime(ts.time)}
+                  disabled={!youtubeReady}
                 >
                   {formatTime(ts.time)} - {ts.label}
                 </Button>
