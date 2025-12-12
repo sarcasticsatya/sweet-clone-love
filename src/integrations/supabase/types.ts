@@ -539,11 +539,11 @@ export type Database = {
       }
       videos: {
         Row: {
+          chapter_id: string | null
           created_at: string
           description: string | null
           id: string
           storage_path: string | null
-          subject_id: string
           timestamps: Json | null
           title: string
           title_kannada: string | null
@@ -552,11 +552,11 @@ export type Database = {
           video_url: string
         }
         Insert: {
+          chapter_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           storage_path?: string | null
-          subject_id: string
           timestamps?: Json | null
           title: string
           title_kannada?: string | null
@@ -565,11 +565,11 @@ export type Database = {
           video_url: string
         }
         Update: {
+          chapter_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           storage_path?: string | null
-          subject_id?: string
           timestamps?: Json | null
           title?: string
           title_kannada?: string | null
@@ -579,10 +579,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "videos_subject_id_fkey"
-            columns: ["subject_id"]
+            foreignKeyName: "videos_chapter_id_fkey"
+            columns: ["chapter_id"]
             isOneToOne: false
-            referencedRelation: "subjects"
+            referencedRelation: "chapters"
             referencedColumns: ["id"]
           },
         ]
