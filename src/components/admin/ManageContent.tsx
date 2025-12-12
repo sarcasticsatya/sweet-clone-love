@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Plus, Upload } from "lucide-react";
+import { FileText, Plus, Upload, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const ManageContent = () => {
@@ -81,6 +82,57 @@ export const ManageContent = () => {
       setSubjectNameKannada("");
       setSubjectDescription("");
       loadSubjects();
+    }
+    setLoading(false);
+  };
+
+  const handleDeleteSubject = async (subjectId: string, subjectName: string) => {
+    setLoading(true);
+    try {
+      // First delete all chapters' PDFs from storage
+      const subjectChapters = chapters[subjectId] || [];
+      for (const chapter of subjectChapters) {
+        if (chapter.pdf_storage_path) {
+          await supabase.storage.from("chapter-pdfs").remove([chapter.pdf_storage_path]);
+        }
+      }
+
+      // Delete subject (chapters will be cascade deleted via foreign key)
+      const { error } = await supabase
+        .from("subjects")
+        .delete()
+        .eq("id", subjectId);
+
+      if (error) throw error;
+
+      toast.success(`Subject "${subjectName}" deleted successfully`);
+      loadSubjects();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete subject");
+    }
+    setLoading(false);
+  };
+
+  const handleDeleteChapter = async (chapter: any) => {
+    setLoading(true);
+    try {
+      // Delete PDF from storage
+      if (chapter.pdf_storage_path) {
+        await supabase.storage.from("chapter-pdfs").remove([chapter.pdf_storage_path]);
+      }
+
+      // Delete chapter record
+      const { error } = await supabase
+        .from("chapters")
+        .delete()
+        .eq("id", chapter.id);
+
+      if (error) throw error;
+
+      toast.success(`Chapter ${chapter.chapter_number} deleted successfully`);
+      loadChapters(chapter.subject_id);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete chapter");
     }
     setLoading(false);
   };
@@ -280,9 +332,40 @@ export const ManageContent = () => {
         <Accordion type="single" collapsible className="w-full">
           {subjects.map((subject) => (
             <AccordionItem key={subject.id} value={subject.id}>
-              <AccordionTrigger>
-                {subject.name_kannada} ({subject.name})
-              </AccordionTrigger>
+              <div className="flex items-center">
+                <AccordionTrigger className="flex-1">
+                  {subject.name_kannada} ({subject.name})
+                </AccordionTrigger>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 mr-2"
+                      disabled={loading}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Subject</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{subject.name}"? This will permanently delete all chapters and PDFs associated with this subject. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteSubject(subject.id, subject.name)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
               <AccordionContent>
                 <div className="space-y-2 pl-4">
                   {chapters[subject.id]?.length ? (
@@ -307,6 +390,35 @@ export const ManageContent = () => {
                               </Button>
                             </>
                           )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                disabled={loading}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Chapter</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "Chapter {chapter.chapter_number}: {chapter.name}"? This will permanently delete the chapter and its PDF. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteChapter(chapter)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     ))
