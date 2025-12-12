@@ -36,6 +36,8 @@ const StudentDashboard = () => {
   };
   const handleSignOut = async () => {
     setUser(null);
+    // Set flag to prevent auto-login on auth page
+    sessionStorage.setItem('just_signed_out', 'true');
     await supabase.auth.signOut();
     navigate("/auth", { replace: true });
   };
