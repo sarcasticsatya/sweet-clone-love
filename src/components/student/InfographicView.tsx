@@ -45,9 +45,17 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
     }
   };
 
-  const generateInfographic = async () => {
+  const generateInfographic = async (regenerate = false) => {
     setLoading(true);
     try {
+      // If regenerating, delete existing infographic first
+      if (regenerate) {
+        await supabase
+          .from("infographics")
+          .delete()
+          .eq("chapter_id", chapterId);
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-infographic", {
         body: { chapterId },
       });
@@ -55,7 +63,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
       if (error) throw error;
 
       setInfographic(data.infographic);
-      toast.success("Infographic generated!");
+      toast.success(regenerate ? "Infographic regenerated!" : "Infographic generated!");
     } catch (error) {
       console.error("Error generating infographic:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate infographic");
@@ -98,14 +106,27 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
             Chapter Infographic
           </h3>
           {infographic && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={downloadInfographic} 
-              className="h-6 w-6 p-0"
-            >
-              <Download className="w-3 h-3" />
-            </Button>
+            <div className="flex gap-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => generateInfographic(true)}
+                disabled={loading}
+                className="h-6 w-6 p-0"
+                title="Regenerate"
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={downloadInfographic} 
+                className="h-6 w-6 p-0"
+                title="Download"
+              >
+                <Download className="w-3 h-3" />
+              </Button>
+            </div>
           )}
         </div>
         <p className="text-[10px] text-muted-foreground">
@@ -159,7 +180,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
               </div>
               <Button 
                 size="sm" 
-                onClick={generateInfographic} 
+                onClick={() => generateInfographic(false)} 
                 disabled={loading}
                 className="text-xs"
               >
