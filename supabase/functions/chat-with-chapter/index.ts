@@ -50,6 +50,29 @@ serve(async (req) => {
       );
     }
 
+    // Get videos with timestamps for this chapter
+    const { data: videos } = await supabaseClient
+      .from("videos")
+      .select("id, title, title_kannada, timestamps")
+      .eq("chapter_id", chapterId);
+
+    // Build video reference context
+    let videoContext = "";
+    if (videos && videos.length > 0) {
+      videoContext = "\n\nRELATED VIDEOS:\n";
+      videos.forEach(video => {
+        const videoTitle = video.title_kannada || video.title;
+        videoContext += `- ${videoTitle}`;
+        if (video.timestamps && Array.isArray(video.timestamps)) {
+          const timestamps = video.timestamps as Array<{ time: string; label: string }>;
+          if (timestamps.length > 0) {
+            videoContext += ` (Timestamps: ${timestamps.map(t => `${t.time} - ${t.label}`).join(", ")})`;
+          }
+        }
+        videoContext += "\n";
+      });
+    }
+
     const chapterName = chapter.name_kannada || chapter.name;
 
     // Detect if chapter is in Kannada (check if name_kannada exists and content has Kannada script)
@@ -80,7 +103,10 @@ serve(async (req) => {
    - Write equations naturally in the text like: "The formula is x^2 + 5x + 6"
    - Keep formatting clean and readable for school students
 6. ALWAYS conclude with a **Summary** or **Final Answer** section
-
+7. VIDEO REFERENCES: When your answer relates to topics covered in the available videos, include a reference like:
+   📹 Watch: [Video Title] at [timestamp] for visual explanation
+   Only reference videos that are actually relevant to the question.
+${videoContext}
 CHAPTER: ${chapterName}
 CHAPTER CONTENT:
 ${chapter.content_extracted}`;

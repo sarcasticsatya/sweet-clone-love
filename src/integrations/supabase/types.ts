@@ -227,6 +227,35 @@ export type Database = {
           },
         ]
       }
+      infographics: {
+        Row: {
+          chapter_id: string
+          created_at: string
+          id: string
+          image_url: string
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "infographics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: true
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mindmaps: {
         Row: {
           chapter_id: string

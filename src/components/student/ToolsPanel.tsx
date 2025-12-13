@@ -1,10 +1,11 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, HelpCircle, Video, Network } from "lucide-react";
+import { Brain, HelpCircle, Video, Network, Image } from "lucide-react";
 import { FlashcardsView } from "./FlashcardsView";
 import { QuizView } from "./QuizView";
 import { VideosView } from "./VideosView";
 import { MindmapView } from "./MindmapView";
+import { InfographicView } from "./InfographicView";
 
 interface ToolsPanelProps {
   selectedChapterId: string | null;
@@ -25,7 +26,7 @@ export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelP
         </div>
       ) : (
         <Tabs defaultValue="flashcards" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full grid grid-cols-4 rounded-none border-b bg-transparent h-10 flex-shrink-0 px-1">
+          <TabsList className="w-full grid grid-cols-5 rounded-none border-b bg-transparent h-10 flex-shrink-0 px-1">
             <TabsTrigger 
               value="flashcards" 
               className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
@@ -48,6 +49,13 @@ export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelP
               <span className="hidden sm:inline">Map</span>
             </TabsTrigger>
             <TabsTrigger 
+              value="infographic" 
+              className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
+            >
+              <Image className="w-4 h-4" />
+              <span className="hidden sm:inline">Info</span>
+            </TabsTrigger>
+            <TabsTrigger 
               value="videos" 
               className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
             >
@@ -68,6 +76,10 @@ export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelP
 
           <TabsContent value="mindmap" className="flex-1 m-0 overflow-hidden">
             <MindmapView chapterId={selectedChapterId} />
+          </TabsContent>
+
+          <TabsContent value="infographic" className="flex-1 m-0 overflow-hidden">
+            <InfographicView chapterId={selectedChapterId} />
           </TabsContent>
 
           <TabsContent value="videos" className="flex-1 m-0 overflow-hidden">
