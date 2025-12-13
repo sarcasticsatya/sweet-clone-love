@@ -104,18 +104,28 @@ Return ONLY valid JSON:
       throw new Error("No questions in response");
     }
     
-    // Validate and clean questions
+    // Validate and clean questions - ensure no blank options
     const validQuestions = parsed.questions.filter((q: any) => {
-      return q.question && 
-             Array.isArray(q.options) && 
-             q.options.length === 4 &&
-             typeof q.correctAnswer === "number" &&
-             q.correctAnswer >= 0 && 
-             q.correctAnswer <= 3;
+      // Check basic structure
+      if (!q.question || typeof q.question !== "string" || !q.question.trim()) return false;
+      if (!Array.isArray(q.options) || q.options.length !== 4) return false;
+      if (typeof q.correctAnswer !== "number" || q.correctAnswer < 0 || q.correctAnswer > 3) return false;
+      
+      // CRITICAL: Ensure ALL options have non-empty content
+      const allOptionsValid = q.options.every((opt: any) => 
+        opt && typeof opt === "string" && opt.trim().length > 0
+      );
+      if (!allOptionsValid) {
+        console.log("Skipping question with blank options:", q.question.substring(0, 50));
+        return false;
+      }
+      
+      return true;
     });
     
     if (validQuestions.length < 3) {
-      throw new Error("Too few valid questions");
+      console.log("Only", validQuestions.length, "valid questions found, retrying...");
+      throw new Error("Too few valid questions - some had blank options");
     }
     
     // For Kannada chapters, verify Kannada text exists
