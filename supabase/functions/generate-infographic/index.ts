@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json; charset=utf-8",
 };
 
 serve(async (req) => {
@@ -18,7 +19,7 @@ serve(async (req) => {
     if (!chapterId) {
       return new Response(
         JSON.stringify({ error: "Chapter ID is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -33,7 +34,7 @@ serve(async (req) => {
     if (!user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -48,7 +49,7 @@ serve(async (req) => {
       console.log("Returning cached infographic");
       return new Response(
         JSON.stringify({ infographic: existing }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: corsHeaders }
       );
     }
 
@@ -62,7 +63,7 @@ serve(async (req) => {
     if (!chapter || !chapter.content_extracted) {
       return new Response(
         JSON.stringify({ error: "Chapter content not available" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -75,19 +76,28 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    // First, create a summary of the chapter
+    // First, create a summary of the chapter - in English for better image generation
+    // For Kannada chapters, we instruct the AI to understand Kannada but create English visual descriptions
     const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `Create a concise visual summary prompt for an educational infographic. 
+            content: isKannada 
+              ? `You are analyzing a Kannada (ಕನ್ನಡ) educational chapter. 
+Create a concise ENGLISH visual summary prompt for an educational infographic.
+The infographic will have visual elements - no text will be rendered, only icons and illustrations.
+Return ONLY a single paragraph (max 200 words) describing what the infographic should show visually.
+Include: main topic, 3-5 key concepts as visual elements, important diagrams or illustrations.
+Focus on VISUAL elements that can be drawn, not text labels.
+Make it suitable for high school students studying for exams.`
+              : `Create a concise visual summary prompt for an educational infographic. 
 The infographic should cover the main topics and key concepts of the chapter.
 Return ONLY a single paragraph (max 200 words) describing what the infographic should show visually.
 Include: main topic, 3-5 key concepts, important facts/numbers.
@@ -110,10 +120,27 @@ Make it suitable for high school students studying for exams.`
 
     console.log("Summary for infographic:", summaryPrompt.substring(0, 200));
 
-    // Generate infographic image
-    const imagePrompt = `Create a beautiful, educational infographic poster for high school students. 
+    // Generate infographic image - focus on visual elements, not text
+    // For Kannada chapters, we create visually-focused infographics without text to avoid encoding issues
+    const imagePrompt = isKannada 
+      ? `Create a beautiful, visual educational infographic poster for high school students.
+Topic: ${chapter.name} (Indian educational content)
+Style: Clean, modern educational infographic with:
+- Clear visual hierarchy with icons and illustrations
+- Key concepts shown as VISUAL ELEMENTS (icons, diagrams, illustrations) - NO TEXT
+- Simple colorful illustrations for each concept
+- Arrows or flow lines connecting related ideas
+- Pleasant color scheme (blues, greens, or warm educational tones)
+- White or light background for readability
+- Focus on DIAGRAMS, ICONS, and VISUAL REPRESENTATIONS only
+- DO NOT include any text labels - only visual elements
+
+Visual concepts to include:
+${summaryPrompt}
+
+Make it look professional, like a visual study poster. Ultra high resolution. NO TEXT AT ALL.`
+      : `Create a beautiful, educational infographic poster for high school students. 
 Title: "${chapterName}"
-${isKannada ? "Include Kannada text labels where appropriate." : ""}
 Style: Clean, modern educational infographic with:
 - Clear hierarchy with the title at top
 - Key concepts in colored boxes or bubbles
@@ -132,7 +159,7 @@ Make it look professional, like a study poster students would hang on their wall
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image-preview",
@@ -176,20 +203,20 @@ Make it look professional, like a study poster students would hang on their wall
       // Still return the image even if caching fails
       return new Response(
         JSON.stringify({ infographic: { chapter_id: chapterId, image_url: imageUrl } }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: corsHeaders }
       );
     }
 
     return new Response(
       JSON.stringify({ infographic }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: corsHeaders }
     );
 
   } catch (error) {
     console.error("Error in generate-infographic:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
