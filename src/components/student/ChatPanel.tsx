@@ -200,7 +200,7 @@ export const ChatPanel = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background min-h-0">
       <div className="px-6 py-3 border-b border-border bg-card/50">
         <h2 className="font-medium text-sm text-foreground">Chat & Q&A</h2>
         {selectedChapterId 
@@ -211,7 +211,7 @@ export const ChatPanel = ({
 
       <div 
         ref={scrollContainerRef}
-        className="flex-1 px-6 py-4 overflow-y-auto"
+        className="flex-1 px-6 py-4 overflow-y-auto min-h-0"
       >
         {!selectedChapterId ? (
           <div className="flex items-center justify-center h-full text-center">
