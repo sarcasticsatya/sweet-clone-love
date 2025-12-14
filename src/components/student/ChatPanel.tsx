@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, AlertCircle, Video } from "lucide-react";
@@ -31,7 +30,7 @@ export const ChatPanel = ({
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Load chat history when chapter changes
   useEffect(() => {
@@ -49,10 +48,8 @@ export const ChatPanel = ({
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
-      // Get the actual scrollable viewport inside ScrollArea
-      const scrollViewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight;
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
       }
     }, 100);
   }, []);
@@ -212,7 +209,10 @@ export const ChatPanel = ({
         }
       </div>
 
-      <ScrollArea className="flex-1 px-6 py-4" ref={scrollAreaRef}>
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 px-6 py-4 overflow-y-auto"
+      >
         {!selectedChapterId ? (
           <div className="flex items-center justify-center h-full text-center">
             <div className="space-y-3 max-w-sm">
@@ -281,7 +281,7 @@ export const ChatPanel = ({
             <div ref={messagesEndRef} />
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       <div className="px-6 py-4 border-t border-border bg-card/30 sticky bottom-0">
         <div className="max-w-3xl mx-auto flex gap-2">

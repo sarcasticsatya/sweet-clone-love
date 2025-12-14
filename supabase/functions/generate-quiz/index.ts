@@ -49,6 +49,11 @@ function safeParseJSON(content: string): any {
 async function generateQuizFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
   const maxRetries = 2;
   
+  // Generate a random seed for variety
+  const randomSeed = Math.floor(Math.random() * 1000000);
+  const questionTypes = ["conceptual", "factual", "application-based", "analytical", "comparative"];
+  const selectedTypes = questionTypes.sort(() => Math.random() - 0.5).slice(0, 3).join(", ");
+  
   const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -61,24 +66,37 @@ async function generateQuizFromAI(chapter: any, isKannadaChapter: boolean, apiKe
         {
           role: "system",
           content: isKannadaChapter 
-            ? `You are a quiz generator. Generate exactly 5 multiple-choice questions in KANNADA (ಕನ್ನಡ).
+            ? `You are a quiz generator. Generate exactly 5 UNIQUE and DIFFERENT multiple-choice questions in KANNADA (ಕನ್ನಡ).
+
+IMPORTANT: Generate completely NEW questions each time. Use random seed ${randomSeed} for variation.
+Focus on these question types: ${selectedTypes}
 
 Rules:
 - Questions and options must be in Kannada script
 - Each question has exactly 4 options
 - correctAnswer is index 0-3
+- Make questions DIFFERENT from previous generations
+- Cover different aspects/topics from the content
 
 Return ONLY valid JSON:
 {"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0}]}`
-            : `Generate exactly 5 multiple-choice questions in English.
-Each question has exactly 4 options. correctAnswer is index 0-3.
+            : `Generate exactly 5 UNIQUE and DIFFERENT multiple-choice questions in English.
+
+IMPORTANT: Generate completely NEW questions each time. Use random seed ${randomSeed} for variation.
+Focus on these question types: ${selectedTypes}
+
+Rules:
+- Each question has exactly 4 options
+- correctAnswer is index 0-3
+- Make questions DIFFERENT from previous generations
+- Cover different aspects/topics from the content
 
 Return ONLY valid JSON:
 {"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0}]}`
         },
         {
           role: "user",
-          content: `Generate quiz from:\n\n${chapter.content_extracted.substring(0, 6000)}`
+          content: `Random variation: ${randomSeed}\nGenerate a fresh quiz focusing on ${selectedTypes} questions from:\n\n${chapter.content_extracted.substring(0, 6000)}`
         }
       ],
       response_format: { type: "json_object" }
