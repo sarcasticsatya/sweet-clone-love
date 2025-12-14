@@ -49,8 +49,10 @@ export const ChatPanel = ({
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      // Get the actual scrollable viewport inside ScrollArea
+      const scrollViewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollViewport) {
+        scrollViewport.scrollTop = scrollViewport.scrollHeight;
       }
     }, 100);
   }, []);
