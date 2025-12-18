@@ -58,16 +58,8 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
   const generateMindmap = async (regenerate = false) => {
     setLoading(true);
     try {
-      // If regenerating, delete existing mindmap first
-      if (regenerate) {
-        await supabase
-          .from("mindmaps")
-          .delete()
-          .eq("chapter_id", chapterId);
-      }
-
       const { data, error } = await supabase.functions.invoke("generate-mindmap", {
-        body: { chapterId },
+        body: { chapterId, regenerate },
       });
 
       if (error) throw error;

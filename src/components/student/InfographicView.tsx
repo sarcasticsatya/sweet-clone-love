@@ -70,16 +70,8 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
     setLoading(true);
     setCurrentPage(0);
     try {
-      // If regenerating, delete existing infographic first
-      if (regenerate) {
-        await supabase
-          .from("infographics")
-          .delete()
-          .eq("chapter_id", chapterId);
-      }
-
       const { data, error } = await supabase.functions.invoke("generate-infographic", {
-        body: { chapterId },
+        body: { chapterId, regenerate },
       });
 
       if (error) throw error;
