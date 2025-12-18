@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { chapterId } = await req.json();
+    const { chapterId, regenerate } = await req.json();
     const authHeader = req.headers.get("authorization");
 
     if (!chapterId) {
@@ -38,18 +38,38 @@ serve(async (req) => {
       );
     }
 
-    // Check if mindmap already exists for this chapter
-    const { data: existingMindmap } = await supabaseClient
-      .from("mindmaps")
-      .select("mindmap_data")
-      .eq("chapter_id", chapterId)
-      .single();
+    // If regenerate, delete existing mindmap first
+    if (regenerate) {
+      console.log("Regenerating - deleting existing mindmap...");
+      await supabaseClient
+        .from("mindmaps")
+        .delete()
+        .eq("chapter_id", chapterId);
+    } else {
+      // Check if mindmap already exists (and is new image format)
+      const { data: existingMindmap } = await supabaseClient
+        .from("mindmaps")
+        .select("mindmap_data")
+        .eq("chapter_id", chapterId)
+        .single();
 
-    if (existingMindmap) {
-      return new Response(
-        JSON.stringify({ mindmap: existingMindmap.mindmap_data }),
-        { headers: corsHeaders }
-      );
+      if (existingMindmap) {
+        const data = existingMindmap.mindmap_data as any;
+        // Only return cached if it's the new image format
+        if (data?.type === "image" && data?.imageUrl) {
+          console.log("Returning cached image mindmap");
+          return new Response(
+            JSON.stringify({ mindmap: existingMindmap.mindmap_data }),
+            { headers: corsHeaders }
+          );
+        }
+        // Delete old format mindmap
+        console.log("Deleting old format mindmap...");
+        await supabaseClient
+          .from("mindmaps")
+          .delete()
+          .eq("chapter_id", chapterId);
+      }
     }
 
     // Get chapter content
@@ -75,7 +95,7 @@ serve(async (req) => {
 
     const chapterName = chapter.name || chapter.name_kannada;
 
-    // Step 1: Generate mindmap structure from AI
+    // Step 1: Generate mindmap structure from AI (ALWAYS in English for image generation)
     console.log("Generating mindmap structure...");
     const structureResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -92,29 +112,26 @@ serve(async (req) => {
 
 Return a JSON object describing the mindmap:
 {
-  "title": "Main Topic (in English)",
+  "title": "Main Topic Title",
   "branches": [
     {
-      "name": "Branch 1",
+      "name": "Branch 1 Name",
       "subbranches": ["Sub 1.1", "Sub 1.2", "Sub 1.3"]
-    },
-    {
-      "name": "Branch 2", 
-      "subbranches": ["Sub 2.1", "Sub 2.2"]
     }
   ]
 }
 
-Rules:
-- Title should be the main chapter topic
+CRITICAL RULES:
+- ALL TEXT MUST BE IN ENGLISH (translate if content is in another language)
+- Title should be the main chapter topic IN ENGLISH
 - Create 4-6 main branches
 - Each branch should have 2-4 subbranches
 - Keep text SHORT (2-5 words max per item)
-- ALL text must be in ENGLISH (for image generation)`
+- Use simple, clear English words`
           },
           {
             role: "user",
-            content: `Create a mindmap structure for:\n\nChapter: ${chapterName}\n\nContent:\n${chapter.content_extracted.substring(0, 6000)}`
+            content: `Create a mindmap structure for this chapter. TRANSLATE ALL CONTENT TO ENGLISH:\n\nChapter: ${chapterName}\n\nContent:\n${chapter.content_extracted.substring(0, 6000)}`
           }
         ],
         response_format: { type: "json_object" }
@@ -122,48 +139,51 @@ Rules:
     });
 
     if (!structureResponse.ok) {
+      const errText = await structureResponse.text();
+      console.error("Structure generation failed:", errText);
       throw new Error("Failed to generate mindmap structure");
     }
 
     const structureData = await structureResponse.json();
     const structureContent = structureData.choices[0]?.message?.content || "";
-    const structure = JSON.parse(structureContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim());
+    
+    let structure;
+    try {
+      structure = JSON.parse(structureContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim());
+    } catch (e) {
+      console.error("Failed to parse structure JSON:", structureContent);
+      throw new Error("Failed to parse mindmap structure");
+    }
 
-    console.log("Mindmap structure:", JSON.stringify(structure).substring(0, 200));
+    console.log("Mindmap structure generated:", JSON.stringify(structure).substring(0, 300));
 
-    // Step 2: Generate mindmap as an IMAGE (MindMaple/NotebookLM style)
+    // Step 2: Generate mindmap as an IMAGE
     console.log("Generating mindmap image...");
     
     const branchDescriptions = structure.branches?.map((b: any, i: number) => 
       `Branch ${i + 1}: "${b.name}" with sub-items: ${b.subbranches?.join(", ") || "none"}`
     ).join("\n") || "";
 
-    const imagePrompt = `Create a beautiful, professional MIND MAP IMAGE for educational content.
+    const imagePrompt = `Generate a professional MIND MAP diagram image.
 
-MINDMAP CONTENT:
-Central Topic: "${structure.title || chapterName}"
+EXACT CONTENT TO DISPLAY:
+Central Topic: "${structure.title}"
 
 ${branchDescriptions}
 
-STRICT DESIGN REQUIREMENTS:
-- Central topic in a large oval/rounded rectangle in the CENTER of the image
-- Main branches radiating outward from center like a tree/organic structure
-- Each main branch MUST be a DIFFERENT COLOR (use vibrant colors: blue, green, orange, purple, red, teal)
-- Sub-branches extending from main branches with smaller text
-- Curved, organic connector lines (not straight lines)
-- Clean white background
-- Professional typography with clear, readable text
-- Hierarchy shown through size: central node largest > main branches medium > sub-branches smallest
-- Include small relevant icons or visual elements
-- Balanced layout with branches spread evenly around center
+STRICT VISUAL REQUIREMENTS:
+1. Central topic in large rounded rectangle at CENTER
+2. Main branches radiating outward with CURVED connecting lines
+3. Each branch DIFFERENT COLOR (blue, green, orange, purple, red, teal)
+4. Sub-branches extending from main branches
+5. WHITE background
+6. Large, readable text in each node
+7. Rounded corners on all shapes
+8. Professional typography
+9. Balanced layout - branches evenly spread around center
+10. Include relevant small icons near topics
 
-VISUAL STYLE:
-- Modern, clean professional design
-- Gradient or solid colored nodes with rounded corners
-- Soft shadows for depth
-- Clear visual hierarchy
-
-Ultra high resolution mind map visualization.`;
+STYLE: Clean, modern, professional mind map. High resolution.`;
 
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -193,6 +213,7 @@ Ultra high resolution mind map visualization.`;
     const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!imageUrl) {
+      console.error("No image URL in response:", JSON.stringify(imageData).substring(0, 500));
       throw new Error("No mindmap image generated");
     }
 

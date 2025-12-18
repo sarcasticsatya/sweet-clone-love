@@ -7,19 +7,18 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Generate a single infographic page with proper text (Kannada or English)
+// Generate a single infographic page - ALWAYS with English text (AI cannot render Kannada)
 async function generateInfographicPage(
   sectionContent: string,
   sectionTitle: string,
   pageNumber: number,
   totalPages: number,
-  isKannada: boolean,
   apiKey: string
 ): Promise<string | null> {
   try {
-    console.log(`Generating infographic page ${pageNumber}/${totalPages}: ${sectionTitle}, isKannada: ${isKannada}`);
+    console.log(`Generating infographic page ${pageNumber}/${totalPages}: ${sectionTitle}`);
 
-    // First get key points for the infographic
+    // First extract and TRANSLATE key points to English (AI image gen cannot render Kannada)
     const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -31,16 +30,13 @@ async function generateInfographicPage(
         messages: [
           {
             role: "system",
-            content: isKannada 
-              ? `Extract 4-5 KEY POINTS from this educational content for an infographic.
-Return the points in KANNADA (ಕನ್ನಡ) language using proper Kannada Unicode script.
-Each point should be 5-10 words maximum.
-Format: Return ONLY a JSON object with "points" array.
-Example: {"points": ["ಮೊದಲ ಪ್ರಮುಖ ಅಂಶ", "ಎರಡನೆಯ ಪ್ರಮುಖ ಅಂಶ"]}`
-              : `Extract 4-5 KEY POINTS from this educational content for an infographic.
-Each point should be 5-10 words maximum.
-Format: Return ONLY a JSON object with "points" array.
-Example: {"points": ["First key point here", "Second key point here"]}`
+            content: `Extract 4-5 KEY POINTS from this educational content.
+IMPORTANT: Return the points in ENGLISH only. If content is in Kannada or any other language, TRANSLATE to English.
+
+Format: Return ONLY a JSON object with "points" array containing English text.
+Example: {"points": ["First key point in English", "Second key point in English"]}
+
+Each point should be 5-10 words maximum, clear and educational.`
           },
           {
             role: "user",
@@ -67,51 +63,28 @@ Example: {"points": ["First key point here", "Second key point here"]}`
 
     console.log(`Key points for page ${pageNumber}:`, keyPoints);
 
-    // Generate the infographic image WITH text
-    // STRICT instructions for Kannada text rendering
-    const imagePrompt = isKannada 
-      ? `CRITICAL: Generate an EDUCATIONAL INFOGRAPHIC IMAGE with KANNADA SCRIPT TEXT.
+    // Generate infographic with English text (AI cannot render Kannada properly)
+    const imagePrompt = `Generate an EDUCATIONAL INFOGRAPHIC POSTER IMAGE.
 
-PAGE ${pageNumber} OF ${totalPages} - TOPIC: ${sectionTitle}
+PAGE ${pageNumber} OF ${totalPages}
+TOPIC: ${sectionTitle}
 
-**MANDATORY KANNADA TEXT TO INCLUDE IN IMAGE (copy exactly):**
-${keyPoints.map((p, i) => `• ${p}`).join('\n')}
-
-**STRICT REQUIREMENTS:**
-1. YOU MUST RENDER THE KANNADA TEXT ABOVE EXACTLY AS SHOWN - character by character
-2. Use LARGE, BOLD Kannada font (ಕನ್ನಡ ಅಕ್ಷರಗಳು) that is clearly readable
-3. Each bullet point should be in a colored box or bubble
-4. Text size must be minimum 24pt equivalent for readability
-5. White/light cream background
-6. Use vibrant colors: blue (#2563eb), green (#16a34a), orange (#ea580c), purple (#9333ea)
-7. Add relevant educational ICONS (NOT text descriptions) next to each point
-8. Include connecting arrows between related concepts
-9. Professional infographic poster layout
-
-**DO NOT:**
-- Use English text anywhere
-- Use gibberish or placeholder text
-- Render text too small to read
-
-The Kannada script text MUST be rendered correctly and legibly. Ultra high resolution.`
-      : `Generate an EDUCATIONAL INFOGRAPHIC POSTER IMAGE.
-
-PAGE ${pageNumber} OF ${totalPages} - TOPIC: ${sectionTitle}
-
-**TEXT TO INCLUDE IN IMAGE:**
+EXACT TEXT TO INCLUDE IN IMAGE:
 ${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-**REQUIREMENTS:**
-1. Include ALL text points above prominently in the image
-2. Large, bold, readable font (minimum 24pt equivalent)
-3. Each point in a colored box or bubble
-4. White/light background
-5. Vibrant educational colors: blue, green, orange, purple
-6. Relevant icons next to each point
-7. Connecting arrows between concepts
-8. Professional poster layout
+STRICT DESIGN REQUIREMENTS:
+1. Include ALL the numbered points above as readable text in the image
+2. Each point in a colored box/bubble (different colors: blue, green, orange, purple)
+3. Large, bold font - minimum 24pt equivalent for readability
+4. White/light cream background
+5. Relevant educational icons next to each point
+6. Connecting arrows between related concepts
+7. Professional infographic poster layout
+8. Clear visual hierarchy with numbered sections
+9. Add small relevant illustrations/diagrams
 
-Ultra high resolution. Text must be crisp and readable.`;
+CRITICAL: The text must be clearly readable and properly rendered.
+Ultra high resolution educational poster.`;
 
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -162,17 +135,19 @@ async function splitIntoSections(content: string, chapterName: string, apiKey: s
           {
             role: "system",
             content: `Split the chapter content into 4 logical sections for creating a multi-page infographic.
+Return section titles in ENGLISH (translate if needed).
 
 Return a JSON object:
 {
   "sections": [
-    { "title": "Section Title", "startPhrase": "first few words" }
+    { "title": "Section Title in English", "startPhrase": "first few words" }
   ]
 }
 
 Rules:
 - Create exactly 4 sections
-- Each section should cover a distinct topic`
+- Each section should cover a distinct topic
+- Titles MUST be in English`
           },
           {
             role: "user",
@@ -249,7 +224,7 @@ serve(async (req) => {
   }
 
   try {
-    const { chapterId } = await req.json();
+    const { chapterId, regenerate } = await req.json();
     const authHeader = req.headers.get("authorization");
 
     if (!chapterId) {
@@ -274,19 +249,28 @@ serve(async (req) => {
       );
     }
 
-    // Check for existing infographic (cached)
-    const { data: existing } = await supabaseClient
-      .from("infographics")
-      .select("*")
-      .eq("chapter_id", chapterId)
-      .single();
+    // If regenerate, delete existing first
+    if (regenerate) {
+      console.log("Regenerating - deleting existing infographic...");
+      await supabaseClient
+        .from("infographics")
+        .delete()
+        .eq("chapter_id", chapterId);
+    } else {
+      // Check for existing infographic (cached)
+      const { data: existing } = await supabaseClient
+        .from("infographics")
+        .select("*")
+        .eq("chapter_id", chapterId)
+        .single();
 
-    if (existing) {
-      console.log("Returning cached infographic");
-      return new Response(
-        JSON.stringify({ infographic: existing }),
-        { headers: corsHeaders }
-      );
+      if (existing) {
+        console.log("Returning cached infographic");
+        return new Response(
+          JSON.stringify({ infographic: existing }),
+          { headers: corsHeaders }
+        );
+      }
     }
 
     // Get chapter content
@@ -304,10 +288,6 @@ serve(async (req) => {
     }
 
     const chapterName = chapter.name || chapter.name_kannada;
-    
-    // Detect if Kannada chapter
-    const isKannada = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
-    console.log("IS KANNADA CHAPTER:", isKannada);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -319,14 +299,13 @@ serve(async (req) => {
     const sections = await splitIntoSections(chapter.content_extracted, chapterName, LOVABLE_API_KEY);
     console.log(`Created ${sections.length} sections`);
 
-    // Generate infographic pages (always 4 pages)
+    // Generate infographic pages (always 4 pages, always with English text)
     const pagePromises = sections.slice(0, 4).map((section, idx) =>
       generateInfographicPage(
         section.content,
         section.title,
         idx + 1,
         4,
-        isKannada,
         LOVABLE_API_KEY
       )
     );
