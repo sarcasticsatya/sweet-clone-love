@@ -199,6 +199,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          image_url: string | null
           question: string
         }
         Insert: {
@@ -207,6 +208,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          image_url?: string | null
           question: string
         }
         Update: {
@@ -215,6 +217,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          image_url?: string | null
           question?: string
         }
         Relationships: [
@@ -233,18 +236,21 @@ export type Database = {
           created_at: string
           id: string
           image_url: string
+          image_urls: Json | null
         }
         Insert: {
           chapter_id: string
           created_at?: string
           id?: string
           image_url: string
+          image_urls?: Json | null
         }
         Update: {
           chapter_id?: string
           created_at?: string
           id?: string
           image_url?: string
+          image_urls?: Json | null
         }
         Relationships: [
           {

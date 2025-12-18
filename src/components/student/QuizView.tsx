@@ -6,8 +6,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Eye, RotateCcw, Loader2, History, Trophy, Brain, Sparkles } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, RotateCcw, Loader2, History, Trophy, Brain, Sparkles, ZoomIn } from "lucide-react";
 
 interface QuizViewProps {
   chapterId: string;
@@ -42,7 +43,7 @@ const QuizLoadingAnimation = () => (
     <div className="text-center space-y-2">
       <p className="text-sm md:text-base font-medium text-foreground">Generating Quiz</p>
       <p className="text-xs md:text-sm text-muted-foreground animate-pulse">
-        Creating questions from your chapter...
+        Creating questions with diagrams...
       </p>
     </div>
     {/* Progress dots */}
@@ -57,6 +58,39 @@ const QuizLoadingAnimation = () => (
     </div>
   </div>
 );
+
+// Zoomable diagram component
+const QuestionDiagram = ({ diagramUrl, question }: { diagramUrl: string; question: string }) => {
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  return (
+    <>
+      <div 
+        className="relative mb-4 cursor-pointer group"
+        onClick={() => setIsZoomed(true)}
+      >
+        <img
+          src={diagramUrl}
+          alt="Question diagram"
+          className="w-full max-h-48 object-contain rounded-lg border border-border bg-white"
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg flex items-center justify-center">
+          <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+        </div>
+      </div>
+
+      <Dialog open={isZoomed} onOpenChange={setIsZoomed}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-2">
+          <img
+            src={diagramUrl}
+            alt="Question diagram (zoomed)"
+            className="w-full h-full object-contain bg-white rounded"
+          />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
 
 export const QuizView = ({ chapterId }: QuizViewProps) => {
   const [quiz, setQuiz] = useState<any>(null);
@@ -261,6 +295,12 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
                       <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-500 flex-shrink-0" />
                     )}
                   </div>
+                  
+                  {/* Question diagram */}
+                  {q.diagramUrl && (
+                    <QuestionDiagram diagramUrl={q.diagramUrl} question={q.question} />
+                  )}
+                  
                   <p className="font-medium mb-3 text-sm md:text-base leading-relaxed">{q.question}</p>
                   <div className="space-y-2">
                     {q.options.map((option: string, optIdx: number) => {
@@ -379,6 +419,11 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
         <Card>
           <CardContent className="p-3 md:p-4">
+            {/* Question diagram */}
+            {currentQuestion.diagramUrl && (
+              <QuestionDiagram diagramUrl={currentQuestion.diagramUrl} question={currentQuestion.question} />
+            )}
+            
             <p className="font-medium mb-4 text-sm md:text-base leading-relaxed">
               {currentQuestion.question}
             </p>
