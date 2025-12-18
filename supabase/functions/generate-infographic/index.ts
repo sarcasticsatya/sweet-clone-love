@@ -7,18 +7,19 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Generate a single infographic page - VISUAL ONLY for all languages to avoid encoding issues
+// Generate a single infographic page with proper text (Kannada or English)
 async function generateInfographicPage(
   sectionContent: string,
   sectionTitle: string,
   pageNumber: number,
   totalPages: number,
+  isKannada: boolean,
   apiKey: string
 ): Promise<string | null> {
   try {
-    console.log(`Generating infographic page ${pageNumber}/${totalPages}: ${sectionTitle}`);
+    console.log(`Generating infographic page ${pageNumber}/${totalPages}: ${sectionTitle}, isKannada: ${isKannada}`);
 
-    // First get a summary for the image prompt
+    // First get key points for the infographic
     const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -30,20 +31,23 @@ async function generateInfographicPage(
         messages: [
           {
             role: "system",
-            content: `Analyze this educational content and create an ENGLISH visual description for an infographic.
-The infographic will be VISUAL ONLY - no text will be rendered.
-Return ONLY a single paragraph (max 150 words) describing:
-- 4-6 key visual concepts to illustrate
-- Diagrams, flowcharts, or illustrations needed
-- Icons and symbols to represent ideas
-- How to visually show relationships between concepts
-Focus ONLY on visual elements that can be drawn without text.`
+            content: isKannada 
+              ? `Extract 4-5 KEY POINTS from this educational content for an infographic.
+Return the points in KANNADA (ಕನ್ನಡ) language using proper Kannada Unicode script.
+Each point should be 5-10 words maximum.
+Format: Return ONLY a JSON object with "points" array.
+Example: {"points": ["ಮೊದಲ ಪ್ರಮುಖ ಅಂಶ", "ಎರಡನೆಯ ಪ್ರಮುಖ ಅಂಶ"]}`
+              : `Extract 4-5 KEY POINTS from this educational content for an infographic.
+Each point should be 5-10 words maximum.
+Format: Return ONLY a JSON object with "points" array.
+Example: {"points": ["First key point here", "Second key point here"]}`
           },
           {
             role: "user",
             content: `Section: ${sectionTitle}\n\nContent:\n${sectionContent.substring(0, 3000)}`
           }
-        ]
+        ],
+        response_format: { type: "json_object" }
       }),
     });
 
@@ -52,34 +56,58 @@ Focus ONLY on visual elements that can be drawn without text.`
     }
 
     const summaryData = await summaryResponse.json();
-    const summaryPrompt = summaryData.choices[0]?.message?.content || "";
+    let keyPoints: string[] = [];
+    
+    try {
+      const parsed = JSON.parse(summaryData.choices[0]?.message?.content || "{}");
+      keyPoints = parsed.points || [];
+    } catch {
+      keyPoints = ["Key concept 1", "Key concept 2", "Key concept 3", "Key concept 4"];
+    }
 
-    // Generate the infographic image - VISUAL ONLY, NO TEXT
-    const imagePrompt = `Create a beautiful educational infographic poster (Page ${pageNumber} of ${totalPages}).
+    console.log(`Key points for page ${pageNumber}:`, keyPoints);
 
-CRITICAL: This must be VISUAL ONLY - absolutely NO TEXT, NO LABELS, NO WORDS of any kind.
+    // Generate the infographic image WITH text
+    const imagePrompt = isKannada 
+      ? `Create a beautiful educational infographic poster in KANNADA language.
 
-Style requirements:
-- Clean, professional educational poster design
-- ONLY visual elements: icons, diagrams, illustrations, flowcharts
-- Use arrows, lines, and connectors to show relationships
-- Color scheme: vibrant educational colors (blues, greens, oranges, purples)
-- White or light background for clarity
-- High contrast between elements
-- Use universally recognizable icons and symbols
-- Include 4-6 main visual concepts arranged logically
-- Show hierarchy and connections visually
+PAGE ${pageNumber} OF ${totalPages} - ${sectionTitle}
 
-Visual elements to include:
-${summaryPrompt}
+IMPORTANT: Include KANNADA TEXT (ಕನ್ನಡ ಲಿಪಿ) in the infographic:
+${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-IMPORTANT: 
-- NO TEXT whatsoever - not even numbers or letters
-- NO labels, captions, or titles
-- ONLY icons, diagrams, arrows, shapes, and illustrations
-- Make it understandable through visuals alone
+Design requirements:
+- Professional educational poster style
+- Include the Kannada text points prominently
+- Use clear, readable Kannada typography
+- Color scheme: vibrant educational colors (blues, greens, oranges)
+- White or light background
+- Add relevant icons and diagrams alongside text
+- Show visual hierarchy with sections
+- Include arrows and connectors between concepts
+- Make text LARGE and READABLE
 
-Make it look like a premium visual study guide. Ultra high resolution.`;
+Style: Modern educational infographic with Kannada script text.
+Ultra high resolution. Make text crisp and clear.`
+      : `Create a beautiful educational infographic poster.
+
+PAGE ${pageNumber} OF ${totalPages} - ${sectionTitle}
+
+Include these KEY POINTS as text in the infographic:
+${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+
+Design requirements:
+- Professional educational poster style
+- Include the text points prominently with large readable font
+- Color scheme: vibrant educational colors (blues, greens, oranges)
+- White or light background
+- Add relevant icons and diagrams alongside text
+- Show visual hierarchy with numbered sections
+- Include arrows and connectors between concepts
+- Make text LARGE and READABLE
+
+Style: Modern educational infographic with clear text labels.
+Ultra high resolution. Make text crisp and clear.`;
 
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -129,18 +157,17 @@ async function splitIntoSections(content: string, chapterName: string, apiKey: s
         messages: [
           {
             role: "system",
-            content: `Split the chapter content into 4 logical sections for creating a multi-page visual infographic.
+            content: `Split the chapter content into 4 logical sections for creating a multi-page infographic.
 
 Return a JSON object:
 {
   "sections": [
-    { "title": "Section Title in English", "startPhrase": "first few words" }
+    { "title": "Section Title", "startPhrase": "first few words" }
   ]
 }
 
 Rules:
 - Create exactly 4 sections
-- Titles must be in ENGLISH (for image generation)
 - Each section should cover a distinct topic`
           },
           {
@@ -160,17 +187,15 @@ Rules:
     const result = JSON.parse(data.choices[0]?.message?.content || "{}");
     
     if (!result.sections || result.sections.length === 0) {
-      // Fallback: split by equal parts
       const partLength = Math.ceil(content.length / 4);
       return [
-        { title: "Introduction and Overview", content: content.substring(0, partLength) },
+        { title: "Introduction", content: content.substring(0, partLength) },
         { title: "Core Concepts", content: content.substring(partLength, partLength * 2) },
-        { title: "Key Details and Examples", content: content.substring(partLength * 2, partLength * 3) },
-        { title: "Summary and Applications", content: content.substring(partLength * 3) }
+        { title: "Key Details", content: content.substring(partLength * 2, partLength * 3) },
+        { title: "Summary", content: content.substring(partLength * 3) }
       ];
     }
 
-    // Map sections to content
     const sections: { title: string; content: string }[] = [];
     const contentLower = content.toLowerCase();
     
@@ -275,6 +300,10 @@ serve(async (req) => {
     }
 
     const chapterName = chapter.name || chapter.name_kannada;
+    
+    // Detect if Kannada chapter
+    const isKannada = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
+    console.log("IS KANNADA CHAPTER:", isKannada);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -293,6 +322,7 @@ serve(async (req) => {
         section.title,
         idx + 1,
         4,
+        isKannada,
         LOVABLE_API_KEY
       )
     );
