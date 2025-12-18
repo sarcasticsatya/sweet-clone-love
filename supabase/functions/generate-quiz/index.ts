@@ -7,9 +7,7 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Helper function to safely parse JSON with recovery attempts
 function safeParseJSON(content: string): any {
-  // Remove markdown code blocks
   let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   
   try {
@@ -17,29 +15,24 @@ function safeParseJSON(content: string): any {
   } catch (e) {
     console.log("Initial parse failed, attempting recovery...");
     
-    // Try to find the last complete question and truncate there
-    const questionsMatch = cleaned.match(/"questions"\s*:\s*\[/);
-    if (questionsMatch) {
-      // Find all complete question objects
-      const completeQuestions: any[] = [];
-      const questionRegex = /\{\s*"question"\s*:\s*"[^"]+"\s*,\s*"options"\s*:\s*\[\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"[^"]+"\s*\]\s*,\s*"correctAnswer"\s*:\s*\d+\s*\}/g;
-      
-      let match;
-      while ((match = questionRegex.exec(cleaned)) !== null) {
-        try {
-          const q = JSON.parse(match[0]);
-          if (q.question && q.options?.length === 4 && typeof q.correctAnswer === "number") {
-            completeQuestions.push(q);
-          }
-        } catch {
-          // Skip invalid question
+    const completeQuestions: any[] = [];
+    const questionRegex = /\{\s*"question"\s*:\s*"[^"]+"\s*,\s*"options"\s*:\s*\[\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"[^"]+"\s*\]\s*,\s*"correctAnswer"\s*:\s*\d+\s*\}/g;
+    
+    let match;
+    while ((match = questionRegex.exec(cleaned)) !== null) {
+      try {
+        const q = JSON.parse(match[0]);
+        if (q.question && q.options?.length === 4 && typeof q.correctAnswer === "number") {
+          completeQuestions.push(q);
         }
+      } catch {
+        // Skip invalid question
       }
-      
-      if (completeQuestions.length >= 5) {
-        console.log(`Recovered ${completeQuestions.length} complete questions`);
-        return { questions: completeQuestions };
-      }
+    }
+    
+    if (completeQuestions.length >= 10) {
+      console.log(`Recovered ${completeQuestions.length} complete questions`);
+      return { questions: completeQuestions };
     }
     
     throw new Error("Could not parse quiz JSON: " + (e as Error).message);
@@ -49,7 +42,7 @@ function safeParseJSON(content: string): any {
 // Generate educational diagram for a quiz question
 async function generateDiagramForQuestion(question: string, topic: string, apiKey: string): Promise<string | null> {
   try {
-    console.log("Generating diagram for question:", question.substring(0, 50));
+    console.log("Generating diagram for:", question.substring(0, 40));
     
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -62,18 +55,21 @@ async function generateDiagramForQuestion(question: string, topic: string, apiKe
         messages: [
           {
             role: "user",
-            content: `Create a simple, clear educational diagram for a quiz question.
-Question topic: ${topic}
-Question: ${question}
+            content: `Create a simple educational diagram for this quiz question.
 
-Create a clean, educational illustration that helps visualize this concept.
-Style: Simple line drawing or diagram style, educational poster quality.
-- Use clear labels and arrows
+Topic: ${topic}
+Question context: ${question}
+
+Requirements:
+- Clean, simple educational illustration
 - White background
-- Simple color scheme (2-3 colors max)
-- No text except minimal labels
-- Focus on the scientific/mathematical concept
-Ultra high resolution.`
+- Clear visual representation of the concept
+- NO TEXT - only visual elements, icons, diagrams
+- Use simple shapes, arrows, and icons
+- Educational poster style
+- 2-3 colors maximum
+
+Make it simple and clear. Ultra high resolution.`
           }
         ],
         modalities: ["image", "text"]
@@ -81,7 +77,7 @@ Ultra high resolution.`
     });
 
     if (!imageResponse.ok) {
-      console.error("Diagram generation failed:", await imageResponse.text());
+      console.error("Image generation failed for question");
       return null;
     }
 
@@ -98,7 +94,6 @@ Ultra high resolution.`
 async function generateQuizFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
   const maxRetries = 2;
   
-  // Generate a random seed for variety
   const randomSeed = Math.floor(Math.random() * 1000000);
   const questionTypes = ["conceptual", "factual", "application-based", "analytical", "comparative"];
   const selectedTypes = questionTypes.sort(() => Math.random() - 0.5).slice(0, 3).join(", ");
@@ -115,39 +110,39 @@ async function generateQuizFromAI(chapter: any, isKannadaChapter: boolean, apiKe
         {
           role: "system",
           content: isKannadaChapter 
-            ? `You are a quiz generator. Generate exactly 5 UNIQUE and DIFFERENT multiple-choice questions in KANNADA (ಕನ್ನಡ).
+            ? `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions in KANNADA (ಕನ್ನಡ).
 
-IMPORTANT: Generate completely NEW questions each time. Use random seed ${randomSeed} for variation.
-Focus on these question types: ${selectedTypes}
+Random seed: ${randomSeed}
+Question types focus: ${selectedTypes}
 
 Rules:
 - Questions and options must be in Kannada script
 - Each question has exactly 4 options
 - correctAnswer is index 0-3
 - Make questions DIFFERENT from previous generations
-- Cover different aspects/topics from the content
-- Mark questions that need diagrams with needsDiagram: true (for science/math visual concepts)
+- Cover ALL aspects/topics from the content thoroughly
+- Include mix of easy, medium, and hard questions
 
 Return ONLY valid JSON:
-{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0,"needsDiagram":false,"diagramTopic":"topic for diagram if needed"}]}`
-            : `Generate exactly 5 UNIQUE and DIFFERENT multiple-choice questions in English.
+{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0}]}`
+            : `Generate exactly 15 UNIQUE multiple-choice questions in English.
 
-IMPORTANT: Generate completely NEW questions each time. Use random seed ${randomSeed} for variation.
-Focus on these question types: ${selectedTypes}
+Random seed: ${randomSeed}
+Question types focus: ${selectedTypes}
 
 Rules:
 - Each question has exactly 4 options
 - correctAnswer is index 0-3
 - Make questions DIFFERENT from previous generations
-- Cover different aspects/topics from the content
-- Mark 2-3 questions that would benefit from diagrams with needsDiagram: true (especially for science/math concepts)
+- Cover ALL aspects/topics from the content thoroughly
+- Include mix of easy, medium, and hard questions
 
 Return ONLY valid JSON:
-{"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0,"needsDiagram":false,"diagramTopic":"topic for diagram if needed"}]}`
+{"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0}]}`
         },
         {
           role: "user",
-          content: `Random variation: ${randomSeed}\nGenerate a fresh quiz focusing on ${selectedTypes} questions from:\n\n${chapter.content_extracted.substring(0, 6000)}`
+          content: `Generate 15 unique quiz questions from:\n\n${chapter.content_extracted.substring(0, 8000)}`
         }
       ],
       response_format: { type: "json_object" }
@@ -164,7 +159,6 @@ Return ONLY valid JSON:
   const content = aiData.choices[0]?.message?.content || "";
   
   console.log("AI Response length:", content.length);
-  console.log("AI Response preview:", content.substring(0, 400));
   
   try {
     const parsed = safeParseJSON(content);
@@ -173,31 +167,24 @@ Return ONLY valid JSON:
       throw new Error("No questions in response");
     }
     
-    // Validate and clean questions - ensure no blank options
     const validQuestions = parsed.questions.filter((q: any) => {
-      // Check basic structure
       if (!q.question || typeof q.question !== "string" || !q.question.trim()) return false;
       if (!Array.isArray(q.options) || q.options.length !== 4) return false;
       if (typeof q.correctAnswer !== "number" || q.correctAnswer < 0 || q.correctAnswer > 3) return false;
       
-      // CRITICAL: Ensure ALL options have non-empty content
       const allOptionsValid = q.options.every((opt: any) => 
         opt && typeof opt === "string" && opt.trim().length > 0
       );
-      if (!allOptionsValid) {
-        console.log("Skipping question with blank options:", q.question.substring(0, 50));
-        return false;
-      }
+      if (!allOptionsValid) return false;
       
       return true;
     });
     
-    if (validQuestions.length < 3) {
+    if (validQuestions.length < 10) {
       console.log("Only", validQuestions.length, "valid questions found, retrying...");
-      throw new Error("Too few valid questions - some had blank options");
+      throw new Error("Too few valid questions");
     }
     
-    // For Kannada chapters, verify Kannada text exists
     if (isKannadaChapter) {
       const allText = validQuestions.map((q: any) => q.question + q.options.join(" ")).join(" ");
       if (!/[\u0C80-\u0CFF]/.test(allText)) {
@@ -247,13 +234,8 @@ serve(async (req) => {
       );
     }
 
-    // Delete existing quiz
-    await supabaseClient
-      .from("quizzes")
-      .delete()
-      .eq("chapter_id", chapterId);
+    await supabaseClient.from("quizzes").delete().eq("chapter_id", chapterId);
 
-    // Get chapter content
     const { data: chapter } = await supabaseClient
       .from("chapters")
       .select("content_extracted, name, name_kannada")
@@ -267,7 +249,6 @@ serve(async (req) => {
       );
     }
 
-    // Detect Kannada by name_kannada field
     const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
     console.log("IS KANNADA CHAPTER:", isKannadaChapter);
 
@@ -280,38 +261,30 @@ serve(async (req) => {
     
     console.log("Successfully parsed", parsed.questions.length, "questions");
 
-    // Generate diagrams for questions marked as needing them (max 3)
-    const questionsNeedingDiagrams = parsed.questions
-      .map((q: any, idx: number) => ({ ...q, originalIndex: idx }))
-      .filter((q: any) => q.needsDiagram)
-      .slice(0, 3);
-
-    console.log(`Generating diagrams for ${questionsNeedingDiagrams.length} questions`);
-
-    // Generate diagrams in parallel
-    const diagramPromises = questionsNeedingDiagrams.map(async (q: any) => {
-      const diagramUrl = await generateDiagramForQuestion(
-        q.question,
-        q.diagramTopic || chapter.name,
-        LOVABLE_API_KEY
+    // Generate diagrams for ALL questions (in batches of 5 for rate limiting)
+    const questionsWithDiagrams: any[] = [];
+    const batchSize = 5;
+    
+    for (let i = 0; i < parsed.questions.length; i += batchSize) {
+      const batch = parsed.questions.slice(i, i + batchSize);
+      console.log(`Generating diagrams for batch ${Math.floor(i/batchSize) + 1}`);
+      
+      const diagramPromises = batch.map((q: any) => 
+        generateDiagramForQuestion(q.question, chapter.name, LOVABLE_API_KEY)
       );
-      return { index: q.originalIndex, diagramUrl };
-    });
+      
+      const diagramResults = await Promise.all(diagramPromises);
+      
+      batch.forEach((q: any, idx: number) => {
+        questionsWithDiagrams.push({
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          diagramUrl: diagramResults[idx] || null
+        });
+      });
+    }
 
-    const diagramResults = await Promise.all(diagramPromises);
-
-    // Add diagram URLs to questions
-    const questionsWithDiagrams = parsed.questions.map((q: any, idx: number) => {
-      const diagramResult = diagramResults.find(d => d.index === idx);
-      return {
-        question: q.question,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
-        diagramUrl: diagramResult?.diagramUrl || null
-      };
-    });
-
-    // Store quiz
     const { data: quiz, error: insertError } = await supabaseClient
       .from("quizzes")
       .insert({
