@@ -102,8 +102,9 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
     }
   };
 
-  // Check if mindmap is image-based
+  // Check if mindmap is image-based (new format) or legacy format
   const isImageBased = mindmapData?.type === "image" && mindmapData?.imageUrl;
+  const isLegacyFormat = mindmapData && !mindmapData.imageUrl && (mindmapData.nodes || mindmapData.edges);
 
   if (initialLoad && loading) {
     return (
@@ -122,7 +123,7 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
             <Network className="w-3.5 h-3.5" />
             Mind Map
           </h3>
-          {mindmapData && (
+          {(mindmapData && isImageBased) && (
             <div className="flex gap-1">
               <Button 
                 variant="ghost" 
@@ -185,8 +186,33 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
                 </div>
               </div>
               <p className="text-[10px] text-muted-foreground text-center">
-                Tap to zoom • MindMaple style visualization
+                Tap to zoom
               </p>
+            </div>
+          ) : isLegacyFormat ? (
+            <div className="text-center py-12 space-y-4">
+              <div className="relative inline-block">
+                <Network className="w-12 h-12 text-muted-foreground/50 mx-auto" />
+                <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full p-1">
+                  <RefreshCw className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Upgrade Mind Map
+                </p>
+                <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">
+                  Regenerate for a beautiful visual mind map image
+                </p>
+              </div>
+              <Button 
+                size="sm" 
+                onClick={() => generateMindmap(true)} 
+                disabled={loading}
+                className="text-xs"
+              >
+                Regenerate Mind Map
+              </Button>
             </div>
           ) : (
             <div className="text-center py-12 space-y-4">
@@ -201,7 +227,7 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
                   Visual Mind Map
                 </p>
                 <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">
-                  Generate a beautiful mind map image in MindMaple/NotebookLM style
+                  Generate a visual concept map for this chapter
                 </p>
               </div>
               <Button 

@@ -138,33 +138,32 @@ Rules:
       `Branch ${i + 1}: "${b.name}" with sub-items: ${b.subbranches?.join(", ") || "none"}`
     ).join("\n") || "";
 
-    const imagePrompt = `Create a beautiful, professional mind map image in the style of MindMaple or Google NotebookLM.
+    const imagePrompt = `Create a beautiful, professional MIND MAP IMAGE for educational content.
 
 MINDMAP CONTENT:
 Central Topic: "${structure.title || chapterName}"
 
 ${branchDescriptions}
 
-DESIGN REQUIREMENTS:
-- Central topic in a large oval/rounded rectangle in the CENTER
+STRICT DESIGN REQUIREMENTS:
+- Central topic in a large oval/rounded rectangle in the CENTER of the image
 - Main branches radiating outward from center like a tree/organic structure
-- Each main branch in a DIFFERENT COLOR (use vibrant colors: blue, green, orange, purple, red, teal)
+- Each main branch MUST be a DIFFERENT COLOR (use vibrant colors: blue, green, orange, purple, red, teal)
 - Sub-branches extending from main branches with smaller text
-- Curved, organic connector lines (not straight)
+- Curved, organic connector lines (not straight lines)
 - Clean white background
-- Professional typography - clear, readable text
-- Hierarchy shown through size: central > branches > sub-branches
-- Include small icons or visual elements where appropriate
+- Professional typography with clear, readable text
+- Hierarchy shown through size: central node largest > main branches medium > sub-branches smallest
+- Include small relevant icons or visual elements
 - Balanced layout with branches spread evenly around center
 
-STYLE:
-- Modern, clean design like professional mind mapping software
-- Gradient or solid colored nodes
+VISUAL STYLE:
+- Modern, clean professional design
+- Gradient or solid colored nodes with rounded corners
 - Soft shadows for depth
-- Rounded corners on all shapes
 - Clear visual hierarchy
 
-Make it look exactly like a MindMaple or NotebookLM generated mind map. Ultra high resolution.`;
+Ultra high resolution mind map visualization.`;
 
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

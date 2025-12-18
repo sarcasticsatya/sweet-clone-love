@@ -68,46 +68,50 @@ Example: {"points": ["First key point here", "Second key point here"]}`
     console.log(`Key points for page ${pageNumber}:`, keyPoints);
 
     // Generate the infographic image WITH text
+    // STRICT instructions for Kannada text rendering
     const imagePrompt = isKannada 
-      ? `Create a beautiful educational infographic poster in KANNADA language.
+      ? `CRITICAL: Generate an EDUCATIONAL INFOGRAPHIC IMAGE with KANNADA SCRIPT TEXT.
 
-PAGE ${pageNumber} OF ${totalPages} - ${sectionTitle}
+PAGE ${pageNumber} OF ${totalPages} - TOPIC: ${sectionTitle}
 
-IMPORTANT: Include KANNADA TEXT (ಕನ್ನಡ ಲಿಪಿ) in the infographic:
+**MANDATORY KANNADA TEXT TO INCLUDE IN IMAGE (copy exactly):**
+${keyPoints.map((p, i) => `• ${p}`).join('\n')}
+
+**STRICT REQUIREMENTS:**
+1. YOU MUST RENDER THE KANNADA TEXT ABOVE EXACTLY AS SHOWN - character by character
+2. Use LARGE, BOLD Kannada font (ಕನ್ನಡ ಅಕ್ಷರಗಳು) that is clearly readable
+3. Each bullet point should be in a colored box or bubble
+4. Text size must be minimum 24pt equivalent for readability
+5. White/light cream background
+6. Use vibrant colors: blue (#2563eb), green (#16a34a), orange (#ea580c), purple (#9333ea)
+7. Add relevant educational ICONS (NOT text descriptions) next to each point
+8. Include connecting arrows between related concepts
+9. Professional infographic poster layout
+
+**DO NOT:**
+- Use English text anywhere
+- Use gibberish or placeholder text
+- Render text too small to read
+
+The Kannada script text MUST be rendered correctly and legibly. Ultra high resolution.`
+      : `Generate an EDUCATIONAL INFOGRAPHIC POSTER IMAGE.
+
+PAGE ${pageNumber} OF ${totalPages} - TOPIC: ${sectionTitle}
+
+**TEXT TO INCLUDE IN IMAGE:**
 ${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-Design requirements:
-- Professional educational poster style
-- Include the Kannada text points prominently
-- Use clear, readable Kannada typography
-- Color scheme: vibrant educational colors (blues, greens, oranges)
-- White or light background
-- Add relevant icons and diagrams alongside text
-- Show visual hierarchy with sections
-- Include arrows and connectors between concepts
-- Make text LARGE and READABLE
+**REQUIREMENTS:**
+1. Include ALL text points above prominently in the image
+2. Large, bold, readable font (minimum 24pt equivalent)
+3. Each point in a colored box or bubble
+4. White/light background
+5. Vibrant educational colors: blue, green, orange, purple
+6. Relevant icons next to each point
+7. Connecting arrows between concepts
+8. Professional poster layout
 
-Style: Modern educational infographic with Kannada script text.
-Ultra high resolution. Make text crisp and clear.`
-      : `Create a beautiful educational infographic poster.
-
-PAGE ${pageNumber} OF ${totalPages} - ${sectionTitle}
-
-Include these KEY POINTS as text in the infographic:
-${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}
-
-Design requirements:
-- Professional educational poster style
-- Include the text points prominently with large readable font
-- Color scheme: vibrant educational colors (blues, greens, oranges)
-- White or light background
-- Add relevant icons and diagrams alongside text
-- Show visual hierarchy with numbered sections
-- Include arrows and connectors between concepts
-- Make text LARGE and READABLE
-
-Style: Modern educational infographic with clear text labels.
-Ultra high resolution. Make text crisp and clear.`;
+Ultra high resolution. Text must be crisp and readable.`;
 
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
