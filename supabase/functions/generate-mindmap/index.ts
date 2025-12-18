@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json; charset=utf-8",
 };
 
 serve(async (req) => {
@@ -18,7 +19,7 @@ serve(async (req) => {
     if (!chapterId) {
       return new Response(
         JSON.stringify({ error: "Chapter ID is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -33,7 +34,7 @@ serve(async (req) => {
     if (!user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -47,7 +48,7 @@ serve(async (req) => {
     if (existingMindmap) {
       return new Response(
         JSON.stringify({ mindmap: existingMindmap.mindmap_data }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: corsHeaders }
       );
     }
 
@@ -61,20 +62,22 @@ serve(async (req) => {
     if (!chapter || !chapter.content_extracted) {
       return new Response(
         JSON.stringify({ 
-          error: "Chapter content not available yet. The PDF is still being processed. Please wait a moment and try again." 
+          error: "Chapter content not available. Please wait for PDF processing." 
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // Detect if chapter is in Kannada - check both name and content
-    const hasKannadaInName = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
-    const hasKannadaInContent = /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
-    const isKannadaChapter = hasKannadaInName || hasKannadaInContent;
-
-    // Generate mindmap using AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY not configured");
+    }
+
+    const chapterName = chapter.name || chapter.name_kannada;
+
+    // Step 1: Generate mindmap structure from AI
+    console.log("Generating mindmap structure...");
+    const structureResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
@@ -85,58 +88,124 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Create a hierarchical mind map structure of the chapter content as a JSON object suitable for visual rendering.
+            content: `Create a hierarchical mind map structure for an educational chapter.
 
-REQUIREMENTS:
-- Identify 4-6 main topics from the chapter as primary nodes
-- For each main topic, identify 2-4 key subtopics or concepts as child nodes
-- Keep node labels concise (2-5 words maximum)
-- Include relationships and connections between concepts
-- Structure should be clear and logical for visual display
-${isKannadaChapter 
-  ? '- CRITICAL: This is a KANNADA chapter - ALL node labels MUST be COMPLETELY in Kannada (ಕನ್ನಡ) script ONLY\n- DO NOT use any English words\n- Use proper Kannada script with correct grammar' 
-  : '- Use the same language as the chapter (Kannada or English)'}
-
-IMPORTANT: Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
+Return a JSON object describing the mindmap:
 {
-  "nodes": [
-    { "id": "root", "label": "Chapter Title", "type": "root" },
-    { "id": "topic1", "label": "Main Topic 1", "type": "main" },
-    { "id": "subtopic1_1", "label": "Subtopic 1.1", "type": "sub" }
-  ],
-  "edges": [
-    { "source": "root", "target": "topic1" },
-    { "source": "topic1", "target": "subtopic1_1" }
+  "title": "Main Topic (in English)",
+  "branches": [
+    {
+      "name": "Branch 1",
+      "subbranches": ["Sub 1.1", "Sub 1.2", "Sub 1.3"]
+    },
+    {
+      "name": "Branch 2", 
+      "subbranches": ["Sub 2.1", "Sub 2.2"]
+    }
   ]
 }
 
-Do NOT wrap the response in markdown code blocks or any other formatting.`
+Rules:
+- Title should be the main chapter topic
+- Create 4-6 main branches
+- Each branch should have 2-4 subbranches
+- Keep text SHORT (2-5 words max per item)
+- ALL text must be in ENGLISH (for image generation)`
           },
           {
             role: "user",
-            content: `Chapter: ${chapter.name_kannada || chapter.name}\n\nContent:\n${chapter.content_extracted}`
+            content: `Create a mindmap structure for:\n\nChapter: ${chapterName}\n\nContent:\n${chapter.content_extracted.substring(0, 6000)}`
           }
         ],
-        max_tokens: 2000,
         response_format: { type: "json_object" }
       }),
     });
 
-    if (!aiResponse.ok) {
-      throw new Error("Failed to generate mindmap");
+    if (!structureResponse.ok) {
+      throw new Error("Failed to generate mindmap structure");
     }
 
-    const aiData = await aiResponse.json();
-    let content = aiData.choices[0]?.message?.content || "";
-    
-    // Strip markdown code blocks if present
-    content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    
-    console.log("Mindmap AI Response:", content.substring(0, 200));
-    
-    const mindmapData = JSON.parse(content);
+    const structureData = await structureResponse.json();
+    const structureContent = structureData.choices[0]?.message?.content || "";
+    const structure = JSON.parse(structureContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim());
 
-    // Save mindmap to database for permanent storage
+    console.log("Mindmap structure:", JSON.stringify(structure).substring(0, 200));
+
+    // Step 2: Generate mindmap as an IMAGE (MindMaple/NotebookLM style)
+    console.log("Generating mindmap image...");
+    
+    const branchDescriptions = structure.branches?.map((b: any, i: number) => 
+      `Branch ${i + 1}: "${b.name}" with sub-items: ${b.subbranches?.join(", ") || "none"}`
+    ).join("\n") || "";
+
+    const imagePrompt = `Create a beautiful, professional mind map image in the style of MindMaple or Google NotebookLM.
+
+MINDMAP CONTENT:
+Central Topic: "${structure.title || chapterName}"
+
+${branchDescriptions}
+
+DESIGN REQUIREMENTS:
+- Central topic in a large oval/rounded rectangle in the CENTER
+- Main branches radiating outward from center like a tree/organic structure
+- Each main branch in a DIFFERENT COLOR (use vibrant colors: blue, green, orange, purple, red, teal)
+- Sub-branches extending from main branches with smaller text
+- Curved, organic connector lines (not straight)
+- Clean white background
+- Professional typography - clear, readable text
+- Hierarchy shown through size: central > branches > sub-branches
+- Include small icons or visual elements where appropriate
+- Balanced layout with branches spread evenly around center
+
+STYLE:
+- Modern, clean design like professional mind mapping software
+- Gradient or solid colored nodes
+- Soft shadows for depth
+- Rounded corners on all shapes
+- Clear visual hierarchy
+
+Make it look exactly like a MindMaple or NotebookLM generated mind map. Ultra high resolution.`;
+
+    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: imagePrompt
+          }
+        ],
+        modalities: ["image", "text"]
+      }),
+    });
+
+    if (!imageResponse.ok) {
+      const errText = await imageResponse.text();
+      console.error("Image generation failed:", errText);
+      throw new Error("Failed to generate mindmap image");
+    }
+
+    const imageData = await imageResponse.json();
+    const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+    if (!imageUrl) {
+      throw new Error("No mindmap image generated");
+    }
+
+    console.log("Mindmap image generated successfully");
+
+    // Store mindmap with image URL
+    const mindmapData = {
+      type: "image",
+      imageUrl: imageUrl,
+      structure: structure
+    };
+
     const { error: insertError } = await supabaseClient
       .from("mindmaps")
       .insert({
@@ -146,19 +215,18 @@ Do NOT wrap the response in markdown code blocks or any other formatting.`
 
     if (insertError) {
       console.error("Error saving mindmap:", insertError);
-      // Still return the mindmap even if save fails
     }
 
     return new Response(
       JSON.stringify({ mindmap: mindmapData }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: corsHeaders }
     );
 
   } catch (error) {
     console.error("Error in generate-mindmap:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: corsHeaders }
     );
   }
 });

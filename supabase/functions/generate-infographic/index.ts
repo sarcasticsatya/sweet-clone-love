@@ -7,13 +7,12 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Generate a single infographic page
+// Generate a single infographic page - VISUAL ONLY for all languages to avoid encoding issues
 async function generateInfographicPage(
   sectionContent: string,
   sectionTitle: string,
   pageNumber: number,
   totalPages: number,
-  isKannada: boolean,
   apiKey: string
 ): Promise<string | null> {
   try {
@@ -31,17 +30,14 @@ async function generateInfographicPage(
         messages: [
           {
             role: "system",
-            content: isKannada 
-              ? `You are analyzing a section of a Kannada educational chapter.
-Create a concise ENGLISH visual summary prompt for an educational infographic.
-The infographic will have visual elements - focus on ICONS, DIAGRAMS, and ILLUSTRATIONS.
-Return ONLY a single paragraph (max 150 words) describing what visual elements should appear.
-Include: key concepts as visual elements, diagrams, flowcharts, or illustrations.
-Focus on VISUAL elements that can be drawn clearly.`
-              : `Create a concise visual summary prompt for an educational infographic section.
-Return ONLY a single paragraph (max 150 words) describing what visual elements should appear.
-Include: key concepts, diagrams, flowcharts, important facts with icons.
-Focus on making it visually engaging and educational.`
+            content: `Analyze this educational content and create an ENGLISH visual description for an infographic.
+The infographic will be VISUAL ONLY - no text will be rendered.
+Return ONLY a single paragraph (max 150 words) describing:
+- 4-6 key visual concepts to illustrate
+- Diagrams, flowcharts, or illustrations needed
+- Icons and symbols to represent ideas
+- How to visually show relationships between concepts
+Focus ONLY on visual elements that can be drawn without text.`
           },
           {
             role: "user",
@@ -58,43 +54,32 @@ Focus on making it visually engaging and educational.`
     const summaryData = await summaryResponse.json();
     const summaryPrompt = summaryData.choices[0]?.message?.content || "";
 
-    // Generate the infographic image
-    const imagePrompt = isKannada 
-      ? `Create a beautiful educational infographic poster page (Page ${pageNumber} of ${totalPages}).
-Section: "${sectionTitle}"
+    // Generate the infographic image - VISUAL ONLY, NO TEXT
+    const imagePrompt = `Create a beautiful educational infographic poster (Page ${pageNumber} of ${totalPages}).
+
+CRITICAL: This must be VISUAL ONLY - absolutely NO TEXT, NO LABELS, NO WORDS of any kind.
 
 Style requirements:
 - Clean, professional educational poster design
-- Large clear header area (for section title)
-- Visual hierarchy with icons and illustrations
-- NO TEXT - only visual elements, diagrams, and icons
-- Use arrows and flow lines to connect concepts
-- Color scheme: educational tones (blues, greens, oranges)
-- White or light background
-- High contrast for readability
-- Include 3-5 main visual concepts
+- ONLY visual elements: icons, diagrams, illustrations, flowcharts
+- Use arrows, lines, and connectors to show relationships
+- Color scheme: vibrant educational colors (blues, greens, oranges, purples)
+- White or light background for clarity
+- High contrast between elements
+- Use universally recognizable icons and symbols
+- Include 4-6 main visual concepts arranged logically
+- Show hierarchy and connections visually
 
-Visual content to include:
+Visual elements to include:
 ${summaryPrompt}
 
-Make it look like a premium study material page. Ultra high resolution. NO TEXT LABELS.`
-      : `Create a beautiful educational infographic poster page (Page ${pageNumber} of ${totalPages}).
-Section: "${sectionTitle}"
+IMPORTANT: 
+- NO TEXT whatsoever - not even numbers or letters
+- NO labels, captions, or titles
+- ONLY icons, diagrams, arrows, shapes, and illustrations
+- Make it understandable through visuals alone
 
-Style requirements:
-- Clean, professional educational poster design
-- Large header with section title at top
-- Visual hierarchy with icons, diagrams, and text boxes
-- Key facts in colored callout boxes
-- Use arrows and flow lines to connect concepts
-- Color scheme: educational tones (blues, greens, oranges)
-- White or light background for readability
-- Include 3-5 main concepts with clear labels
-
-Content to visualize:
-${summaryPrompt}
-
-Make it look like a premium study poster. Include clear English text labels. Ultra high resolution.`;
+Make it look like a premium visual study guide. Ultra high resolution.`;
 
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -144,21 +129,19 @@ async function splitIntoSections(content: string, chapterName: string, apiKey: s
         messages: [
           {
             role: "system",
-            content: `You are an educational content organizer. Split the chapter content into 3-4 logical sections for creating a multi-page infographic.
+            content: `Split the chapter content into 4 logical sections for creating a multi-page visual infographic.
 
-Return a JSON object with sections array:
+Return a JSON object:
 {
   "sections": [
-    { "title": "Section Title", "startPhrase": "first few words of section" },
-    { "title": "Section Title 2", "startPhrase": "first few words" }
+    { "title": "Section Title in English", "startPhrase": "first few words" }
   ]
 }
 
 Rules:
-- Create exactly 3-4 sections
-- Each section should cover a distinct topic/concept
-- Titles should be clear and descriptive
-- startPhrase should be unique identifying text from the content`
+- Create exactly 4 sections
+- Titles must be in ENGLISH (for image generation)
+- Each section should cover a distinct topic`
           },
           {
             role: "user",
@@ -180,10 +163,10 @@ Rules:
       // Fallback: split by equal parts
       const partLength = Math.ceil(content.length / 4);
       return [
-        { title: "Introduction & Overview", content: content.substring(0, partLength) },
+        { title: "Introduction and Overview", content: content.substring(0, partLength) },
         { title: "Core Concepts", content: content.substring(partLength, partLength * 2) },
-        { title: "Key Details", content: content.substring(partLength * 2, partLength * 3) },
-        { title: "Summary & Applications", content: content.substring(partLength * 3) }
+        { title: "Key Details and Examples", content: content.substring(partLength * 2, partLength * 3) },
+        { title: "Summary and Applications", content: content.substring(partLength * 3) }
       ];
     }
 
@@ -205,7 +188,6 @@ Rules:
           content: content.substring(startIdx, endIdx)
         });
       } else {
-        // Fallback for this section
         const partLength = Math.ceil(content.length / result.sections.length);
         sections.push({
           title: section.title,
@@ -215,14 +197,13 @@ Rules:
     }
 
     return sections.length > 0 ? sections : [
-      { title: "Introduction & Overview", content: content.substring(0, Math.ceil(content.length / 4)) },
-      { title: "Core Concepts", content: content.substring(Math.ceil(content.length / 4), Math.ceil(content.length / 2)) },
-      { title: "Key Details", content: content.substring(Math.ceil(content.length / 2), Math.ceil(content.length * 3 / 4)) },
-      { title: "Summary", content: content.substring(Math.ceil(content.length * 3 / 4)) }
+      { title: "Introduction", content: content.substring(0, Math.ceil(content.length / 4)) },
+      { title: "Main Concepts", content: content.substring(Math.ceil(content.length / 4), Math.ceil(content.length / 2)) },
+      { title: "Details", content: content.substring(Math.ceil(content.length / 2), Math.ceil(content.length * 3 / 4)) },
+      { title: "Conclusion", content: content.substring(Math.ceil(content.length * 3 / 4)) }
     ];
   } catch (error) {
     console.error("Error splitting sections:", error);
-    // Fallback
     const partLength = Math.ceil(content.length / 4);
     return [
       { title: "Introduction", content: content.substring(0, partLength) },
@@ -293,8 +274,7 @@ serve(async (req) => {
       );
     }
 
-    const chapterName = chapter.name_kannada || chapter.name;
-    const isKannada = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
+    const chapterName = chapter.name || chapter.name_kannada;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -306,14 +286,13 @@ serve(async (req) => {
     const sections = await splitIntoSections(chapter.content_extracted, chapterName, LOVABLE_API_KEY);
     console.log(`Created ${sections.length} sections`);
 
-    // Generate infographic pages in parallel (max 4)
+    // Generate infographic pages (always 4 pages)
     const pagePromises = sections.slice(0, 4).map((section, idx) =>
       generateInfographicPage(
         section.content,
         section.title,
         idx + 1,
-        Math.min(sections.length, 4),
-        isKannada,
+        4,
         LOVABLE_API_KEY
       )
     );
@@ -327,20 +306,19 @@ serve(async (req) => {
 
     console.log(`Generated ${imageUrls.length} infographic pages`);
 
-    // Store in database (cache)
+    // Store in database
     const { data: infographic, error: insertError } = await supabaseClient
       .from("infographics")
       .insert({
         chapter_id: chapterId,
-        image_url: imageUrls[0], // Primary image for backward compatibility
-        image_urls: imageUrls // All pages
+        image_url: imageUrls[0],
+        image_urls: imageUrls
       })
       .select()
       .single();
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      // Still return the images even if caching fails
       return new Response(
         JSON.stringify({ 
           infographic: { 

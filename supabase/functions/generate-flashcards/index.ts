@@ -15,7 +15,6 @@ function safeParseJSON(content: string): any {
   } catch (e) {
     console.log("JSON parse failed, attempting recovery...");
     
-    // Try to extract flashcard objects manually
     const flashcards: any[] = [];
     const cardRegex = /\{\s*"question"\s*:\s*"([^"]+)"\s*,\s*"answer"\s*:\s*"([^"]+)"\s*\}/g;
     
@@ -36,6 +35,59 @@ function safeParseJSON(content: string): any {
   }
 }
 
+// Generate educational image for a flashcard
+async function generateImageForFlashcard(question: string, answer: string, topic: string, apiKey: string): Promise<string | null> {
+  try {
+    console.log("Generating image for flashcard:", question.substring(0, 30));
+    
+    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: `Create a simple educational diagram/illustration for this flashcard concept.
+
+Topic: ${topic}
+Concept: ${question}
+Answer hint: ${answer.substring(0, 100)}
+
+Requirements:
+- Clean, simple educational illustration
+- White background
+- Visual representation of the concept
+- NO TEXT - only visual elements, diagrams, icons
+- Use simple shapes and clear visuals
+- Educational style like a textbook diagram
+- 2-3 colors maximum
+
+Make it simple, clear, and educational. Ultra high resolution.`
+          }
+        ],
+        modalities: ["image", "text"]
+      }),
+    });
+
+    if (!imageResponse.ok) {
+      console.error("Image generation failed");
+      return null;
+    }
+
+    const imageData = await imageResponse.json();
+    const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    return imageUrl || null;
+  } catch (error) {
+    console.error("Error generating image:", error);
+    return null;
+  }
+}
+
 async function generateFlashcardsFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
   const maxRetries = 2;
   
@@ -51,22 +103,28 @@ async function generateFlashcardsFromAI(chapter: any, isKannadaChapter: boolean,
         {
           role: "system",
           content: isKannadaChapter 
-            ? `Generate exactly 8 flashcards in KANNADA (ಕನ್ನಡ).
+            ? `Generate exactly 10 flashcards in KANNADA (ಕನ್ನಡ).
 
 Rules:
 - Questions and answers must be in Kannada script
 - Use Kannada Unicode characters (U+0C80-U+0CFF)
+- Cover key concepts from the chapter
 
 Return ONLY valid JSON:
 {"flashcards":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","answer":"ಕನ್ನಡ ಉತ್ತರ"}]}`
-            : `Generate exactly 8 flashcards in English.
+            : `Generate exactly 10 flashcards in English.
+
+Rules:
+- Cover key concepts from the chapter
+- Questions should test understanding
+- Answers should be concise but complete
 
 Return ONLY valid JSON:
 {"flashcards":[{"question":"Question?","answer":"Answer"}]}`
         },
         {
           role: "user",
-          content: `Generate flashcards from:\n\n${chapter.content_extracted.substring(0, 6000)}`
+          content: `Generate 10 flashcards from:\n\n${chapter.content_extracted.substring(0, 6000)}`
         }
       ],
       response_format: { type: "json_object" }
@@ -92,7 +150,6 @@ Return ONLY valid JSON:
       throw new Error("No flashcards in response");
     }
     
-    // Validate flashcards have question and answer
     const validCards = parsed.flashcards.filter((fc: any) => 
       fc.question && typeof fc.question === "string" && 
       fc.answer && typeof fc.answer === "string"
@@ -102,7 +159,6 @@ Return ONLY valid JSON:
       throw new Error("Too few valid flashcards");
     }
     
-    // For Kannada, just verify some Kannada text exists
     if (isKannadaChapter) {
       const allText = validCards.map((fc: any) => fc.question + fc.answer).join(" ");
       if (!/[\u0C80-\u0CFF]/.test(allText)) {
@@ -172,7 +228,6 @@ serve(async (req) => {
       );
     }
 
-    // Detect Kannada by name_kannada field
     const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
     console.log("IS KANNADA CHAPTER:", isKannadaChapter);
 
@@ -185,17 +240,34 @@ serve(async (req) => {
     
     console.log("Successfully parsed", parsed.flashcards.length, "flashcards");
 
-    // Store flashcards
-    const flashcardsToInsert = parsed.flashcards.map((fc: any) => ({
-      chapter_id: chapterId,
-      question: fc.question,
-      answer: fc.answer,
-      created_by: user.id
-    }));
+    // Generate images for ALL flashcards (in batches of 4)
+    const flashcardsWithImages: any[] = [];
+    const batchSize = 4;
+    
+    for (let i = 0; i < parsed.flashcards.length; i += batchSize) {
+      const batch = parsed.flashcards.slice(i, i + batchSize);
+      console.log(`Generating images for flashcard batch ${Math.floor(i/batchSize) + 1}`);
+      
+      const imagePromises = batch.map((fc: any) => 
+        generateImageForFlashcard(fc.question, fc.answer, chapter.name, LOVABLE_API_KEY)
+      );
+      
+      const imageResults = await Promise.all(imagePromises);
+      
+      batch.forEach((fc: any, idx: number) => {
+        flashcardsWithImages.push({
+          chapter_id: chapterId,
+          question: fc.question,
+          answer: fc.answer,
+          image_url: imageResults[idx] || null,
+          created_by: user.id
+        });
+      });
+    }
 
     const { data: insertedFlashcards, error: insertError } = await supabaseClient
       .from("flashcards")
-      .insert(flashcardsToInsert)
+      .insert(flashcardsWithImages)
       .select();
 
     if (insertError) {
