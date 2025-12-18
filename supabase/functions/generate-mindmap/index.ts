@@ -46,7 +46,7 @@ serve(async (req) => {
         .delete()
         .eq("chapter_id", chapterId);
     } else {
-      // Check if mindmap already exists (and is new image format)
+      // Check if mindmap already exists with new format
       const { data: existingMindmap } = await supabaseClient
         .from("mindmaps")
         .select("mindmap_data")
@@ -55,9 +55,9 @@ serve(async (req) => {
 
       if (existingMindmap) {
         const data = existingMindmap.mindmap_data as any;
-        // Only return cached if it's the new image format
-        if (data?.type === "image" && data?.imageUrl) {
-          console.log("Returning cached image mindmap");
+        // Return cached if it's the new Kannada structure format
+        if (data?.type === "kannada-structure" && data?.structure) {
+          console.log("Returning cached Kannada mindmap structure");
           return new Response(
             JSON.stringify({ mindmap: existingMindmap.mindmap_data }),
             { headers: corsHeaders }
@@ -93,15 +93,19 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const chapterName = chapter.name || chapter.name_kannada;
+    const chapterName = chapter.name_kannada || chapter.name;
+    
+    // Detect if content has Kannada
+    const hasKannada = /[\u0C80-\u0CFF]/.test(chapter.content_extracted);
+    console.log("Has Kannada content:", hasKannada);
 
-    // Step 1: Generate mindmap structure from AI (ALWAYS in English for image generation)
-    console.log("Generating mindmap structure...");
+    // Generate mindmap structure in KANNADA
+    console.log("Generating Kannada mindmap structure...");
     const structureResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
@@ -110,28 +114,32 @@ serve(async (req) => {
             role: "system",
             content: `Create a hierarchical mind map structure for an educational chapter.
 
-Return a JSON object describing the mindmap:
+CRITICAL: ALL TEXT MUST BE IN KANNADA (ಕನ್ನಡ) LANGUAGE.
+If the content is in English, translate everything to Kannada.
+
+Return a JSON object:
 {
-  "title": "Main Topic Title",
+  "title": "ಮುಖ್ಯ ವಿಷಯ (Main topic in Kannada)",
   "branches": [
     {
-      "name": "Branch 1 Name",
-      "subbranches": ["Sub 1.1", "Sub 1.2", "Sub 1.3"]
+      "name": "ಶಾಖೆ ೧ (Branch name in Kannada)",
+      "color": "#3b82f6",
+      "subbranches": ["ಉಪಶಾಖೆ ೧", "ಉಪಶಾಖೆ ೨"]
     }
   ]
 }
 
-CRITICAL RULES:
-- ALL TEXT MUST BE IN ENGLISH (translate if content is in another language)
-- Title should be the main chapter topic IN ENGLISH
-- Create 4-6 main branches
-- Each branch should have 2-4 subbranches
-- Keep text SHORT (2-5 words max per item)
-- Use simple, clear English words`
+Rules:
+- Title should be the main chapter topic IN KANNADA
+- Create 4-6 main branches with Kannada names
+- Each branch should have 2-4 subbranches in Kannada
+- Keep text concise (2-6 words in Kannada per item)
+- Assign different colors to each branch: #3b82f6 (blue), #10b981 (green), #f59e0b (orange), #8b5cf6 (purple), #ef4444 (red), #06b6d4 (teal)
+- Use proper Kannada Unicode script (ಕನ್ನಡ ಅಕ್ಷರಗಳು)`
           },
           {
             role: "user",
-            content: `Create a mindmap structure for this chapter. TRANSLATE ALL CONTENT TO ENGLISH:\n\nChapter: ${chapterName}\n\nContent:\n${chapter.content_extracted.substring(0, 6000)}`
+            content: `Create a Kannada mindmap structure for this chapter:\n\nChapter: ${chapterName}\n\nContent:\n${chapter.content_extracted.substring(0, 8000)}`
           }
         ],
         response_format: { type: "json_object" }
@@ -155,74 +163,11 @@ CRITICAL RULES:
       throw new Error("Failed to parse mindmap structure");
     }
 
-    console.log("Mindmap structure generated:", JSON.stringify(structure).substring(0, 300));
+    console.log("Kannada mindmap structure generated:", JSON.stringify(structure).substring(0, 500));
 
-    // Step 2: Generate mindmap as an IMAGE
-    console.log("Generating mindmap image...");
-    
-    const branchDescriptions = structure.branches?.map((b: any, i: number) => 
-      `Branch ${i + 1}: "${b.name}" with sub-items: ${b.subbranches?.join(", ") || "none"}`
-    ).join("\n") || "";
-
-    const imagePrompt = `Generate a professional MIND MAP diagram image.
-
-EXACT CONTENT TO DISPLAY:
-Central Topic: "${structure.title}"
-
-${branchDescriptions}
-
-STRICT VISUAL REQUIREMENTS:
-1. Central topic in large rounded rectangle at CENTER
-2. Main branches radiating outward with CURVED connecting lines
-3. Each branch DIFFERENT COLOR (blue, green, orange, purple, red, teal)
-4. Sub-branches extending from main branches
-5. WHITE background
-6. Large, readable text in each node
-7. Rounded corners on all shapes
-8. Professional typography
-9. Balanced layout - branches evenly spread around center
-10. Include relevant small icons near topics
-
-STYLE: Clean, modern, professional mind map. High resolution.`;
-
-    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: imagePrompt
-          }
-        ],
-        modalities: ["image", "text"]
-      }),
-    });
-
-    if (!imageResponse.ok) {
-      const errText = await imageResponse.text();
-      console.error("Image generation failed:", errText);
-      throw new Error("Failed to generate mindmap image");
-    }
-
-    const imageData = await imageResponse.json();
-    const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!imageUrl) {
-      console.error("No image URL in response:", JSON.stringify(imageData).substring(0, 500));
-      throw new Error("No mindmap image generated");
-    }
-
-    console.log("Mindmap image generated successfully");
-
-    // Store mindmap with image URL
+    // Store as Kannada structure (will be rendered as HTML on frontend)
     const mindmapData = {
-      type: "image",
-      imageUrl: imageUrl,
+      type: "kannada-structure",
       structure: structure
     };
 
