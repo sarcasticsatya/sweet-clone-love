@@ -46,6 +46,55 @@ function safeParseJSON(content: string): any {
   }
 }
 
+// Generate educational diagram for a quiz question
+async function generateDiagramForQuestion(question: string, topic: string, apiKey: string): Promise<string | null> {
+  try {
+    console.log("Generating diagram for question:", question.substring(0, 50));
+    
+    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: `Create a simple, clear educational diagram for a quiz question.
+Question topic: ${topic}
+Question: ${question}
+
+Create a clean, educational illustration that helps visualize this concept.
+Style: Simple line drawing or diagram style, educational poster quality.
+- Use clear labels and arrows
+- White background
+- Simple color scheme (2-3 colors max)
+- No text except minimal labels
+- Focus on the scientific/mathematical concept
+Ultra high resolution.`
+          }
+        ],
+        modalities: ["image", "text"]
+      }),
+    });
+
+    if (!imageResponse.ok) {
+      console.error("Diagram generation failed:", await imageResponse.text());
+      return null;
+    }
+
+    const imageData = await imageResponse.json();
+    const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    return imageUrl || null;
+  } catch (error) {
+    console.error("Error generating diagram:", error);
+    return null;
+  }
+}
+
 async function generateQuizFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
   const maxRetries = 2;
   
@@ -77,9 +126,10 @@ Rules:
 - correctAnswer is index 0-3
 - Make questions DIFFERENT from previous generations
 - Cover different aspects/topics from the content
+- Mark questions that need diagrams with needsDiagram: true (for science/math visual concepts)
 
 Return ONLY valid JSON:
-{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0}]}`
+{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0,"needsDiagram":false,"diagramTopic":"topic for diagram if needed"}]}`
             : `Generate exactly 5 UNIQUE and DIFFERENT multiple-choice questions in English.
 
 IMPORTANT: Generate completely NEW questions each time. Use random seed ${randomSeed} for variation.
@@ -90,9 +140,10 @@ Rules:
 - correctAnswer is index 0-3
 - Make questions DIFFERENT from previous generations
 - Cover different aspects/topics from the content
+- Mark 2-3 questions that would benefit from diagrams with needsDiagram: true (especially for science/math concepts)
 
 Return ONLY valid JSON:
-{"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0}]}`
+{"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0,"needsDiagram":false,"diagramTopic":"topic for diagram if needed"}]}`
         },
         {
           role: "user",
@@ -229,13 +280,44 @@ serve(async (req) => {
     
     console.log("Successfully parsed", parsed.questions.length, "questions");
 
+    // Generate diagrams for questions marked as needing them (max 3)
+    const questionsNeedingDiagrams = parsed.questions
+      .map((q: any, idx: number) => ({ ...q, originalIndex: idx }))
+      .filter((q: any) => q.needsDiagram)
+      .slice(0, 3);
+
+    console.log(`Generating diagrams for ${questionsNeedingDiagrams.length} questions`);
+
+    // Generate diagrams in parallel
+    const diagramPromises = questionsNeedingDiagrams.map(async (q: any) => {
+      const diagramUrl = await generateDiagramForQuestion(
+        q.question,
+        q.diagramTopic || chapter.name,
+        LOVABLE_API_KEY
+      );
+      return { index: q.originalIndex, diagramUrl };
+    });
+
+    const diagramResults = await Promise.all(diagramPromises);
+
+    // Add diagram URLs to questions
+    const questionsWithDiagrams = parsed.questions.map((q: any, idx: number) => {
+      const diagramResult = diagramResults.find(d => d.index === idx);
+      return {
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        diagramUrl: diagramResult?.diagramUrl || null
+      };
+    });
+
     // Store quiz
     const { data: quiz, error: insertError } = await supabaseClient
       .from("quizzes")
       .insert({
         chapter_id: chapterId,
         title: `${chapter.name_kannada || chapter.name} Quiz`,
-        questions: parsed.questions,
+        questions: questionsWithDiagrams,
         created_by: user.id
       })
       .select()
