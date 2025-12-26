@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, RotateCcw, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw, Loader2, RefreshCw } from "lucide-react";
 
 interface FlashcardsViewProps {
   chapterId: string;
@@ -14,12 +14,50 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isCached, setIsCached] = useState(false);
 
   useEffect(() => {
-    loadFlashcards();
+    fetchFlashcards();
   }, [chapterId]);
 
-  const loadFlashcards = async () => {
+  // First try to fetch from database, then generate if not found
+  const fetchFlashcards = async () => {
+    setInitialLoading(true);
+    setCurrentIndex(0);
+    setShowAnswer(false);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // First, try to fetch existing flashcards from database
+      const { data: existingFlashcards, error: fetchError } = await supabase
+        .from("flashcards")
+        .select("*")
+        .eq("chapter_id", chapterId)
+        .order("created_at", { ascending: true });
+
+      if (!fetchError && existingFlashcards && existingFlashcards.length > 0) {
+        console.log(`Loaded ${existingFlashcards.length} cached flashcards`);
+        setFlashcards(existingFlashcards);
+        setIsCached(true);
+        setInitialLoading(false);
+        return;
+      }
+
+      // No cached flashcards found, generate new ones
+      console.log("No cached flashcards found, generating new ones...");
+      await generateFlashcards(false);
+    } catch (error: any) {
+      console.error("Error fetching flashcards:", error);
+      toast.error("Failed to load flashcards");
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
+  const generateFlashcards = async (regenerate: boolean = false) => {
     setLoading(true);
     setCurrentIndex(0);
     setShowAnswer(false);
@@ -29,19 +67,29 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
       if (!session) return;
 
       const { data, error } = await supabase.functions.invoke("generate-flashcards", {
-        body: { chapterId },
+        body: { chapterId, regenerate },
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
 
       if (error) throw error;
+      
       setFlashcards(data.flashcards || []);
+      setIsCached(data.cached || false);
+      
+      if (regenerate) {
+        toast.success("Flashcards regenerated successfully!");
+      }
     } catch (error: any) {
-      toast.error("Failed to load flashcards: " + error.message);
+      toast.error("Failed to generate flashcards: " + error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegenerate = () => {
+    generateFlashcards(true);
   };
 
   const handleNext = () => {
@@ -54,11 +102,13 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
     setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
   };
 
-  if (loading) {
+  if (initialLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center p-6 gap-2">
         <Loader2 className="w-5 h-5 animate-spin text-primary" />
-        <p className="text-xs text-muted-foreground">Generating flashcards...</p>
+        <p className="text-xs text-muted-foreground">
+          {initialLoading ? "Loading flashcards..." : "Generating flashcards..."}
+        </p>
       </div>
     );
   }
@@ -69,7 +119,7 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
         <p className="text-xs text-muted-foreground mb-3">
           No flashcards available yet
         </p>
-        <Button size="sm" onClick={loadFlashcards} className="text-xs">
+        <Button size="sm" onClick={() => generateFlashcards(false)} className="text-xs">
           Generate Flashcards
         </Button>
       </div>
@@ -81,9 +131,19 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
   return (
     <div className="p-3 space-y-3">
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>Card {currentIndex + 1} of {flashcards.length}</span>
-        <Button size="sm" variant="ghost" onClick={loadFlashcards} className="h-6 w-6 p-0">
-          <RotateCcw className="w-3 h-3" />
+        <span>
+          Card {currentIndex + 1} of {flashcards.length}
+          {isCached && <span className="ml-1 text-green-600">(cached)</span>}
+        </span>
+        <Button 
+          size="sm" 
+          variant="ghost" 
+          onClick={handleRegenerate} 
+          className="h-6 px-2 gap-1"
+          title="Regenerate flashcards"
+        >
+          <RefreshCw className="w-3 h-3" />
+          <span className="text-[10px]">New</span>
         </Button>
       </div>
 

@@ -7,6 +7,9 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
+// Maximum number of diagrams to generate (cost optimization)
+const MAX_DIAGRAMS_TO_GENERATE = 8;
+
 function safeParseJSON(content: string): any {
   let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   
@@ -209,7 +212,7 @@ serve(async (req) => {
   }
 
   try {
-    const { chapterId } = await req.json();
+    const { chapterId, regenerate = false } = await req.json();
     const authHeader = req.headers.get("authorization");
 
     if (!chapterId) {
@@ -234,7 +237,29 @@ serve(async (req) => {
       );
     }
 
-    await supabaseClient.from("quizzes").delete().eq("chapter_id", chapterId);
+    // CACHING: Check if quiz already exists for this chapter
+    if (!regenerate) {
+      const { data: existingQuizzes, error: fetchError } = await supabaseClient
+        .from("quizzes")
+        .select("*")
+        .eq("chapter_id", chapterId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (!fetchError && existingQuizzes && existingQuizzes.length > 0) {
+        console.log(`Returning cached quiz for chapter ${chapterId}`);
+        return new Response(
+          JSON.stringify({ quiz: existingQuizzes[0], cached: true }),
+          { headers: corsHeaders }
+        );
+      }
+    }
+
+    // Delete existing quizzes if regenerating
+    if (regenerate) {
+      console.log("Regenerating quiz - deleting existing ones");
+      await supabaseClient.from("quizzes").delete().eq("chapter_id", chapterId);
+    }
 
     const { data: chapter } = await supabaseClient
       .from("chapters")
@@ -261,12 +286,18 @@ serve(async (req) => {
     
     console.log("Successfully parsed", parsed.questions.length, "questions");
 
-    // Generate diagrams for ALL questions (in batches of 5 for rate limiting)
+    // COST OPTIMIZATION: Only generate diagrams for first 8 questions
     const questionsWithDiagrams: any[] = [];
-    const batchSize = 5;
+    const questionsToGenerateDiagramsFor = parsed.questions.slice(0, MAX_DIAGRAMS_TO_GENERATE);
+    const questionsWithoutDiagrams = parsed.questions.slice(MAX_DIAGRAMS_TO_GENERATE);
     
-    for (let i = 0; i < parsed.questions.length; i += batchSize) {
-      const batch = parsed.questions.slice(i, i + batchSize);
+    console.log(`Generating diagrams for ${questionsToGenerateDiagramsFor.length} questions (cost optimized from ${parsed.questions.length})`);
+    
+    // Generate diagrams in batches of 4 for rate limiting
+    const batchSize = 4;
+    
+    for (let i = 0; i < questionsToGenerateDiagramsFor.length; i += batchSize) {
+      const batch = questionsToGenerateDiagramsFor.slice(i, i + batchSize);
       console.log(`Generating diagrams for batch ${Math.floor(i/batchSize) + 1}`);
       
       const diagramPromises = batch.map((q: any) => 
@@ -284,6 +315,16 @@ serve(async (req) => {
         });
       });
     }
+
+    // Add remaining questions without diagrams
+    questionsWithoutDiagrams.forEach((q: any) => {
+      questionsWithDiagrams.push({
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        diagramUrl: null
+      });
+    });
 
     const { data: quiz, error: insertError } = await supabaseClient
       .from("quizzes")
@@ -304,8 +345,10 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Successfully created quiz with ${MAX_DIAGRAMS_TO_GENERATE} diagrams`);
+
     return new Response(
-      JSON.stringify({ quiz }),
+      JSON.stringify({ quiz, cached: false }),
       { headers: corsHeaders }
     );
 
