@@ -7,6 +7,9 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
+// Maximum number of images to generate (cost optimization)
+const MAX_IMAGES_TO_GENERATE = 5;
+
 function safeParseJSON(content: string): any {
   let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   
@@ -183,7 +186,7 @@ serve(async (req) => {
   }
 
   try {
-    const { chapterId } = await req.json();
+    const { chapterId, regenerate = false } = await req.json();
     const authHeader = req.headers.get("authorization");
 
     if (!chapterId) {
@@ -208,11 +211,31 @@ serve(async (req) => {
       );
     }
 
-    // Delete existing flashcards
-    await supabaseClient
-      .from("flashcards")
-      .delete()
-      .eq("chapter_id", chapterId);
+    // CACHING: Check if flashcards already exist for this chapter
+    if (!regenerate) {
+      const { data: existingFlashcards, error: fetchError } = await supabaseClient
+        .from("flashcards")
+        .select("*")
+        .eq("chapter_id", chapterId)
+        .order("created_at", { ascending: true });
+
+      if (!fetchError && existingFlashcards && existingFlashcards.length > 0) {
+        console.log(`Returning ${existingFlashcards.length} cached flashcards for chapter ${chapterId}`);
+        return new Response(
+          JSON.stringify({ flashcards: existingFlashcards, cached: true }),
+          { headers: corsHeaders }
+        );
+      }
+    }
+
+    // Delete existing flashcards if regenerating
+    if (regenerate) {
+      console.log("Regenerating flashcards - deleting existing ones");
+      await supabaseClient
+        .from("flashcards")
+        .delete()
+        .eq("chapter_id", chapterId);
+    }
 
     // Get chapter content
     const { data: chapter } = await supabaseClient
@@ -240,12 +263,18 @@ serve(async (req) => {
     
     console.log("Successfully parsed", parsed.flashcards.length, "flashcards");
 
-    // Generate images for ALL flashcards (in batches of 4)
+    // COST OPTIMIZATION: Only generate images for first 5 flashcards
     const flashcardsWithImages: any[] = [];
-    const batchSize = 4;
+    const cardsToGenerateImagesFor = parsed.flashcards.slice(0, MAX_IMAGES_TO_GENERATE);
+    const cardsWithoutImages = parsed.flashcards.slice(MAX_IMAGES_TO_GENERATE);
     
-    for (let i = 0; i < parsed.flashcards.length; i += batchSize) {
-      const batch = parsed.flashcards.slice(i, i + batchSize);
+    console.log(`Generating images for ${cardsToGenerateImagesFor.length} flashcards (cost optimized from ${parsed.flashcards.length})`);
+    
+    // Generate images in batches of 3 for rate limiting
+    const batchSize = 3;
+    
+    for (let i = 0; i < cardsToGenerateImagesFor.length; i += batchSize) {
+      const batch = cardsToGenerateImagesFor.slice(i, i + batchSize);
       console.log(`Generating images for flashcard batch ${Math.floor(i/batchSize) + 1}`);
       
       const imagePromises = batch.map((fc: any) => 
@@ -265,6 +294,17 @@ serve(async (req) => {
       });
     }
 
+    // Add remaining flashcards without images
+    cardsWithoutImages.forEach((fc: any) => {
+      flashcardsWithImages.push({
+        chapter_id: chapterId,
+        question: fc.question,
+        answer: fc.answer,
+        image_url: null,
+        created_by: user.id
+      });
+    });
+
     const { data: insertedFlashcards, error: insertError } = await supabaseClient
       .from("flashcards")
       .insert(flashcardsWithImages)
@@ -278,8 +318,10 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Successfully created ${insertedFlashcards.length} flashcards with ${MAX_IMAGES_TO_GENERATE} images`);
+
     return new Response(
-      JSON.stringify({ flashcards: insertedFlashcards }),
+      JSON.stringify({ flashcards: insertedFlashcards, cached: false }),
       { headers: corsHeaders }
     );
 
