@@ -162,6 +162,19 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
   };
 
   const handleSubmit = async () => {
+    console.log("=== SUBMIT QUIZ DEBUG ===");
+    console.log("Quiz object:", quiz);
+    console.log("Quiz ID:", quiz?.id);
+    console.log("Answers:", answers);
+    console.log("Answers count:", Object.keys(answers).length);
+    console.log("Questions count:", quiz?.questions?.length);
+
+    if (!quiz?.id) {
+      console.error("Quiz ID not found");
+      toast.error("Quiz ID not found. Please restart the quiz.");
+      return;
+    }
+
     if (Object.keys(answers).length !== quiz.questions.length) {
       toast.error("Please answer all questions");
       return;
@@ -170,7 +183,12 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        toast.error("Session expired. Please log in again.");
+        return;
+      }
+
+      console.log("Submitting quiz with:", { quizId: quiz.id, answers: Object.values(answers) });
 
       const { data, error } = await supabase.functions.invoke("submit-quiz", {
         body: {
@@ -182,14 +200,24 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
         }
       });
 
-      if (error) throw error;
+      console.log("Submit response:", { data, error });
+
+      if (error) {
+        console.error("Submit quiz error:", error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error("No response data received");
+      }
 
       setResult(data);
       setSubmitted(true);
       toast.success(`Quiz completed! Score: ${data.percentage}%`);
       loadPastAttempts();
     } catch (error: any) {
-      toast.error("Failed to submit quiz: " + error.message);
+      console.error("Submit quiz catch:", error);
+      toast.error("Failed to submit quiz: " + (error?.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -428,7 +456,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
               {currentQuestion.question}
             </p>
             <RadioGroup
-              value={answers[currentQuestionIndex]?.toString()}
+              value={answers[currentQuestionIndex] !== undefined ? answers[currentQuestionIndex].toString() : ""}
               onValueChange={(value) => 
                 setAnswers({ ...answers, [currentQuestionIndex]: parseInt(value) })
               }
