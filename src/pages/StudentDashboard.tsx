@@ -60,7 +60,7 @@ const StudentDashboard = () => {
   // Show waiting for admin state if no subject access
   if (hasSubjectAccess === false) {
     return (
-      <div className="h-screen flex flex-col bg-background">
+      <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
         <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center">
@@ -110,7 +110,7 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
       {/* NotebookLM-style Header */}
       <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
         <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ const StudentDashboard = () => {
             />
           </div>
 
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
             <ChatPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} />
           </div>
 
@@ -153,7 +153,7 @@ const StudentDashboard = () => {
       {/* Mobile: Full-screen chat with bottom navigation */}
       {isMobile && (
         <>
-          <div className="flex-1 flex flex-col overflow-hidden pb-16">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-16">
             <ChatPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} />
           </div>
           <MobileNav
