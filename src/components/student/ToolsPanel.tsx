@@ -6,59 +6,41 @@ import { QuizView } from "./QuizView";
 import { VideosView } from "./VideosView";
 import { MindmapView } from "./MindmapView";
 import { InfographicView } from "./InfographicView";
-
 interface ToolsPanelProps {
   selectedChapterId: string | null;
   selectedSubjectId: string | null;
 }
-
-export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelProps) => {
-  return (
-    <div className="flex flex-col h-full">
+export const ToolsPanel = ({
+  selectedChapterId,
+  selectedSubjectId
+}: ToolsPanelProps) => {
+  return <div className="flex flex-col h-full">
       <div className="px-3 py-2.5 border-b border-border flex-shrink-0">
         <h2 className="font-medium text-xs text-foreground">Study Tools</h2>
         <p className="text-[10px] text-muted-foreground mt-0.5">Flashcards, quizzes & more</p>
       </div>
 
-      {!selectedChapterId ? (
-        <div className="p-4 text-center text-[10px] text-muted-foreground flex-1 flex items-center justify-center">
+      {!selectedChapterId ? <div className="p-4 text-center text-[10px] text-muted-foreground flex-1 flex items-center justify-center">
           Select a chapter to access study tools
-        </div>
-      ) : (
-        <Tabs defaultValue="flashcards" className="flex-1 flex flex-col overflow-hidden">
+        </div> : <Tabs defaultValue="flashcards" className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="w-full grid grid-cols-5 rounded-none border-b bg-transparent h-10 flex-shrink-0 px-1">
-            <TabsTrigger 
-              value="flashcards" 
-              className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
-            >
+            <TabsTrigger value="flashcards" className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1">
               <Brain className="w-4 h-4" />
-              <span className="hidden sm:inline">Cards</span>
+              <span className="hidden sm:inline">FlashCards</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="quiz" 
-              className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
-            >
+            <TabsTrigger value="quiz" className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1">
               <HelpCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Quiz</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="mindmap" 
-              className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
-            >
+            <TabsTrigger value="mindmap" className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1">
               <Network className="w-4 h-4" />
-              <span className="hidden sm:inline">Map</span>
+              <span className="hidden sm:inline">MindMap</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="infographic" 
-              className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
-            >
+            <TabsTrigger value="infographic" className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1">
               <Image className="w-4 h-4" />
-              <span className="hidden sm:inline">Info</span>
+              <span className="hidden sm:inline">Infographics</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="videos" 
-              className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1"
-            >
+            <TabsTrigger value="videos" className="rounded-none text-[10px] data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary flex flex-col gap-0.5 h-full py-1">
               <Video className="w-4 h-4" />
               <span className="hidden sm:inline">Videos</span>
             </TabsTrigger>
@@ -85,8 +67,6 @@ export const ToolsPanel = ({ selectedChapterId, selectedSubjectId }: ToolsPanelP
           <TabsContent value="videos" className="flex-1 m-0 overflow-hidden">
             <VideosView chapterId={selectedChapterId} />
           </TabsContent>
-        </Tabs>
-      )}
-    </div>
-  );
+        </Tabs>}
+    </div>;
 };
