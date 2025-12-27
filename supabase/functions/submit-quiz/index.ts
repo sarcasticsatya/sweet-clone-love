@@ -4,15 +4,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
 };
 
 serve(async (req) => {
+  console.log("=== SUBMIT QUIZ START ===");
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { quizId, answers } = await req.json();
+    console.log("Quiz ID received:", quizId);
+    console.log("Answers received:", answers);
+    console.log("Answers type:", typeof answers);
+    console.log("Answers length:", Array.isArray(answers) ? answers.length : "not an array");
     const authHeader = req.headers.get("authorization");
 
     if (!quizId || !answers) {
