@@ -211,7 +211,8 @@ export const ChatPanel = ({
 
       <div 
         ref={scrollContainerRef}
-        className="flex-1 px-6 py-4 overflow-y-auto min-h-0"
+        className="flex-1 px-6 py-4 overflow-y-auto min-h-0 touch-pan-y"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {!selectedChapterId ? (
           <div className="flex items-center justify-center h-full text-center">
