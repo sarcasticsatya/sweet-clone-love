@@ -49,21 +49,29 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
         .eq("chapter_id", chapterId)
         .single();
 
+      console.log("Loaded infographic data:", existing);
+
       if (existing && !error) {
-        // Parse the stored data
+        // Parse the stored data - the edge function stores the full data object in image_urls
         const storedData = existing.image_urls as any;
-        if (storedData?.kannada_pages) {
+        console.log("Stored data structure:", storedData);
+        
+        // The edge function stores: { chapter_id, image_url, image_urls: [...], kannada_pages: [...] }
+        if (storedData?.kannada_pages && Array.isArray(storedData.kannada_pages)) {
+          console.log("Found kannada_pages:", storedData.kannada_pages);
           setInfographic({
             image_url: existing.image_url,
             image_urls: storedData.image_urls || [],
-            kannada_pages: storedData.kannada_pages || []
+            kannada_pages: storedData.kannada_pages
           });
         } else if (Array.isArray(storedData)) {
+          // Legacy format: just an array of image URLs
           setInfographic({
             image_url: existing.image_url,
             image_urls: storedData
           });
         } else {
+          // Fallback
           setInfographic({
             image_url: existing.image_url,
             image_urls: storedData?.image_urls || []

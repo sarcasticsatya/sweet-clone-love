@@ -50,8 +50,12 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
         .eq("chapter_id", chapterId)
         .single();
 
+      console.log("Loaded mindmap data:", existingMindmap);
+
       if (existingMindmap && !error) {
-        setMindmapData(existingMindmap.mindmap_data as MindmapData);
+        const data = existingMindmap.mindmap_data as MindmapData;
+        console.log("Mindmap structure:", data);
+        setMindmapData(data);
       }
     } catch (error) {
       console.error("Error loading mindmap:", error);
