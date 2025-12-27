@@ -3,14 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Users, CheckCircle2, XCircle, Eye, Settings, BookOpen, Brain, HelpCircle, Sparkles, X } from "lucide-react";
+import { Users, CheckCircle2, XCircle, Eye, Settings, BookOpen, Brain, HelpCircle, Sparkles, X, Trash2, AlertTriangle } from "lucide-react";
 
 interface StudentProfile {
   id: string;
@@ -48,6 +49,13 @@ export const ManageStudents = () => {
   const [selectedProfile, setSelectedProfile] = useState<StudentProfile | null>(null);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Delete confirmation states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [studentToDelete, setStudentToDelete] = useState<StudentProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadStudentProfiles();
@@ -157,6 +165,88 @@ export const ManageStudents = () => {
     return subject ? `${subject.name_kannada} (${subject.name})` : subjectId;
   };
 
+  // Delete functionality
+  const openDeleteDialog = (profile: StudentProfile) => {
+    setStudentToDelete(profile);
+    setDeleteDialogOpen(true);
+  };
+
+  const proceedToFinalConfirmation = () => {
+    setDeleteDialogOpen(false);
+    setDeleteConfirmText("");
+    setDeleteConfirmDialogOpen(true);
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete || deleteConfirmText !== "DELETE") return;
+
+    setDeleting(true);
+    const userId = studentToDelete.user_id;
+
+    try {
+      // Delete in order: chat_messages -> quiz_attempts -> student_subject_access -> student_profiles
+      
+      // 1. Delete chat messages
+      const { error: chatError } = await supabase
+        .from("chat_messages")
+        .delete()
+        .eq("student_id", userId);
+      
+      if (chatError) {
+        console.error("Error deleting chat messages:", chatError);
+        // Continue even if no chat messages exist
+      }
+
+      // 2. Delete quiz attempts
+      const { error: quizError } = await supabase
+        .from("quiz_attempts")
+        .delete()
+        .eq("student_id", userId);
+      
+      if (quizError) {
+        console.error("Error deleting quiz attempts:", quizError);
+        // Continue even if no quiz attempts exist
+      }
+
+      // 3. Delete subject access
+      const { error: accessError } = await supabase
+        .from("student_subject_access")
+        .delete()
+        .eq("student_id", userId);
+      
+      if (accessError) {
+        console.error("Error deleting subject access:", accessError);
+        // Continue even if no access records exist
+      }
+
+      // 4. Delete student profile
+      const { error: profileError } = await supabase
+        .from("student_profiles")
+        .delete()
+        .eq("user_id", userId);
+
+      if (profileError) throw profileError;
+
+      toast.success(`Student "${studentToDelete.first_name} ${studentToDelete.surname}" has been deleted successfully`);
+      setDeleteConfirmDialogOpen(false);
+      setStudentToDelete(null);
+      setDeleteConfirmText("");
+      loadStudentProfiles();
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      toast.error("Failed to delete student. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setDeleteConfirmDialogOpen(false);
+    setStudentToDelete(null);
+    setDeleteConfirmText("");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -249,6 +339,15 @@ export const ManageStudents = () => {
                             title="Manage Access"
                           >
                             <Settings className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => openDeleteDialog(profile)}
+                            title="Delete Student"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -481,6 +580,104 @@ export const ManageStudents = () => {
                 </Button>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* First Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={cancelDelete}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Delete Student
+              </DialogTitle>
+              <DialogDescription className="pt-2">
+                Are you sure you want to delete this student?
+              </DialogDescription>
+            </DialogHeader>
+            
+            {studentToDelete && (
+              <div className="space-y-4">
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <p className="font-medium">{studentToDelete.first_name} {studentToDelete.surname}</p>
+                  <p className="text-sm text-muted-foreground">{studentToDelete.personal_email}</p>
+                </div>
+
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium text-destructive">This action will permanently delete:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>Student profile and personal information</li>
+                    <li>All quiz attempts and scores</li>
+                    <li>All chat history with AI assistant</li>
+                    <li>All subject access permissions</li>
+                  </ul>
+                </div>
+
+                <p className="text-sm text-destructive font-medium">
+                  This action cannot be undone!
+                </p>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={cancelDelete}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={proceedToFinalConfirmation}>
+                Continue
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Second Delete Confirmation Dialog - Type DELETE */}
+        <Dialog open={deleteConfirmDialogOpen} onOpenChange={cancelDelete}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Final Confirmation Required
+              </DialogTitle>
+              <DialogDescription className="pt-2">
+                This is your last chance to cancel. Type <strong>DELETE</strong> to confirm.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {studentToDelete && (
+              <div className="space-y-4">
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <p className="text-sm text-center">
+                    You are about to permanently delete <strong>{studentToDelete.first_name} {studentToDelete.surname}</strong>
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="delete-confirm" className="text-sm">
+                    Type DELETE to confirm:
+                  </Label>
+                  <Input
+                    id="delete-confirm"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type DELETE here"
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={cancelDelete}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteStudent}
+                disabled={deleteConfirmText !== "DELETE" || deleting}
+              >
+                {deleting ? "Deleting..." : "Delete Permanently"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </CardContent>
