@@ -211,7 +211,7 @@ export const ChatPanel = ({
 
       <div 
         ref={scrollContainerRef}
-        className="flex-1 px-6 py-4 overflow-y-auto min-h-0 touch-pan-y"
+        className="flex-1 px-6 py-4 overflow-y-auto min-h-0 touch-pan-y overscroll-contain"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {!selectedChapterId ? (
@@ -284,7 +284,7 @@ export const ChatPanel = ({
         )}
       </div>
 
-      <div className="px-6 py-4 border-t border-border bg-card/30 sticky bottom-0">
+      <div className="px-6 py-4 border-t border-border bg-card/30 shrink-0">
         <div className="max-w-3xl mx-auto flex gap-2">
           <Textarea 
             value={input} 
