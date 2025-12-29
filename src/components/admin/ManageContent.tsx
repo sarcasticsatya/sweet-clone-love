@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Plus, Upload, Trash2, Pencil } from "lucide-react";
+import { FileText, Plus, Upload, Trash2, Pencil, Eye, ExternalLink } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
 
 export const ManageContent = () => {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -19,6 +20,13 @@ export const ManageContent = () => {
   const [editSubjectDialogOpen, setEditSubjectDialogOpen] = useState(false);
   const [editChapterDialogOpen, setEditChapterDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Upload progress
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // PDF Preview
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
 
   // Subject form
   const [subjectName, setSubjectName] = useState("");
@@ -269,12 +277,26 @@ export const ManageContent = () => {
     }
 
     setLoading(true);
+    setUploading(true);
+    setUploadProgress(0);
+
+    // Simulate progress for better UX
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+
     try {
       // Upload PDF to storage
       const fileName = `${selectedSubjectId}/${Date.now()}_${pdfFile.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("chapter-pdfs")
         .upload(fileName, pdfFile);
+
+      clearInterval(progressInterval);
+      setUploadProgress(95);
 
       if (uploadError) throw uploadError;
 
@@ -299,6 +321,8 @@ export const ManageContent = () => {
 
       if (insertError) throw insertError;
 
+      setUploadProgress(100);
+
       // Trigger PDF text extraction
       toast.success("Chapter uploaded! Extracting text from PDF...");
       
@@ -315,7 +339,7 @@ export const ManageContent = () => {
           toast.error(`PDF extraction failed: ${data.error}`);
         } else {
           toast.success("PDF text extracted successfully!");
-          loadSubjects(); // Reload to show updated status
+          loadSubjects();
         }
       }).catch((err) => {
         console.error("PDF extraction error:", err);
@@ -327,9 +351,12 @@ export const ManageContent = () => {
       resetChapterForm();
       loadSubjects();
     } catch (error: any) {
+      clearInterval(progressInterval);
       toast.error(error.message || "Failed to upload chapter");
     }
     setLoading(false);
+    setUploading(false);
+    setUploadProgress(0);
   };
 
   return (
@@ -414,10 +441,18 @@ export const ManageContent = () => {
                   </div>
                   <div>
                     <Label>PDF File (max 10MB)</Label>
-                    <Input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} />
+                    <Input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} disabled={uploading} />
                   </div>
-                  <Button onClick={handleUploadChapter} disabled={loading} className="w-full">
-                    Upload Chapter
+                  {uploading && (
+                    <div className="space-y-2">
+                      <Progress value={uploadProgress} className="w-full" />
+                      <p className="text-sm text-center text-muted-foreground">
+                        Uploading... {Math.round(uploadProgress)}%
+                      </p>
+                    </div>
+                  )}
+                  <Button onClick={handleUploadChapter} disabled={loading || uploading} className="w-full">
+                    {uploading ? "Uploading..." : "Upload Chapter"}
                   </Button>
                 </div>
               </DialogContent>
@@ -570,6 +605,22 @@ export const ManageContent = () => {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => setPreviewPdfUrl(chapter.pdf_url)}
+                            title="Preview PDF"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => window.open(chapter.pdf_url, '_blank')}
+                            title="Open PDF in new tab"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => openEditChapterDialog(chapter)}
                           >
                             <Pencil className="w-4 h-4" />
@@ -614,6 +665,20 @@ export const ManageContent = () => {
             </AccordionItem>
           ))}
         </Accordion>
+
+        {/* PDF Preview Dialog */}
+        <Dialog open={!!previewPdfUrl} onOpenChange={() => setPreviewPdfUrl(null)}>
+          <DialogContent className="max-w-4xl h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>PDF Preview</DialogTitle>
+            </DialogHeader>
+            <iframe 
+              src={previewPdfUrl || ''} 
+              className="w-full h-full border rounded"
+              title="PDF Preview"
+            />
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
