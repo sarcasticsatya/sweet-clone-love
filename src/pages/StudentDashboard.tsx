@@ -153,7 +153,7 @@ const StudentDashboard = () => {
       {/* Mobile: Full-screen chat with bottom navigation */}
       {isMobile && (
         <>
-          <div className="flex-1 flex flex-col overflow-hidden pb-16" style={{ height: 'calc(100dvh - 56px - 64px)' }}>
+          <div className="flex-1 flex flex-col overflow-hidden" style={{ height: 'calc(100dvh - 56px)', paddingBottom: '72px' }}>
             <ChatPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} />
           </div>
           <MobileNav

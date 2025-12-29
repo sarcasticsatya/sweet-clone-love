@@ -63,8 +63,8 @@ export const ManageContent = () => {
   };
 
   const handleCreateSubject = async () => {
-    if (!subjectName || !subjectNameKannada) {
-      toast.error("Please fill all required fields");
+    if (!subjectName && !subjectNameKannada) {
+      toast.error("Please provide at least one subject name (English or Kannada)");
       return;
     }
 
@@ -89,8 +89,8 @@ export const ManageContent = () => {
   };
 
   const handleEditSubject = async () => {
-    if (!editingSubject || !subjectName || !subjectNameKannada) {
-      toast.error("Please fill all required fields");
+    if (!editingSubject || (!subjectName && !subjectNameKannada)) {
+      toast.error("Please provide at least one subject name (English or Kannada)");
       return;
     }
 
@@ -183,8 +183,8 @@ export const ManageContent = () => {
   };
 
   const handleEditChapter = async () => {
-    if (!editingChapter || !chapterNumber || !chapterName || !chapterNameKannada) {
-      toast.error("Please fill all required fields");
+    if (!editingChapter || !chapterNumber || (!chapterName && !chapterNameKannada)) {
+      toast.error("Please provide chapter number and at least one chapter name");
       return;
     }
 
@@ -255,9 +255,16 @@ export const ManageContent = () => {
     setLoading(false);
   };
 
+  const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
   const handleUploadChapter = async () => {
-    if (!selectedSubjectId || !chapterNumber || !chapterName || !chapterNameKannada || !pdfFile) {
-      toast.error("Please fill all fields and select a PDF");
+    if (!selectedSubjectId || !chapterNumber || (!chapterName && !chapterNameKannada) || !pdfFile) {
+      toast.error("Please fill subject, chapter number, at least one chapter name, and select a PDF");
+      return;
+    }
+
+    if (pdfFile.size > MAX_PDF_SIZE) {
+      toast.error("PDF file size must be less than 10MB");
       return;
     }
 
@@ -346,13 +353,14 @@ export const ManageContent = () => {
                   <DialogTitle>Create New Subject</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Provide at least one name (English or Kannada)</p>
                   <div>
-                    <Label>Subject Name (English)</Label>
-                    <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} />
+                    <Label>Subject Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g., Mathematics" />
                   </div>
                   <div>
-                    <Label>Subject Name (Kannada)</Label>
-                    <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} />
+                    <Label>Subject Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} placeholder="e.g., ಗಣಿತ" />
                   </div>
                   <div>
                     <Label>Description (Optional)</Label>
@@ -385,7 +393,7 @@ export const ManageContent = () => {
                       <SelectContent>
                         {subjects.map((subject) => (
                           <SelectItem key={subject.id} value={subject.id}>
-                            {subject.name_kannada} ({subject.name})
+                            {subject.name_kannada || subject.name} {subject.name_kannada && subject.name ? `(${subject.name})` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -395,16 +403,17 @@ export const ManageContent = () => {
                     <Label>Chapter Number</Label>
                     <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
                   </div>
+                  <p className="text-sm text-muted-foreground">Provide at least one chapter name</p>
                   <div>
-                    <Label>Chapter Name (English)</Label>
+                    <Label>Chapter Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
                     <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
                   </div>
                   <div>
-                    <Label>Chapter Name (Kannada)</Label>
+                    <Label>Chapter Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
                     <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
                   </div>
                   <div>
-                    <Label>PDF File</Label>
+                    <Label>PDF File (max 10MB)</Label>
                     <Input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} />
                   </div>
                   <Button onClick={handleUploadChapter} disabled={loading} className="w-full">
@@ -430,12 +439,13 @@ export const ManageContent = () => {
               <DialogTitle>Edit Subject</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Provide at least one name (English or Kannada)</p>
               <div>
-                <Label>Subject Name (English)</Label>
+                <Label>Subject Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
                 <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} />
               </div>
               <div>
-                <Label>Subject Name (Kannada)</Label>
+                <Label>Subject Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
                 <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} />
               </div>
               <div>
@@ -466,12 +476,13 @@ export const ManageContent = () => {
                 <Label>Chapter Number</Label>
                 <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
               </div>
+              <p className="text-sm text-muted-foreground">Provide at least one chapter name</p>
               <div>
-                <Label>Chapter Name (English)</Label>
+                <Label>Chapter Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
                 <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
               </div>
               <div>
-                <Label>Chapter Name (Kannada)</Label>
+                <Label>Chapter Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
                 <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -489,7 +500,7 @@ export const ManageContent = () => {
             <AccordionItem key={subject.id} value={subject.id}>
               <div className="flex items-center">
                 <AccordionTrigger className="flex-1">
-                  {subject.name_kannada} ({subject.name})
+                  {subject.name_kannada || subject.name} {subject.name_kannada && subject.name ? `(${subject.name})` : ''}
                 </AccordionTrigger>
                 <Button
                   size="sm"
@@ -538,7 +549,7 @@ export const ManageContent = () => {
                     chapters[subject.id].map((chapter) => (
                       <div key={chapter.id} className="flex items-center justify-between p-2 bg-muted rounded gap-2">
                         <span className="text-sm flex-1">
-                          Chapter {chapter.chapter_number}: {chapter.name_kannada}
+                          Chapter {chapter.chapter_number}: {chapter.name_kannada || chapter.name} {chapter.name_kannada && chapter.name ? `(${chapter.name})` : ''}
                         </span>
                         <div className="flex items-center gap-2">
                           {chapter.content_extracted ? (

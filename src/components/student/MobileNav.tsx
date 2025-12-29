@@ -22,8 +22,8 @@ export const MobileNav = ({
   const [toolsOpen, setToolsOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden safe-area-inset-bottom">
-      <div className="flex items-center justify-around py-2 px-4">
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="flex items-center justify-around py-3 px-4">
         <Sheet open={sourcesOpen} onOpenChange={setSourcesOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="sm" className="flex-col h-auto py-2 px-4">
