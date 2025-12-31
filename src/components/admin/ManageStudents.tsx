@@ -33,6 +33,7 @@ interface Subject {
   id: string;
   name: string;
   name_kannada: string;
+  medium: string;
 }
 
 interface StudentAccess {
@@ -162,7 +163,12 @@ export const ManageStudents = () => {
 
   const getSubjectName = (subjectId: string) => {
     const subject = subjects.find(s => s.id === subjectId);
-    return subject ? `${subject.name_kannada} (${subject.name})` : subjectId;
+    if (!subject) return subjectId;
+    
+    if (subject.name_kannada && subject.name) {
+      return `${subject.name_kannada} (${subject.name})`;
+    }
+    return subject.name_kannada || subject.name || subjectId;
   };
 
   // Delete functionality
@@ -307,11 +313,15 @@ export const ManageStudents = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {studentAccess[profile.user_id]?.slice(0, 2).map((subjectId) => (
-                            <Badge key={subjectId} variant="secondary" className="text-xs">
-                              {subjects.find(s => s.id === subjectId)?.name || "..."}
-                            </Badge>
-                          ))}
+                          {studentAccess[profile.user_id]?.slice(0, 2).map((subjectId) => {
+                            const subject = subjects.find(s => s.id === subjectId);
+                            const displayName = subject?.name || subject?.name_kannada || "...";
+                            return (
+                              <Badge key={subjectId} variant="secondary" className="text-xs">
+                                {displayName}
+                              </Badge>
+                            );
+                          })}
                           {accessCount > 2 && (
                             <Badge variant="outline" className="text-xs">
                               +{accessCount - 2} more
@@ -423,9 +433,18 @@ export const ManageStudents = () => {
                               }
                             }}
                           />
-                          <div>
-                            <p className="font-medium text-sm">{subject.name_kannada}</p>
-                            <p className="text-xs text-muted-foreground">{subject.name}</p>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <p className="font-medium text-sm">
+                                {subject.name_kannada || subject.name}
+                              </p>
+                              {subject.name_kannada && subject.name && (
+                                <p className="text-xs text-muted-foreground">{subject.name}</p>
+                              )}
+                            </div>
+                            <Badge variant="outline" className="text-xs ml-auto">
+                              {subject.medium}
+                            </Badge>
                           </div>
                         </div>
                         {isSelected && (
@@ -448,20 +467,24 @@ export const ManageStudents = () => {
                   <p className="text-sm font-medium text-green-700 dark:text-green-300">
                     {selectedSubjects.length} subject(s) will be assigned
                   </p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {selectedSubjects.map(id => (
-                      <Badge key={id} variant="secondary" className="text-xs">
-                        {subjects.find(s => s.id === id)?.name}
-                        <X 
-                          className="w-3 h-3 ml-1 cursor-pointer" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSubject(id);
-                          }}
-                        />
-                      </Badge>
-                    ))}
-                  </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {selectedSubjects.map(id => {
+                        const subject = subjects.find(s => s.id === id);
+                        const displayName = subject?.name || subject?.name_kannada || "Unknown";
+                        return (
+                          <Badge key={id} variant="secondary" className="text-xs">
+                            {displayName}
+                            <X 
+                              className="w-3 h-3 ml-1 cursor-pointer" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSubject(id);
+                              }}
+                            />
+                          </Badge>
+                        );
+                      })}
+                    </div>
                 </div>
               )}
 
