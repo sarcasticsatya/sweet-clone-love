@@ -529,6 +529,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          medium: string
           name: string
           name_kannada: string
           updated_at: string
@@ -537,6 +538,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          medium?: string
           name: string
           name_kannada: string
           updated_at?: string
@@ -545,6 +547,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          medium?: string
           name?: string
           name_kannada?: string
           updated_at?: string

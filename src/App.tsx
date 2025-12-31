@@ -10,6 +10,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import NotVerified from "./pages/NotVerified";
 import VerifyEmail from "./pages/VerifyEmail";
 import SelectCourse from "./pages/SelectCourse";
+import UserProfile from "./pages/UserProfile";
+import ResetPassword from "./pages/ResetPassword";
+import UpdatePassword from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +31,9 @@ const App = () => (
           <Route path="/not-verified" element={<NotVerified />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/select-course" element={<SelectCourse />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/update-password" element={<UpdatePassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

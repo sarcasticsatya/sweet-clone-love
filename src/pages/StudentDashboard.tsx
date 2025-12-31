@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, BookOpen, Clock, Mail } from "lucide-react";
+import { LogOut, BookOpen, Clock, Mail, User } from "lucide-react";
 import { SourcesPanel } from "@/components/student/SourcesPanel";
 import { ChatPanel } from "@/components/student/ChatPanel";
 import { ToolsPanel } from "@/components/student/ToolsPanel";
@@ -122,10 +122,16 @@ const StudentDashboard = () => {
             <p className="text-[9px] md:text-[10px] text-muted-foreground">Karnataka SSLC Edtech Platform</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-7 md:h-8 text-[10px] md:text-xs">
-          <LogOut className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
-          <span className="hidden md:inline">Sign Out</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/profile")} className="h-7 md:h-8 text-[10px] md:text-xs">
+            <User className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
+            <span className="hidden md:inline">Profile</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-7 md:h-8 text-[10px] md:text-xs">
+            <LogOut className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
+            <span className="hidden md:inline">Sign Out</span>
+          </Button>
+        </div>
       </header>
 
       {/* Desktop: Three-panel layout */}

@@ -321,6 +321,16 @@ const Auth = () => {
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
+                <div className="text-center">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-sm text-muted-foreground"
+                    onClick={() => navigate("/reset-password")}
+                  >
+                    Forgot your password?
+                  </Button>
+                </div>
               </form>
             </TabsContent>
 
