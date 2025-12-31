@@ -7,12 +7,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { FileText, Plus, Upload, Trash2, Pencil, Eye, ExternalLink } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
 
+type Medium = "English" | "Kannada";
+
 export const ManageContent = () => {
+  const [selectedMedium, setSelectedMedium] = useState<Medium>("English");
   const [subjects, setSubjects] = useState<any[]>([]);
   const [chapters, setChapters] = useState<Record<string, any[]>>({});
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
@@ -44,12 +48,13 @@ export const ManageContent = () => {
 
   useEffect(() => {
     loadSubjects();
-  }, []);
+  }, [selectedMedium]);
 
   const loadSubjects = async () => {
     const { data } = await supabase
       .from("subjects")
       .select("*")
+      .eq("medium", selectedMedium)
       .order("name");
     
     setSubjects(data || []);
@@ -70,19 +75,50 @@ export const ManageContent = () => {
     setChapters(prev => ({ ...prev, [subjectId]: data || [] }));
   };
 
-  const handleCreateSubject = async () => {
-    if (!subjectName && !subjectNameKannada) {
-      toast.error("Please provide at least one subject name (English or Kannada)");
-      return;
+  // Get validation requirements based on selected medium
+  const getMandatoryLabel = (isEnglish: boolean) => {
+    if (selectedMedium === "English") {
+      return isEnglish ? <span className="text-destructive">*</span> : <span className="text-muted-foreground text-xs">(optional)</span>;
+    } else {
+      return isEnglish ? <span className="text-muted-foreground text-xs">(optional)</span> : <span className="text-destructive">*</span>;
     }
+  };
+
+  const validateSubjectNames = (): boolean => {
+    if (selectedMedium === "English" && !subjectName.trim()) {
+      toast.error("English name is mandatory for English Medium subjects");
+      return false;
+    }
+    if (selectedMedium === "Kannada" && !subjectNameKannada.trim()) {
+      toast.error("Kannada name is mandatory for Kannada Medium subjects");
+      return false;
+    }
+    return true;
+  };
+
+  const validateChapterNames = (): boolean => {
+    if (selectedMedium === "English" && !chapterName.trim()) {
+      toast.error("English name is mandatory for English Medium chapters");
+      return false;
+    }
+    if (selectedMedium === "Kannada" && !chapterNameKannada.trim()) {
+      toast.error("Kannada name is mandatory for Kannada Medium chapters");
+      return false;
+    }
+    return true;
+  };
+
+  const handleCreateSubject = async () => {
+    if (!validateSubjectNames()) return;
 
     setLoading(true);
     const { error } = await supabase
       .from("subjects")
       .insert({
-        name: subjectName,
-        name_kannada: subjectNameKannada,
-        description: subjectDescription
+        name: subjectName || subjectNameKannada,
+        name_kannada: subjectNameKannada || subjectName,
+        description: subjectDescription,
+        medium: selectedMedium
       });
 
     if (error) {
@@ -97,17 +133,14 @@ export const ManageContent = () => {
   };
 
   const handleEditSubject = async () => {
-    if (!editingSubject || (!subjectName && !subjectNameKannada)) {
-      toast.error("Please provide at least one subject name (English or Kannada)");
-      return;
-    }
+    if (!editingSubject || !validateSubjectNames()) return;
 
     setLoading(true);
     const { error } = await supabase
       .from("subjects")
       .update({
-        name: subjectName,
-        name_kannada: subjectNameKannada,
+        name: subjectName || subjectNameKannada,
+        name_kannada: subjectNameKannada || subjectName,
         description: subjectDescription
       })
       .eq("id", editingSubject.id);
@@ -191,10 +224,7 @@ export const ManageContent = () => {
   };
 
   const handleEditChapter = async () => {
-    if (!editingChapter || !chapterNumber || (!chapterName && !chapterNameKannada)) {
-      toast.error("Please provide chapter number and at least one chapter name");
-      return;
-    }
+    if (!editingChapter || !chapterNumber || !validateChapterNames()) return;
 
     setLoading(true);
     try {
@@ -202,8 +232,8 @@ export const ManageContent = () => {
         .from("chapters")
         .update({
           chapter_number: parseInt(chapterNumber),
-          name: chapterName,
-          name_kannada: chapterNameKannada
+          name: chapterName || chapterNameKannada,
+          name_kannada: chapterNameKannada || chapterName
         })
         .eq("id", editingChapter.id);
 
@@ -254,7 +284,7 @@ export const ManageContent = () => {
         toast.error(`PDF extraction failed: ${data.error}`);
       } else {
         toast.success("PDF text extracted successfully!");
-        loadSubjects(); // Reload to show updated status
+        loadSubjects();
       }
     } catch (err) {
       console.error("PDF extraction error:", err);
@@ -266,10 +296,12 @@ export const ManageContent = () => {
   const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
   const handleUploadChapter = async () => {
-    if (!selectedSubjectId || !chapterNumber || (!chapterName && !chapterNameKannada) || !pdfFile) {
-      toast.error("Please fill subject, chapter number, at least one chapter name, and select a PDF");
+    if (!selectedSubjectId || !chapterNumber || !pdfFile) {
+      toast.error("Please fill subject, chapter number, and select a PDF");
       return;
     }
+
+    if (!validateChapterNames()) return;
 
     if (pdfFile.size > MAX_PDF_SIZE) {
       toast.error("PDF file size must be less than 10MB");
@@ -311,8 +343,8 @@ export const ManageContent = () => {
         .insert({
           subject_id: selectedSubjectId,
           chapter_number: parseInt(chapterNumber),
-          name: chapterName,
-          name_kannada: chapterNameKannada,
+          name: chapterName || chapterNameKannada,
+          name_kannada: chapterNameKannada || chapterName,
           pdf_url: publicUrl,
           pdf_storage_path: fileName
         })
@@ -359,105 +391,131 @@ export const ManageContent = () => {
     setUploadProgress(0);
   };
 
+  // Filter subjects for the current medium
+  const filteredSubjects = subjects.filter(s => s.medium === selectedMedium);
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Manage Content
-          </CardTitle>
-          <div className="flex gap-2">
-            <Dialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Subject
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Subject</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Provide at least one name (English or Kannada)</p>
-                  <div>
-                    <Label>Subject Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g., Mathematics" />
-                  </div>
-                  <div>
-                    <Label>Subject Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} placeholder="e.g., ಗಣಿತ" />
-                  </div>
-                  <div>
-                    <Label>Description (Optional)</Label>
-                    <Input value={subjectDescription} onChange={(e) => setSubjectDescription(e.target.value)} />
-                  </div>
-                  <Button onClick={handleCreateSubject} disabled={loading} className="w-full">
-                    Create Subject
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Dialog open={chapterDialogOpen} onOpenChange={setChapterDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Chapter PDF
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Upload Chapter PDF</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Select Subject</Label>
-                    <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose subject" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.id}>
-                            {subject.name_kannada || subject.name} {subject.name_kannada && subject.name ? `(${subject.name})` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Chapter Number</Label>
-                    <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
-                  </div>
-                  <p className="text-sm text-muted-foreground">Provide at least one chapter name</p>
-                  <div>
-                    <Label>Chapter Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label>Chapter Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label>PDF File (max 10MB)</Label>
-                    <Input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} disabled={uploading} />
-                  </div>
-                  {uploading && (
-                    <div className="space-y-2">
-                      <Progress value={uploadProgress} className="w-full" />
-                      <p className="text-sm text-center text-muted-foreground">
-                        Uploading... {Math.round(uploadProgress)}%
-                      </p>
-                    </div>
-                  )}
-                  <Button onClick={handleUploadChapter} disabled={loading || uploading} className="w-full">
-                    {uploading ? "Uploading..." : "Upload Chapter"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Manage Content
+            </CardTitle>
           </div>
+          
+          {/* Medium Selection Tabs */}
+          <Tabs value={selectedMedium} onValueChange={(v) => setSelectedMedium(v as Medium)} className="w-full">
+            <div className="flex items-center justify-between gap-4">
+              <TabsList className="grid w-[300px] grid-cols-2">
+                <TabsTrigger value="English">English Medium</TabsTrigger>
+                <TabsTrigger value="Kannada">Kannada Medium</TabsTrigger>
+              </TabsList>
+              
+              <div className="flex gap-2">
+                <Dialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Subject
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New {selectedMedium} Medium Subject</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        {selectedMedium === "English" 
+                          ? "English name is mandatory, Kannada is optional"
+                          : "Kannada name is mandatory, English is optional"}
+                      </p>
+                      <div>
+                        <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
+                        <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g., Mathematics" />
+                      </div>
+                      <div>
+                        <Label>Subject Name (Kannada) {getMandatoryLabel(false)}</Label>
+                        <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} placeholder="e.g., ಗಣಿತ" />
+                      </div>
+                      <div>
+                        <Label>Description (Optional)</Label>
+                        <Input value={subjectDescription} onChange={(e) => setSubjectDescription(e.target.value)} />
+                      </div>
+                      <Button onClick={handleCreateSubject} disabled={loading} className="w-full">
+                        Create Subject
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={chapterDialogOpen} onOpenChange={setChapterDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Chapter PDF
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Upload {selectedMedium} Medium Chapter PDF</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Select Subject</Label>
+                        <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose subject" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredSubjects.map((subject) => (
+                              <SelectItem key={subject.id} value={subject.id}>
+                                {selectedMedium === "English" 
+                                  ? (subject.name || subject.name_kannada)
+                                  : (subject.name_kannada || subject.name)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Chapter Number</Label>
+                        <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedMedium === "English" 
+                          ? "English name is mandatory, Kannada is optional"
+                          : "Kannada name is mandatory, English is optional"}
+                      </p>
+                      <div>
+                        <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
+                        <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Chapter Name (Kannada) {getMandatoryLabel(false)}</Label>
+                        <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>PDF File (max 10MB)</Label>
+                        <Input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} disabled={uploading} />
+                      </div>
+                      {uploading && (
+                        <div className="space-y-2">
+                          <Progress value={uploadProgress} className="w-full" />
+                          <p className="text-sm text-center text-muted-foreground">
+                            Uploading... {Math.round(uploadProgress)}%
+                          </p>
+                        </div>
+                      )}
+                      <Button onClick={handleUploadChapter} disabled={loading || uploading} className="w-full">
+                        {uploading ? "Uploading..." : "Upload Chapter"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          </Tabs>
         </div>
       </CardHeader>
       <CardContent>
@@ -474,13 +532,17 @@ export const ManageContent = () => {
               <DialogTitle>Edit Subject</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Provide at least one name (English or Kannada)</p>
+              <p className="text-sm text-muted-foreground">
+                {editingSubject?.medium === "English" 
+                  ? "English name is mandatory, Kannada is optional"
+                  : "Kannada name is mandatory, English is optional"}
+              </p>
               <div>
-                <Label>Subject Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
                 <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} />
               </div>
               <div>
-                <Label>Subject Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Label>Subject Name (Kannada) {getMandatoryLabel(false)}</Label>
                 <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} />
               </div>
               <div>
@@ -511,13 +573,17 @@ export const ManageContent = () => {
                 <Label>Chapter Number</Label>
                 <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
               </div>
-              <p className="text-sm text-muted-foreground">Provide at least one chapter name</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedMedium === "English" 
+                  ? "English name is mandatory, Kannada is optional"
+                  : "Kannada name is mandatory, English is optional"}
+              </p>
               <div>
-                <Label>Chapter Name (English) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
                 <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
               </div>
               <div>
-                <Label>Chapter Name (Kannada) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Label>Chapter Name (Kannada) {getMandatoryLabel(false)}</Label>
                 <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -530,141 +596,157 @@ export const ManageContent = () => {
           </DialogContent>
         </Dialog>
 
-        <Accordion type="single" collapsible className="w-full">
-          {subjects.map((subject) => (
-            <AccordionItem key={subject.id} value={subject.id}>
-              <div className="flex items-center">
-                <AccordionTrigger className="flex-1">
-                  {subject.name_kannada || subject.name} {subject.name_kannada && subject.name ? `(${subject.name})` : ''}
-                </AccordionTrigger>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditSubjectDialog(subject);
-                  }}
-                  className="mr-1"
-                >
-                  <Pencil className="w-4 h-4" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10 mr-2"
-                      disabled={loading}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Subject</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete "{subject.name}"? This will permanently delete all chapters and PDFs associated with this subject. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDeleteSubject(subject.id, subject.name)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        {filteredSubjects.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No {selectedMedium} medium subjects yet.</p>
+            <p className="text-sm">Click "Add Subject" to create one.</p>
+          </div>
+        ) : (
+          <Accordion type="single" collapsible className="w-full">
+            {filteredSubjects.map((subject) => (
+              <AccordionItem key={subject.id} value={subject.id}>
+                <div className="flex items-center">
+                  <AccordionTrigger className="flex-1">
+                    {selectedMedium === "English" 
+                      ? (subject.name || subject.name_kannada)
+                      : (subject.name_kannada || subject.name)}
+                    {subject.name && subject.name_kannada && (
+                      <span className="text-muted-foreground ml-2">
+                        ({selectedMedium === "English" ? subject.name_kannada : subject.name})
+                      </span>
+                    )}
+                  </AccordionTrigger>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditSubjectDialog(subject);
+                    }}
+                    className="mr-1"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 mr-2"
+                        disabled={loading}
                       >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-              <AccordionContent>
-                <div className="space-y-2 pl-4">
-                  {chapters[subject.id]?.length ? (
-                    chapters[subject.id].map((chapter) => (
-                      <div key={chapter.id} className="flex items-center justify-between p-2 bg-muted rounded gap-2">
-                        <span className="text-sm flex-1">
-                          Chapter {chapter.chapter_number}: {chapter.name_kannada || chapter.name} {chapter.name_kannada && chapter.name ? `(${chapter.name})` : ''}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {chapter.content_extracted ? (
-                            <span className="text-xs text-green-600 dark:text-green-400">✓ Processed</span>
-                          ) : (
-                            <>
-                              <span className="text-xs text-orange-600 dark:text-orange-400">⏳ Pending</span>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRetryExtraction(chapter.id)}
-                                disabled={loading}
-                              >
-                                Retry
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setPreviewPdfUrl(chapter.pdf_url)}
-                            title="Preview PDF"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => window.open(chapter.pdf_url, '_blank')}
-                            title="Open PDF in new tab"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openEditChapterDialog(chapter)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                disabled={loading}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Chapter</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "Chapter {chapter.chapter_number}: {chapter.name}"? This will permanently delete the chapter and its PDF. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteChapter(chapter)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No chapters yet</p>
-                  )}
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Subject</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{subject.name || subject.name_kannada}"? This will permanently delete all chapters and PDFs associated with this subject. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteSubject(subject.id, subject.name || subject.name_kannada)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+                <AccordionContent>
+                  <div className="space-y-2 pl-4">
+                    {chapters[subject.id]?.length ? (
+                      chapters[subject.id].map((chapter) => (
+                        <div key={chapter.id} className="flex items-center justify-between p-2 bg-muted rounded gap-2">
+                          <span className="text-sm flex-1">
+                            Chapter {chapter.chapter_number}: {selectedMedium === "English" 
+                              ? (chapter.name || chapter.name_kannada)
+                              : (chapter.name_kannada || chapter.name)}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {chapter.content_extracted ? (
+                              <span className="text-xs text-green-600 dark:text-green-400">✓ Processed</span>
+                            ) : (
+                              <>
+                                <span className="text-xs text-orange-600 dark:text-orange-400">⏳ Pending</span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRetryExtraction(chapter.id)}
+                                  disabled={loading}
+                                >
+                                  Retry
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setPreviewPdfUrl(chapter.pdf_url)}
+                              title="Preview PDF"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => window.open(chapter.pdf_url, '_blank')}
+                              title="Open PDF in new tab"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEditChapterDialog(chapter)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  disabled={loading}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Chapter</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "Chapter {chapter.chapter_number}: {chapter.name || chapter.name_kannada}"? This will permanently delete the chapter and its PDF. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteChapter(chapter)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No chapters yet</p>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
 
         {/* PDF Preview Dialog */}
         <Dialog open={!!previewPdfUrl} onOpenChange={() => setPreviewPdfUrl(null)}>
