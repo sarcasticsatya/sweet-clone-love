@@ -97,10 +97,13 @@ serve(async (req) => {
    - For equations, show step-by-step derivation or solution process
 5. FORMATTING (ABSOLUTE REQUIREMENTS):
    - Use clean Markdown ONLY: headings (## ###), bullet points (-), bold (**text**), italic (*text*)
-   - For mathematical expressions, ALWAYS use plain text: "x^2 + 5x + 6", "Area = πr^2", "E = mc^2"
+   - For mathematical expressions, ALWAYS use plain text: "x^2 + 5x + 6", "Area = πr²", "E = mc²"
    - NEVER use LaTeX delimiters: NO $ or $$ symbols anywhere
-   - NEVER use \( \) or \[ \] notation
-   - Write equations naturally in the text like: "The formula is x^2 + 5x + 6"
+   - NEVER use \\( \\) or \\[ \\] notation
+   - NEVER use Unicode escape sequences like \\u0394 or \\u2220
+   - USE ACTUAL SYMBOLS directly: ∠ for angle, Δ or △ for triangle/delta, θ for theta, π for pi, ° for degrees
+   - For Kannada text, use ACTUAL Kannada characters (ಕನ್ನಡ), NEVER Unicode escapes like \\u0C95
+   - Write equations naturally in the text like: "The formula is x² + 5x + 6"
    - Keep formatting clean and readable for school students
 6. ALWAYS conclude with a **Summary** or **Final Answer** section
 7. VIDEO REFERENCES: When your answer relates to topics covered in the available videos, include a reference like:
@@ -150,8 +153,56 @@ ${chapter.content_extracted}`;
       .replace(/\$\$([^$]+)\$\$/g, '$1')  // Remove $$...$$ blocks
       .replace(/\$([^$]+)\$/g, '$1')      // Remove $...$ inline
       .replace(/\\\[([^\]]+)\\\]/g, '$1') // Remove \[...\] blocks
-      .replace(/\\\(([^\)]+)\\\)/g, '$1') // Remove \(...\) inline
-      .trim();
+      .replace(/\\\(([^\)]+)\\\)/g, '$1'); // Remove \(...\) inline
+    
+    // Convert Unicode escape sequences to actual characters
+    // Matches patterns like \u0394, \u2220, \\u0C95, etc.
+    aiMessage = aiMessage.replace(/\\\\u([0-9A-Fa-f]{4})/g, (_match: string, code: string) => {
+      return String.fromCharCode(parseInt(code, 16));
+    });
+    aiMessage = aiMessage.replace(/\\u([0-9A-Fa-f]{4})/g, (_match: string, code: string) => {
+      return String.fromCharCode(parseInt(code, 16));
+    });
+    
+    // Replace common LaTeX-style commands with actual Unicode symbols
+    const symbolReplacements: Record<string, string> = {
+      '\\angle': '∠',
+      '\\triangle': '△',
+      '\\Delta': 'Δ',
+      '\\theta': 'θ',
+      '\\alpha': 'α',
+      '\\beta': 'β',
+      '\\gamma': 'γ',
+      '\\pi': 'π',
+      '\\degree': '°',
+      '\\degrees': '°',
+      '\\perp': '⊥',
+      '\\parallel': '∥',
+      '\\sqrt': '√',
+      '\\rightarrow': '→',
+      '\\leftarrow': '←',
+      '\\leq': '≤',
+      '\\geq': '≥',
+      '\\neq': '≠',
+      '\\approx': '≈',
+      '\\infty': '∞',
+      '\\sum': 'Σ',
+      '\\therefore': '∴',
+      '\\because': '∵',
+      '\\times': '×',
+      '\\div': '÷',
+      '\\pm': '±',
+      '\\circ': '°',
+    };
+
+    for (const [latex, symbol] of Object.entries(symbolReplacements)) {
+      // Handle both single and double backslash versions
+      const escapedLatex = latex.replace(/\\/g, '\\\\');
+      aiMessage = aiMessage.replace(new RegExp(escapedLatex, 'g'), symbol);
+      aiMessage = aiMessage.replace(new RegExp(escapedLatex.replace(/\\\\/g, '\\\\\\\\'), 'g'), symbol);
+    }
+    
+    aiMessage = aiMessage.trim();
 
     return new Response(JSON.stringify({ response: aiMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
