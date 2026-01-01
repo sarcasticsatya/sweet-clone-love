@@ -231,7 +231,7 @@ export const ManageContent = () => {
       const { error } = await supabase
         .from("chapters")
         .update({
-          chapter_number: parseInt(chapterNumber),
+          chapter_number: chapterNumber.trim(),
           name: chapterName || chapterNameKannada,
           name_kannada: chapterNameKannada || chapterName
         })
@@ -252,7 +252,7 @@ export const ManageContent = () => {
 
   const openEditChapterDialog = (chapter: any) => {
     setEditingChapter(chapter);
-    setChapterNumber(chapter.chapter_number.toString());
+    setChapterNumber(chapter.chapter_number);
     setChapterName(chapter.name);
     setChapterNameKannada(chapter.name_kannada);
     setEditChapterDialogOpen(true);
@@ -342,7 +342,7 @@ export const ManageContent = () => {
         .from("chapters")
         .insert({
           subject_id: selectedSubjectId,
-          chapter_number: parseInt(chapterNumber),
+          chapter_number: chapterNumber.trim(),
           name: chapterName || chapterNameKannada,
           name_kannada: chapterNameKannada || chapterName,
           pdf_url: publicUrl,
@@ -480,7 +480,7 @@ export const ManageContent = () => {
                       </div>
                       <div>
                         <Label>Chapter Number</Label>
-                        <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
+                        <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {selectedMedium === "English" 
@@ -571,7 +571,7 @@ export const ManageContent = () => {
             <div className="space-y-4">
               <div>
                 <Label>Chapter Number</Label>
-                <Input type="number" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
+                <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
               </div>
               <p className="text-sm text-muted-foreground">
                 {selectedMedium === "English" 
