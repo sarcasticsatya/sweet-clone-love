@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Download, Users, BookOpen, FileText, Brain, Loader2, Archive } from "lucide-react";
 import JSZip from "jszip";
+import { naturalSortChapters } from "@/lib/naturalSort";
 
 export const DataExport = () => {
   const [exporting, setExporting] = useState<string | null>(null);
@@ -79,12 +80,14 @@ export const DataExport = () => {
 
       if (subjectsError) throw subjectsError;
 
-      const { data: chapters, error: chaptersError } = await supabase
+      const { data: chaptersData, error: chaptersError } = await supabase
         .from("chapters")
-        .select("*")
-        .order("chapter_number");
+        .select("*");
 
       if (chaptersError) throw chaptersError;
+      
+      // Apply natural sort client-side for proper alphanumeric ordering
+      const chapters = (chaptersData || []).sort(naturalSortChapters);
 
       const headers = [
         "Nythic AI Platform - Subjects & Chapters Export",
@@ -232,11 +235,11 @@ export const DataExport = () => {
       const timestamp = Date.now();
 
       // Fetch all data in parallel
-      const [studentsRes, subjectsRes, chaptersRes, attemptsRes, flashcardsRes, profilesRes] =
+      const [studentsRes, subjectsRes, chaptersDataRes, attemptsRes, flashcardsRes, profilesRes] =
         await Promise.all([
           supabase.from("student_profiles").select("*").order("created_at", { ascending: false }),
           supabase.from("subjects").select("*").order("name"),
-          supabase.from("chapters").select("*").order("chapter_number"),
+          supabase.from("chapters").select("*"),
           supabase.from("quiz_attempts").select(`*, quizzes (title, chapters (name, subjects (name)))`).order("attempted_at", { ascending: false }),
           supabase.from("flashcards").select(`*, chapters (name, subjects (name))`).order("created_at", { ascending: false }),
           supabase.from("student_profiles").select("user_id, first_name, surname"),
@@ -253,10 +256,11 @@ export const DataExport = () => {
       ].join("\n");
       zip.file("students.csv", studentsCSV);
 
-      // Subjects & Chapters CSV
+      // Subjects & Chapters CSV - apply natural sort
+      const sortedChapters = (chaptersDataRes.data || []).sort(naturalSortChapters);
       const subjectsRows: string[] = [];
       (subjectsRes.data || []).forEach((subject) => {
-        const subjectChapters = (chaptersRes.data || []).filter((c) => c.subject_id === subject.id);
+        const subjectChapters = sortedChapters.filter((c) => c.subject_id === subject.id);
         if (subjectChapters.length === 0) {
           subjectsRows.push([subject.name, subject.name_kannada, "", "", "", ""].join(","));
         } else {

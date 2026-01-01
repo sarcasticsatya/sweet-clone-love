@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { naturalSortChapters } from "@/lib/naturalSort";
 
 interface SourcesPanelProps {
   selectedChapterId: string | null;
@@ -57,10 +58,11 @@ export const SourcesPanel = ({
     const { data } = await supabase
       .from("chapters")
       .select("*")
-      .eq("subject_id", subjectId)
-      .order("chapter_number");
+      .eq("subject_id", subjectId);
 
-    setChapters(prev => ({ ...prev, [subjectId]: data || [] }));
+    // Apply natural sort client-side for proper alphanumeric ordering
+    const sortedData = (data || []).sort(naturalSortChapters);
+    setChapters(prev => ({ ...prev, [subjectId]: sortedData }));
   };
 
   const toggleSubject = async (subjectId: string) => {
