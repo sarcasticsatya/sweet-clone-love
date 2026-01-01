@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Video, Plus, ExternalLink, Upload, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { naturalSortChapters } from "@/lib/naturalSort";
 
 export const ManageVideos = () => {
   const [videos, setVideos] = useState<any[]>([]);
@@ -67,10 +68,11 @@ export const ManageVideos = () => {
   const loadChapters = async () => {
     const { data } = await supabase
       .from("chapters")
-      .select("*")
-      .order("chapter_number");
+      .select("*");
     
-    setChapters(data || []);
+    // Apply natural sort client-side for proper alphanumeric ordering
+    const sortedData = (data || []).sort(naturalSortChapters);
+    setChapters(sortedData);
   };
 
   const handleUploadVideo = async () => {

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { FileText, Plus, Upload, Trash2, Pencil, Eye, ExternalLink } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
+import { naturalSortChapters } from "@/lib/naturalSort";
 
 type Medium = "English" | "Kannada";
 
@@ -69,10 +70,11 @@ export const ManageContent = () => {
     const { data } = await supabase
       .from("chapters")
       .select("*")
-      .eq("subject_id", subjectId)
-      .order("chapter_number");
+      .eq("subject_id", subjectId);
     
-    setChapters(prev => ({ ...prev, [subjectId]: data || [] }));
+    // Apply natural sort client-side for proper alphanumeric ordering
+    const sortedData = (data || []).sort(naturalSortChapters);
+    setChapters(prev => ({ ...prev, [subjectId]: sortedData }));
   };
 
   // Get validation requirements based on selected medium
