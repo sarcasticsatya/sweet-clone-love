@@ -148,21 +148,10 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
       </div>
 
       <Card 
-        className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] min-h-[320px] flex flex-col"
+        className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] min-h-[280px] flex flex-col"
         onClick={() => setShowAnswer(!showAnswer)}
       >
         <CardContent className="p-4 text-center w-full flex flex-col h-full">
-          {/* Image display */}
-          {currentCard.image_url && (
-            <div className="mb-4 flex-shrink-0">
-              <img
-                src={currentCard.image_url}
-                alt="Flashcard illustration"
-                className="w-full max-h-40 object-contain rounded-lg border border-border bg-white"
-              />
-            </div>
-          )}
-          
           <div className="flex-1 flex flex-col justify-center">
             <p className="text-xs font-medium mb-2 text-muted-foreground">
               {showAnswer ? "Answer" : "Question"}

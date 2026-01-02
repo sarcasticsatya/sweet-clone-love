@@ -7,9 +7,6 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Maximum number of images to generate (cost optimization)
-const MAX_IMAGES_TO_GENERATE = 5;
-
 function safeParseJSON(content: string): any {
   let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   
@@ -35,59 +32,6 @@ function safeParseJSON(content: string): any {
     }
     
     throw new Error("Could not parse flashcards JSON");
-  }
-}
-
-// Generate educational image for a flashcard
-async function generateImageForFlashcard(question: string, answer: string, topic: string, apiKey: string): Promise<string | null> {
-  try {
-    console.log("Generating image for flashcard:", question.substring(0, 30));
-    
-    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: `Create a simple educational diagram/illustration for this flashcard concept.
-
-Topic: ${topic}
-Concept: ${question}
-Answer hint: ${answer.substring(0, 100)}
-
-Requirements:
-- Clean, simple educational illustration
-- White background
-- Visual representation of the concept
-- NO TEXT - only visual elements, diagrams, icons
-- Use simple shapes and clear visuals
-- Educational style like a textbook diagram
-- 2-3 colors maximum
-
-Make it simple, clear, and educational. Ultra high resolution.`
-          }
-        ],
-        modalities: ["image", "text"]
-      }),
-    });
-
-    if (!imageResponse.ok) {
-      console.error("Image generation failed");
-      return null;
-    }
-
-    const imageData = await imageResponse.json();
-    const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
-    return imageUrl || null;
-  } catch (error) {
-    console.error("Error generating image:", error);
-    return null;
   }
 }
 
@@ -263,51 +207,18 @@ serve(async (req) => {
     
     console.log("Successfully parsed", parsed.flashcards.length, "flashcards");
 
-    // COST OPTIMIZATION: Only generate images for first 5 flashcards
-    const flashcardsWithImages: any[] = [];
-    const cardsToGenerateImagesFor = parsed.flashcards.slice(0, MAX_IMAGES_TO_GENERATE);
-    const cardsWithoutImages = parsed.flashcards.slice(MAX_IMAGES_TO_GENERATE);
-    
-    console.log(`Generating images for ${cardsToGenerateImagesFor.length} flashcards (cost optimized from ${parsed.flashcards.length})`);
-    
-    // Generate images in batches of 3 for rate limiting
-    const batchSize = 3;
-    
-    for (let i = 0; i < cardsToGenerateImagesFor.length; i += batchSize) {
-      const batch = cardsToGenerateImagesFor.slice(i, i + batchSize);
-      console.log(`Generating images for flashcard batch ${Math.floor(i/batchSize) + 1}`);
-      
-      const imagePromises = batch.map((fc: any) => 
-        generateImageForFlashcard(fc.question, fc.answer, chapter.name, LOVABLE_API_KEY)
-      );
-      
-      const imageResults = await Promise.all(imagePromises);
-      
-      batch.forEach((fc: any, idx: number) => {
-        flashcardsWithImages.push({
-          chapter_id: chapterId,
-          question: fc.question,
-          answer: fc.answer,
-          image_url: imageResults[idx] || null,
-          created_by: user.id
-        });
-      });
-    }
-
-    // Add remaining flashcards without images
-    cardsWithoutImages.forEach((fc: any) => {
-      flashcardsWithImages.push({
-        chapter_id: chapterId,
-        question: fc.question,
-        answer: fc.answer,
-        image_url: null,
-        created_by: user.id
-      });
-    });
+    // Create flashcards without images
+    const flashcardsToInsert = parsed.flashcards.map((fc: any) => ({
+      chapter_id: chapterId,
+      question: fc.question,
+      answer: fc.answer,
+      image_url: null,
+      created_by: user.id
+    }));
 
     const { data: insertedFlashcards, error: insertError } = await supabaseClient
       .from("flashcards")
-      .insert(flashcardsWithImages)
+      .insert(flashcardsToInsert)
       .select();
 
     if (insertError) {
@@ -318,7 +229,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Successfully created ${insertedFlashcards.length} flashcards with ${MAX_IMAGES_TO_GENERATE} images`);
+    console.log(`Successfully created ${insertedFlashcards.length} flashcards`);
 
     return new Response(
       JSON.stringify({ flashcards: insertedFlashcards, cached: false }),

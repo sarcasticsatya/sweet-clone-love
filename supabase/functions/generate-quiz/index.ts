@@ -7,9 +7,6 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Maximum number of diagrams to generate (cost optimization)
-const MAX_DIAGRAMS_TO_GENERATE = 8;
-
 function safeParseJSON(content: string): any {
   let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   
@@ -39,58 +36,6 @@ function safeParseJSON(content: string): any {
     }
     
     throw new Error("Could not parse quiz JSON: " + (e as Error).message);
-  }
-}
-
-// Generate educational diagram for a quiz question
-async function generateDiagramForQuestion(question: string, topic: string, apiKey: string): Promise<string | null> {
-  try {
-    console.log("Generating diagram for:", question.substring(0, 40));
-    
-    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: `Create a simple educational diagram for this quiz question.
-
-Topic: ${topic}
-Question context: ${question}
-
-Requirements:
-- Clean, simple educational illustration
-- White background
-- Clear visual representation of the concept
-- NO TEXT - only visual elements, icons, diagrams
-- Use simple shapes, arrows, and icons
-- Educational poster style
-- 2-3 colors maximum
-
-Make it simple and clear. Ultra high resolution.`
-          }
-        ],
-        modalities: ["image", "text"]
-      }),
-    });
-
-    if (!imageResponse.ok) {
-      console.error("Image generation failed for question");
-      return null;
-    }
-
-    const imageData = await imageResponse.json();
-    const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
-    return imageUrl || null;
-  } catch (error) {
-    console.error("Error generating diagram:", error);
-    return null;
   }
 }
 
@@ -286,52 +231,20 @@ serve(async (req) => {
     
     console.log("Successfully parsed", parsed.questions.length, "questions");
 
-    // COST OPTIMIZATION: Only generate diagrams for first 8 questions
-    const questionsWithDiagrams: any[] = [];
-    const questionsToGenerateDiagramsFor = parsed.questions.slice(0, MAX_DIAGRAMS_TO_GENERATE);
-    const questionsWithoutDiagrams = parsed.questions.slice(MAX_DIAGRAMS_TO_GENERATE);
-    
-    console.log(`Generating diagrams for ${questionsToGenerateDiagramsFor.length} questions (cost optimized from ${parsed.questions.length})`);
-    
-    // Generate diagrams in batches of 4 for rate limiting
-    const batchSize = 4;
-    
-    for (let i = 0; i < questionsToGenerateDiagramsFor.length; i += batchSize) {
-      const batch = questionsToGenerateDiagramsFor.slice(i, i + batchSize);
-      console.log(`Generating diagrams for batch ${Math.floor(i/batchSize) + 1}`);
-      
-      const diagramPromises = batch.map((q: any) => 
-        generateDiagramForQuestion(q.question, chapter.name, LOVABLE_API_KEY)
-      );
-      
-      const diagramResults = await Promise.all(diagramPromises);
-      
-      batch.forEach((q: any, idx: number) => {
-        questionsWithDiagrams.push({
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          diagramUrl: diagramResults[idx] || null
-        });
-      });
-    }
-
-    // Add remaining questions without diagrams
-    questionsWithoutDiagrams.forEach((q: any) => {
-      questionsWithDiagrams.push({
-        question: q.question,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
-        diagramUrl: null
-      });
-    });
+    // Create questions without diagrams
+    const questionsToSave = parsed.questions.map((q: any) => ({
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      diagramUrl: null
+    }));
 
     const { data: quiz, error: insertError } = await supabaseClient
       .from("quizzes")
       .insert({
         chapter_id: chapterId,
         title: `${chapter.name_kannada || chapter.name} Quiz`,
-        questions: questionsWithDiagrams,
+        questions: questionsToSave,
         created_by: user.id
       })
       .select()
@@ -345,7 +258,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Successfully created quiz with ${MAX_DIAGRAMS_TO_GENERATE} diagrams`);
+    console.log(`Successfully created quiz with ${questionsToSave.length} questions`);
 
     return new Response(
       JSON.stringify({ quiz, cached: false }),

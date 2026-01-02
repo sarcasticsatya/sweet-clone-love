@@ -6,9 +6,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Eye, RotateCcw, Loader2, History, Trophy, Brain, Sparkles, ZoomIn } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, RotateCcw, Loader2, History, Trophy, Brain, Sparkles } from "lucide-react";
 
 interface QuizViewProps {
   chapterId: string;
@@ -43,7 +42,7 @@ const QuizLoadingAnimation = () => (
     <div className="text-center space-y-2">
       <p className="text-sm md:text-base font-medium text-foreground">Generating Quiz</p>
       <p className="text-xs md:text-sm text-muted-foreground animate-pulse">
-        Creating questions with diagrams...
+        Creating questions...
       </p>
     </div>
     {/* Progress dots */}
@@ -58,39 +57,6 @@ const QuizLoadingAnimation = () => (
     </div>
   </div>
 );
-
-// Zoomable diagram component
-const QuestionDiagram = ({ diagramUrl, question }: { diagramUrl: string; question: string }) => {
-  const [isZoomed, setIsZoomed] = useState(false);
-
-  return (
-    <>
-      <div 
-        className="relative mb-4 cursor-pointer group"
-        onClick={() => setIsZoomed(true)}
-      >
-        <img
-          src={diagramUrl}
-          alt="Question diagram"
-          className="w-full max-h-48 object-contain rounded-lg border border-border bg-white"
-        />
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg flex items-center justify-center">
-          <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
-        </div>
-      </div>
-
-      <Dialog open={isZoomed} onOpenChange={setIsZoomed}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-2">
-          <img
-            src={diagramUrl}
-            alt="Question diagram (zoomed)"
-            className="w-full h-full object-contain bg-white rounded"
-          />
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-};
 
 export const QuizView = ({ chapterId }: QuizViewProps) => {
   const [quiz, setQuiz] = useState<any>(null);
@@ -324,11 +290,6 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
                     )}
                   </div>
                   
-                  {/* Question diagram */}
-                  {q.diagramUrl && (
-                    <QuestionDiagram diagramUrl={q.diagramUrl} question={q.question} />
-                  )}
-                  
                   <p className="font-medium mb-3 text-sm md:text-base leading-relaxed">{q.question}</p>
                   <div className="space-y-2">
                     {q.options.map((option: string, optIdx: number) => {
@@ -447,11 +408,6 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
         <Card>
           <CardContent className="p-3 md:p-4">
-            {/* Question diagram */}
-            {currentQuestion.diagramUrl && (
-              <QuestionDiagram diagramUrl={currentQuestion.diagramUrl} question={currentQuestion.question} />
-            )}
-            
             <p className="font-medium mb-4 text-sm md:text-base leading-relaxed">
               {currentQuestion.question}
             </p>
@@ -462,10 +418,13 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
               }
             >
               {currentQuestion.options.map((option: string, idx: number) => (
-                <div key={idx} className="flex items-start space-x-3 mb-3">
-                  <RadioGroupItem value={idx.toString()} id={`opt-${idx}`} className="mt-0.5 flex-shrink-0" />
-                  <Label htmlFor={`opt-${idx}`} className="text-sm md:text-base cursor-pointer leading-relaxed">
-                    {option}
+                <div key={idx} className="flex items-center space-x-3 p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
+                  <Label 
+                    htmlFor={`option-${idx}`} 
+                    className="flex-1 cursor-pointer text-xs md:text-sm leading-relaxed"
+                  >
+                    {String.fromCharCode(65 + idx)}. {option}
                   </Label>
                 </div>
               ))}
@@ -475,24 +434,19 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
         {/* Navigation */}
         <div className="flex gap-2">
-          {currentQuestionIndex > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+            disabled={currentQuestionIndex === 0}
+            className="flex-1"
+          >
+            Previous
+          </Button>
+          
+          {currentQuestionIndex === questions.length - 1 ? (
             <Button
-              variant="outline"
-              onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
-              className="flex-1"
-            >
-              Previous
-            </Button>
-          )}
-          {currentQuestionIndex < questions.length - 1 ? (
-            <Button
-              onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-              className="flex-1"
-            >
-              Next
-            </Button>
-          ) : (
-            <Button
+              size="sm"
               onClick={handleSubmit}
               disabled={loading || Object.keys(answers).length !== questions.length}
               className="flex-1"
@@ -500,21 +454,29 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Submit
             </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))}
+              className="flex-1"
+            >
+              Next
+            </Button>
           )}
         </div>
 
-        {/* Question dots */}
+        {/* Question dots for quick navigation */}
         <div className="flex flex-wrap gap-1.5 justify-center">
           {questions.map((_: any, idx: number) => (
             <button
               key={idx}
               onClick={() => setCurrentQuestionIndex(idx)}
-              className={`w-7 h-7 md:w-8 md:h-8 rounded text-xs md:text-sm transition-colors ${
+              className={`w-6 h-6 md:w-7 md:h-7 rounded-full text-[10px] md:text-xs font-medium transition-colors ${
                 idx === currentQuestionIndex
                   ? "bg-primary text-primary-foreground"
                   : answers[idx] !== undefined
-                    ? "bg-green-500/20 text-green-700 dark:text-green-300"
-                    : "bg-muted"
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                  : "bg-muted hover:bg-muted/80"
               }`}
             >
               {idx + 1}
