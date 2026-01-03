@@ -39,16 +39,28 @@ function safeParseJSON(content: string): any {
   }
 }
 
-// Detect language from content
-function detectLanguage(content: string, nameKannada: string): "kannada" | "hindi" | "english" {
+// Detect language from content with subject-based priority
+function detectLanguage(content: string, nameKannada: string, subjectName: string): "kannada" | "hindi" | "english" {
+  // First priority: Check subject name for Hindi
+  // "ಹಿಂದಿ" is "Hindi" written in Kannada script
+  if (subjectName && (
+    subjectName.toLowerCase().includes('hindi') || 
+    subjectName === 'ಹಿಂದಿ'
+  )) {
+    console.log("Detected HINDI from subject name:", subjectName);
+    return "hindi";
+  }
+  
+  // Check for Hindi/Devanagari script in content (U+0900-U+097F)
+  if (/[\u0900-\u097F]/.test(content)) {
+    return "hindi";
+  }
+  
   // Check for Kannada script (U+0C80-U+0CFF)
   if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
     return "kannada";
   }
-  // Check for Hindi/Devanagari script (U+0900-U+097F)
-  if (/[\u0900-\u097F]/.test(content)) {
-    return "hindi";
-  }
+  
   return "english";
 }
 
@@ -243,7 +255,15 @@ serve(async (req) => {
 
     const { data: chapter } = await supabaseClient
       .from("chapters")
-      .select("content_extracted, name, name_kannada")
+      .select(`
+        content_extracted, 
+        name, 
+        name_kannada,
+        subjects!inner (
+          name,
+          name_kannada
+        )
+      `)
       .eq("id", chapterId)
       .single();
 
@@ -254,7 +274,8 @@ serve(async (req) => {
       );
     }
 
-    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "");
+    const subjectName = (chapter.subjects as any)?.name || (chapter.subjects as any)?.name_kannada || "";
+    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "", subjectName);
     console.log("DETECTED LANGUAGE:", language);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
