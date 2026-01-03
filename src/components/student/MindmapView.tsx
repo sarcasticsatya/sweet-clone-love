@@ -84,7 +84,8 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
     }
   };
 
-  const hasKannadaStructure = mindmapData?.type === "kannada-structure" && mindmapData?.structure;
+  const hasStructure = mindmapData?.structure && 
+    ["kannada-structure", "hindi-structure", "english-structure"].includes(mindmapData?.type || "");
 
   if (initialLoad && loading) {
     return (
@@ -140,7 +141,7 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
                 </p>
               </div>
             </div>
-          ) : hasKannadaStructure ? (
+          ) : hasStructure ? (
             <div className="space-y-4">
               {/* Central Topic */}
               <div className="flex justify-center">
