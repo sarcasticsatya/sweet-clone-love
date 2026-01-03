@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Trophy, Users, TrendingUp, Download, Mail, Search, Loader2 } from "lucide-react";
+import { BarChart, Trophy, Users, TrendingUp, Download, Mail, Search, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
@@ -42,6 +42,7 @@ export const ViewReports = () => {
   const [filterSubject, setFilterSubject] = useState("all");
   const [subjects, setSubjects] = useState<any[]>([]);
   const [exporting, setExporting] = useState(false);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -158,6 +159,94 @@ export const ViewReports = () => {
       toast.error("Failed to send email");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const sendWhatsAppReport = async (attempt: QuizAttempt) => {
+    setSendingWhatsApp(attempt.id);
+    try {
+      // Fetch student profile with parent mobile
+      const { data: studentProfile, error: profileError } = await supabase
+        .from("student_profiles")
+        .select("*")
+        .eq("user_id", attempt.student_id)
+        .single();
+
+      if (profileError || !studentProfile) {
+        toast.error("Student profile not found");
+        return;
+      }
+
+      if (!studentProfile.parent_mobile) {
+        toast.error("Parent mobile number not available for this student");
+        return;
+      }
+
+      // Calculate competitive analysis
+      const studentRank = leaderboard.findIndex(s => s.student_id === attempt.student_id) + 1;
+      const totalStudents = leaderboard.length;
+      const percentile = totalStudents > 1 
+        ? Math.round(((totalStudents - studentRank) / (totalStudents - 1)) * 100) 
+        : 100;
+      const classAverage = leaderboard.length > 0 
+        ? Math.round(leaderboard.reduce((sum, s) => sum + s.average_score, 0) / leaderboard.length)
+        : 0;
+      
+      const studentPercentage = Math.round((attempt.score / attempt.total_questions) * 100);
+      const performanceVsAverage = studentPercentage - classAverage;
+      const performanceText = performanceVsAverage >= 0 
+        ? `+${performanceVsAverage}% above average` 
+        : `${performanceVsAverage}% below average`;
+
+      // Build report text
+      const reportText = `📊 *Quiz Report - Nythic AI Edtech*
+
+👤 *Student:* ${studentProfile.first_name} ${studentProfile.surname}
+🏫 *School:* ${studentProfile.school_name}
+📍 *City:* ${studentProfile.city}
+📅 *Date:* ${new Date(attempt.attempted_at).toLocaleDateString('en-IN')}
+
+📚 *Subject:* ${attempt.quizzes?.chapters?.subjects?.name_kannada || 'N/A'}
+📖 *Chapter:* ${attempt.quizzes?.chapters?.name_kannada || 'N/A'}
+
+✅ *Score:* ${attempt.score}/${attempt.total_questions}
+📈 *Percentage:* ${studentPercentage}%
+
+🏆 *Competitive Analysis:*
+• Rank: ${studentRank} of ${totalStudents} students
+• Percentile: Top ${percentile}%
+• Class Average: ${classAverage}%
+• Performance: ${performanceText}
+
+${studentPercentage >= 70 ? '🌟 Excellent work! Keep it up!' : studentPercentage >= 50 ? '👍 Good effort! Room for improvement.' : '💪 Keep practicing! You can do better!'}
+
+_Powered by Nythic AI Edtech_`;
+
+      // Format phone number (remove spaces, dashes, and ensure country code)
+      let phone = studentProfile.parent_mobile.replace(/[\s\-\(\)]/g, '');
+      // Add India country code if not present
+      if (!phone.startsWith('+')) {
+        if (phone.startsWith('91')) {
+          phone = '+' + phone;
+        } else if (phone.startsWith('0')) {
+          phone = '+91' + phone.substring(1);
+        } else {
+          phone = '+91' + phone;
+        }
+      }
+      // Remove the + for wa.me URL
+      phone = phone.replace('+', '');
+
+      // Open WhatsApp with pre-filled message
+      const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(reportText)}`;
+      window.open(whatsappUrl, '_blank');
+      
+      toast.success("Opening WhatsApp to send report...");
+    } catch (error) {
+      console.error("Error sending WhatsApp report:", error);
+      toast.error("Failed to prepare WhatsApp report");
+    } finally {
+      setSendingWhatsApp(null);
     }
   };
 
@@ -401,14 +490,31 @@ export const ViewReports = () => {
                         {new Date(attempt.attempted_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => sendEmailReport(attempt.student_id)}
-                          disabled={exporting}
-                        >
-                          <Mail className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => sendEmailReport(attempt.student_id)}
+                            disabled={exporting}
+                            title="Send Email Report"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => sendWhatsAppReport(attempt)}
+                            disabled={sendingWhatsApp === attempt.id}
+                            title="Send WhatsApp Report"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
+                            {sendingWhatsApp === attempt.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <MessageCircle className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

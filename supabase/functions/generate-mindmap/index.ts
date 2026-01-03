@@ -7,6 +7,19 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
+// Detect language from content
+function detectLanguage(content: string, nameKannada: string): "kannada" | "hindi" | "english" {
+  // Check for Kannada script (U+0C80-U+0CFF)
+  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
+    return "kannada";
+  }
+  // Check for Hindi/Devanagari script (U+0900-U+097F)
+  if (/[\u0900-\u097F]/.test(content)) {
+    return "hindi";
+  }
+  return "english";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -55,9 +68,9 @@ serve(async (req) => {
 
       if (existingMindmap) {
         const data = existingMindmap.mindmap_data as any;
-        // Return cached if it's the new Kannada structure format
-        if (data?.type === "kannada-structure" && data?.structure) {
-          console.log("Returning cached Kannada mindmap structure");
+        // Return cached if it's the new structure format
+        if (data?.type && data?.structure) {
+          console.log("Returning cached mindmap structure");
           return new Response(
             JSON.stringify({ mindmap: existingMindmap.mindmap_data }),
             { headers: corsHeaders }
@@ -94,25 +107,12 @@ serve(async (req) => {
     }
 
     const chapterName = chapter.name_kannada || chapter.name;
-    
-    // Detect if content has Kannada
-    const hasKannada = /[\u0C80-\u0CFF]/.test(chapter.content_extracted);
-    console.log("Has Kannada content:", hasKannada);
+    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "");
+    console.log("DETECTED LANGUAGE:", language);
 
-    // Generate mindmap structure in KANNADA
-    console.log("Generating Kannada mindmap structure...");
-    const structureResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json; charset=utf-8",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `Create a hierarchical mind map structure for an educational chapter.
+    // Build language-specific prompt
+    const languagePrompts = {
+      kannada: `Create a hierarchical mind map structure for an educational chapter.
 
 CRITICAL: ALL TEXT MUST BE IN KANNADA (ಕನ್ನಡ) LANGUAGE.
 If the content is in English, translate everything to Kannada.
@@ -135,11 +135,73 @@ Rules:
 - Each branch should have 2-4 subbranches in Kannada
 - Keep text concise (2-6 words in Kannada per item)
 - Assign different colors to each branch: #3b82f6 (blue), #10b981 (green), #f59e0b (orange), #8b5cf6 (purple), #ef4444 (red), #06b6d4 (teal)
-- Use proper Kannada Unicode script (ಕನ್ನಡ ಅಕ್ಷರಗಳು)`
+- Use proper Kannada Unicode script (ಕನ್ನಡ ಅಕ್ಷರಗಳು)`,
+      hindi: `Create a hierarchical mind map structure for an educational chapter.
+
+CRITICAL: ALL TEXT MUST BE IN HINDI (हिन्दी) LANGUAGE.
+If the content is in English, translate everything to Hindi.
+Use proper Devanagari script (देवनागरी लिपि).
+
+Return a JSON object:
+{
+  "title": "मुख्य विषय (Main topic in Hindi)",
+  "branches": [
+    {
+      "name": "शाखा १ (Branch name in Hindi)",
+      "color": "#3b82f6",
+      "subbranches": ["उपशाखा १", "उपशाखा २"]
+    }
+  ]
+}
+
+Rules:
+- Title should be the main chapter topic IN HINDI
+- Create 4-6 main branches with Hindi names
+- Each branch should have 2-4 subbranches in Hindi
+- Keep text concise (2-6 words in Hindi per item)
+- Assign different colors to each branch: #3b82f6 (blue), #10b981 (green), #f59e0b (orange), #8b5cf6 (purple), #ef4444 (red), #06b6d4 (teal)
+- Use proper Hindi Unicode script (U+0900-U+097F)
+- Act as a helpful Hindi teacher`,
+      english: `Create a hierarchical mind map structure for an educational chapter.
+
+Return a JSON object:
+{
+  "title": "Main Topic",
+  "branches": [
+    {
+      "name": "Branch 1",
+      "color": "#3b82f6",
+      "subbranches": ["Subbranch 1", "Subbranch 2"]
+    }
+  ]
+}
+
+Rules:
+- Title should be the main chapter topic
+- Create 4-6 main branches
+- Each branch should have 2-4 subbranches
+- Keep text concise (2-6 words per item)
+- Assign different colors to each branch: #3b82f6 (blue), #10b981 (green), #f59e0b (orange), #8b5cf6 (purple), #ef4444 (red), #06b6d4 (teal)`
+    };
+
+    // Generate mindmap structure
+    console.log(`Generating ${language} mindmap structure...`);
+    const structureResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: languagePrompts[language]
           },
           {
             role: "user",
-            content: `Create a Kannada mindmap structure for this chapter:\n\nChapter: ${chapterName}\n\nContent:\n${chapter.content_extracted.substring(0, 8000)}`
+            content: `Create a mindmap structure for this chapter:\n\nChapter: ${chapterName}\n\nContent:\n${chapter.content_extracted.substring(0, 8000)}`
           }
         ],
         response_format: { type: "json_object" }
@@ -163,11 +225,11 @@ Rules:
       throw new Error("Failed to parse mindmap structure");
     }
 
-    console.log("Kannada mindmap structure generated:", JSON.stringify(structure).substring(0, 500));
+    console.log(`${language} mindmap structure generated:`, JSON.stringify(structure).substring(0, 500));
 
-    // Store as Kannada structure (will be rendered as HTML on frontend)
+    // Store with language type
     const mindmapData = {
-      type: "kannada-structure",
+      type: `${language}-structure`,
       structure: structure
     };
 

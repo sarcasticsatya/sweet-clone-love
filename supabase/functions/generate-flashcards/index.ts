@@ -35,8 +35,52 @@ function safeParseJSON(content: string): any {
   }
 }
 
-async function generateFlashcardsFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
+// Detect language from content
+function detectLanguage(content: string, nameKannada: string): "kannada" | "hindi" | "english" {
+  // Check for Kannada script (U+0C80-U+0CFF)
+  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
+    return "kannada";
+  }
+  // Check for Hindi/Devanagari script (U+0900-U+097F)
+  if (/[\u0900-\u097F]/.test(content)) {
+    return "hindi";
+  }
+  return "english";
+}
+
+async function generateFlashcardsFromAI(chapter: any, language: "kannada" | "hindi" | "english", apiKey: string, retryCount = 0): Promise<any> {
   const maxRetries = 2;
+  
+  const systemPrompts = {
+    kannada: `Generate exactly 10 flashcards in KANNADA (ಕನ್ನಡ).
+
+Rules:
+- Questions and answers must be in Kannada script
+- Use Kannada Unicode characters (U+0C80-U+0CFF)
+- Cover key concepts from the chapter
+
+Return ONLY valid JSON:
+{"flashcards":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","answer":"ಕನ್ನಡ ಉತ್ತರ"}]}`,
+    hindi: `Generate exactly 10 flashcards in HINDI (हिन्दी).
+
+Rules:
+- Questions and answers must be in Hindi/Devanagari script (देवनागरी)
+- Use Hindi Unicode characters (U+0900-U+097F)
+- Cover key concepts from the chapter
+- Be a helpful Hindi teacher
+
+Return ONLY valid JSON:
+{"flashcards":[{"question":"हिंदी प्रश्न?","answer":"हिंदी उत्तर"}]}`,
+    english: `Generate exactly 10 flashcards in English.
+
+Rules:
+- Cover key concepts from the chapter
+- Questions should test understanding
+- Answers should be concise but complete
+
+Return ONLY valid JSON:
+{"flashcards":[{"question":"Question?","answer":"Answer"}]}`
+  };
   
   const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -49,25 +93,7 @@ async function generateFlashcardsFromAI(chapter: any, isKannadaChapter: boolean,
       messages: [
         {
           role: "system",
-          content: isKannadaChapter 
-            ? `Generate exactly 10 flashcards in KANNADA (ಕನ್ನಡ).
-
-Rules:
-- Questions and answers must be in Kannada script
-- Use Kannada Unicode characters (U+0C80-U+0CFF)
-- Cover key concepts from the chapter
-
-Return ONLY valid JSON:
-{"flashcards":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","answer":"ಕನ್ನಡ ಉತ್ತರ"}]}`
-            : `Generate exactly 10 flashcards in English.
-
-Rules:
-- Cover key concepts from the chapter
-- Questions should test understanding
-- Answers should be concise but complete
-
-Return ONLY valid JSON:
-{"flashcards":[{"question":"Question?","answer":"Answer"}]}`
+          content: systemPrompts[language]
         },
         {
           role: "user",
@@ -106,11 +132,13 @@ Return ONLY valid JSON:
       throw new Error("Too few valid flashcards");
     }
     
-    if (isKannadaChapter) {
-      const allText = validCards.map((fc: any) => fc.question + fc.answer).join(" ");
-      if (!/[\u0C80-\u0CFF]/.test(allText)) {
-        throw new Error("No Kannada text found");
-      }
+    // Validate language-specific content
+    const allText = validCards.map((fc: any) => fc.question + fc.answer).join(" ");
+    if (language === "kannada" && !/[\u0C80-\u0CFF]/.test(allText)) {
+      throw new Error("No Kannada text found");
+    }
+    if (language === "hindi" && !/[\u0900-\u097F]/.test(allText)) {
+      throw new Error("No Hindi text found");
     }
     
     return { flashcards: validCards };
@@ -118,7 +146,7 @@ Return ONLY valid JSON:
     console.error("Parse error:", parseError);
     if (retryCount < maxRetries) {
       console.log(`Retrying... attempt ${retryCount + 2}`);
-      return generateFlashcardsFromAI(chapter, isKannadaChapter, apiKey, retryCount + 1);
+      return generateFlashcardsFromAI(chapter, language, apiKey, retryCount + 1);
     }
     throw parseError;
   }
@@ -195,15 +223,15 @@ serve(async (req) => {
       );
     }
 
-    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
-    console.log("IS KANNADA CHAPTER:", isKannadaChapter);
+    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "");
+    console.log("DETECTED LANGUAGE:", language);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const parsed = await generateFlashcardsFromAI(chapter, isKannadaChapter, LOVABLE_API_KEY);
+    const parsed = await generateFlashcardsFromAI(chapter, language, LOVABLE_API_KEY);
     
     console.log("Successfully parsed", parsed.flashcards.length, "flashcards");
 

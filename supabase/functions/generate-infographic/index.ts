@@ -7,18 +7,72 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Generate visual diagram (no text) and extract Kannada key points
+// Detect language from content
+function detectLanguage(content: string, nameKannada: string): "kannada" | "hindi" | "english" {
+  // Check for Kannada script (U+0C80-U+0CFF)
+  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
+    return "kannada";
+  }
+  // Check for Hindi/Devanagari script (U+0900-U+097F)
+  if (/[\u0900-\u097F]/.test(content)) {
+    return "hindi";
+  }
+  return "english";
+}
+
+// Generate visual diagram (no text) and extract key points in target language
 async function generateInfographicPage(
   sectionContent: string,
   sectionTitle: string,
   pageNumber: number,
   totalPages: number,
+  language: "kannada" | "hindi" | "english",
   apiKey: string
 ): Promise<{ imageUrl: string | null; keyPoints: string[]; title: string }> {
   try {
     console.log(`Generating infographic page ${pageNumber}/${totalPages}: ${sectionTitle}`);
 
-    // Extract key points in KANNADA
+    const languagePrompts = {
+      kannada: {
+        system: `Extract 4-5 KEY POINTS from this educational content.
+
+CRITICAL: Return ALL points in KANNADA (ಕನ್ನಡ) language.
+If content is in English, translate to Kannada.
+
+Format: Return ONLY a JSON object:
+{"points": ["ಮೊದಲ ಪ್ರಮುಖ ಅಂಶ", "ಎರಡನೆಯ ಪ್ರಮುಖ ಅಂಶ"], "title": "ವಿಭಾಗದ ಶೀರ್ಷಿಕೆ"}
+
+Each point should be 5-15 words in Kannada.
+Title should be the section topic in Kannada.`,
+        fallback: ["ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೧", "ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೨", "ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೩"]
+      },
+      hindi: {
+        system: `Extract 4-5 KEY POINTS from this educational content.
+
+CRITICAL: Return ALL points in HINDI (हिन्दी) language.
+If content is in English, translate to Hindi.
+Use proper Devanagari script (देवनागरी).
+
+Format: Return ONLY a JSON object:
+{"points": ["पहला प्रमुख बिंदु", "दूसरा प्रमुख बिंदु"], "title": "खंड शीर्षक"}
+
+Each point should be 5-15 words in Hindi.
+Title should be the section topic in Hindi.`,
+        fallback: ["प्रमुख अवधारणा १", "प्रमुख अवधारणा २", "प्रमुख अवधारणा ३"]
+      },
+      english: {
+        system: `Extract 4-5 KEY POINTS from this educational content.
+
+Format: Return ONLY a JSON object:
+{"points": ["First key point", "Second key point"], "title": "Section Title"}
+
+Each point should be 5-15 words.
+Title should be the section topic.`,
+        fallback: ["Key concept 1", "Key concept 2", "Key concept 3"]
+      }
+    };
+
+    // Extract key points in target language
     const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -30,16 +84,7 @@ async function generateInfographicPage(
         messages: [
           {
             role: "system",
-            content: `Extract 4-5 KEY POINTS from this educational content.
-
-CRITICAL: Return ALL points in KANNADA (ಕನ್ನಡ) language.
-If content is in English, translate to Kannada.
-
-Format: Return ONLY a JSON object:
-{"points": ["ಮೊದಲ ಪ್ರಮುಖ ಅಂಶ", "ಎರಡನೆಯ ಪ್ರಮುಖ ಅಂಶ"], "title": "ವಿಭಾಗದ ಶೀರ್ಷಿಕೆ"}
-
-Each point should be 5-15 words in Kannada.
-Title should be the section topic in Kannada.`
+            content: languagePrompts[language].system
           },
           {
             role: "user",
@@ -56,17 +101,17 @@ Title should be the section topic in Kannada.`
 
     const summaryData = await summaryResponse.json();
     let keyPoints: string[] = [];
-    let kannadaTitle = sectionTitle;
+    let localizedTitle = sectionTitle;
     
     try {
       const parsed = JSON.parse(summaryData.choices[0]?.message?.content || "{}");
       keyPoints = parsed.points || [];
-      kannadaTitle = parsed.title || sectionTitle;
+      localizedTitle = parsed.title || sectionTitle;
     } catch {
-      keyPoints = ["ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೧", "ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೨", "ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೩"];
+      keyPoints = languagePrompts[language].fallback;
     }
 
-    console.log(`Kannada key points for page ${pageNumber}:`, keyPoints);
+    console.log(`${language} key points for page ${pageNumber}:`, keyPoints);
 
     // Generate VISUAL-ONLY diagram (NO TEXT in image)
     const imagePrompt = `Create a beautiful EDUCATIONAL DIAGRAM IMAGE.
@@ -86,7 +131,7 @@ STRICT REQUIREMENTS:
 10. Make it visually appealing and informative through imagery alone
 
 IMPORTANT: This is a VISUAL-ONLY image. No text at all.
-The text will be added separately in Kannada.
+The text will be added separately.
 
 Ultra high resolution educational diagram.`;
 
@@ -116,7 +161,7 @@ Ultra high resolution educational diagram.`;
       console.error(`Image generation failed for page ${pageNumber}`);
     }
 
-    return { imageUrl, keyPoints, title: kannadaTitle };
+    return { imageUrl, keyPoints, title: localizedTitle };
   } catch (error) {
     console.error(`Error generating page ${pageNumber}:`, error);
     return { imageUrl: null, keyPoints: [], title: sectionTitle };
@@ -289,6 +334,8 @@ serve(async (req) => {
     }
 
     const chapterName = chapter.name_kannada || chapter.name;
+    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "");
+    console.log("DETECTED LANGUAGE:", language);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -300,39 +347,41 @@ serve(async (req) => {
     const sections = await splitIntoSections(chapter.content_extracted, chapterName, LOVABLE_API_KEY);
     console.log(`Created ${sections.length} sections`);
 
-    // Generate infographic pages with Kannada key points
+    // Generate infographic pages with language-specific key points
     const pagePromises = sections.slice(0, 4).map((section, idx) =>
       generateInfographicPage(
         section.content,
         section.title,
         idx + 1,
         4,
+        language,
         LOVABLE_API_KEY
       )
     );
 
     const pageResults = await Promise.all(pagePromises);
     
-    // Extract image URLs and Kannada data
+    // Extract image URLs and localized data
     const imageUrls = pageResults.map(p => p.imageUrl).filter((url): url is string => url !== null);
-    const kannadaPages = pageResults.map((p, idx) => ({
+    const localizedPages = pageResults.map((p, idx) => ({
       title: p.title,
       keyPoints: p.keyPoints,
       imageUrl: p.imageUrl
     }));
 
-    if (imageUrls.length === 0 && kannadaPages.every(p => p.keyPoints.length === 0)) {
+    if (imageUrls.length === 0 && localizedPages.every(p => p.keyPoints.length === 0)) {
       throw new Error("Failed to generate infographic content");
     }
 
-    console.log(`Generated ${imageUrls.length} images and Kannada content for ${kannadaPages.length} pages`);
+    console.log(`Generated ${imageUrls.length} images and ${language} content for ${localizedPages.length} pages`);
 
-    // Store in database with Kannada pages data
+    // Store in database with localized pages data
     const infographicData = {
       chapter_id: chapterId,
       image_url: imageUrls[0] || "",
       image_urls: imageUrls,
-      kannada_pages: kannadaPages
+      kannada_pages: localizedPages, // Keep field name for backwards compatibility
+      language: language
     };
 
     const { data: infographic, error: insertError } = await supabaseClient

@@ -39,26 +39,28 @@ function safeParseJSON(content: string): any {
   }
 }
 
-async function generateQuizFromAI(chapter: any, isKannadaChapter: boolean, apiKey: string, retryCount = 0): Promise<any> {
+// Detect language from content
+function detectLanguage(content: string, nameKannada: string): "kannada" | "hindi" | "english" {
+  // Check for Kannada script (U+0C80-U+0CFF)
+  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
+    return "kannada";
+  }
+  // Check for Hindi/Devanagari script (U+0900-U+097F)
+  if (/[\u0900-\u097F]/.test(content)) {
+    return "hindi";
+  }
+  return "english";
+}
+
+async function generateQuizFromAI(chapter: any, language: "kannada" | "hindi" | "english", apiKey: string, retryCount = 0): Promise<any> {
   const maxRetries = 2;
   
   const randomSeed = Math.floor(Math.random() * 1000000);
   const questionTypes = ["conceptual", "factual", "application-based", "analytical", "comparative"];
   const selectedTypes = questionTypes.sort(() => Math.random() - 0.5).slice(0, 3).join(", ");
   
-  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json; charset=utf-8",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: isKannadaChapter 
-            ? `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions in KANNADA (ಕನ್ನಡ).
+  const systemPrompts = {
+    kannada: `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions in KANNADA (ಕನ್ನಡ).
 
 Random seed: ${randomSeed}
 Question types focus: ${selectedTypes}
@@ -72,8 +74,25 @@ Rules:
 - Include mix of easy, medium, and hard questions
 
 Return ONLY valid JSON:
-{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0}]}`
-            : `Generate exactly 15 UNIQUE multiple-choice questions in English.
+{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0}]}`,
+    hindi: `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions in HINDI (हिन्दी).
+
+Random seed: ${randomSeed}
+Question types focus: ${selectedTypes}
+
+Rules:
+- Questions and options must be in Hindi/Devanagari script (देवनागरी)
+- Use proper Hindi Unicode characters (U+0900-U+097F)
+- Each question has exactly 4 options
+- correctAnswer is index 0-3
+- Make questions DIFFERENT from previous generations
+- Cover ALL aspects/topics from the content thoroughly
+- Include mix of easy, medium, and hard questions
+- Act as a helpful Hindi teacher
+
+Return ONLY valid JSON:
+{"questions":[{"question":"हिंदी प्रश्न?","options":["अ","ब","स","द"],"correctAnswer":0}]}`,
+    english: `Generate exactly 15 UNIQUE multiple-choice questions in English.
 
 Random seed: ${randomSeed}
 Question types focus: ${selectedTypes}
@@ -87,6 +106,20 @@ Rules:
 
 Return ONLY valid JSON:
 {"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0}]}`
+  };
+  
+  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompts[language]
         },
         {
           role: "user",
@@ -133,11 +166,13 @@ Return ONLY valid JSON:
       throw new Error("Too few valid questions");
     }
     
-    if (isKannadaChapter) {
-      const allText = validQuestions.map((q: any) => q.question + q.options.join(" ")).join(" ");
-      if (!/[\u0C80-\u0CFF]/.test(allText)) {
-        throw new Error("No Kannada text found");
-      }
+    // Validate language-specific content
+    const allText = validQuestions.map((q: any) => q.question + q.options.join(" ")).join(" ");
+    if (language === "kannada" && !/[\u0C80-\u0CFF]/.test(allText)) {
+      throw new Error("No Kannada text found");
+    }
+    if (language === "hindi" && !/[\u0900-\u097F]/.test(allText)) {
+      throw new Error("No Hindi text found");
     }
     
     return { questions: validQuestions };
@@ -145,7 +180,7 @@ Return ONLY valid JSON:
     console.error("Parse error:", parseError);
     if (retryCount < maxRetries) {
       console.log(`Retrying... attempt ${retryCount + 2}`);
-      return generateQuizFromAI(chapter, isKannadaChapter, apiKey, retryCount + 1);
+      return generateQuizFromAI(chapter, language, apiKey, retryCount + 1);
     }
     throw parseError;
   }
@@ -219,15 +254,15 @@ serve(async (req) => {
       );
     }
 
-    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.name_kannada);
-    console.log("IS KANNADA CHAPTER:", isKannadaChapter);
+    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "");
+    console.log("DETECTED LANGUAGE:", language);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const parsed = await generateQuizFromAI(chapter, isKannadaChapter, LOVABLE_API_KEY);
+    const parsed = await generateQuizFromAI(chapter, language, LOVABLE_API_KEY);
     
     console.log("Successfully parsed", parsed.questions.length, "questions");
 
