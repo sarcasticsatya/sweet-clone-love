@@ -6,16 +6,56 @@ export const containsIndicScript = (text: string): boolean => {
   return /[\u0C80-\u0CFF\u0900-\u097F]/.test(text);
 };
 
-// Register the Indic font with jsPDF - returns false since CDN fonts don't work with jsPDF
-// jsPDF requires specific TTF format with unicode cmap which Google Fonts CDN doesn't provide
-export const registerIndicFont = async (doc: jsPDF): Promise<boolean> => {
-  // Font registration disabled - CDN fonts incompatible with jsPDF
-  // Return false to trigger English fallback
-  console.warn("Indic font not available - using English text fallback for PDF");
-  return false;
+// Load the Noto Sans Kannada font and convert to base64
+const loadFontAsBase64 = async (): Promise<string | null> => {
+  try {
+    // Import the font file from assets
+    const fontUrl = new URL('../assets/fonts/NotoSansKannada.ttf', import.meta.url).href;
+    const response = await fetch(fontUrl);
+    
+    if (!response.ok) {
+      console.error("Failed to fetch font file:", response.status);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    
+    // Convert ArrayBuffer to base64
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  } catch (error) {
+    console.error("Error loading font:", error);
+    return null;
+  }
 };
 
-// Get font name - always returns helvetica since Indic fonts aren't available
+// Register the Indic font with jsPDF
+export const registerIndicFont = async (doc: jsPDF): Promise<boolean> => {
+  try {
+    const base64Font = await loadFontAsBase64();
+    
+    if (!base64Font) {
+      console.warn("Could not load Indic font - using fallback");
+      return false;
+    }
+    
+    // Add font to jsPDF virtual file system
+    doc.addFileToVFS("NotoSansKannada.ttf", base64Font);
+    doc.addFont("NotoSansKannada.ttf", "NotoSansKannada", "normal");
+    
+    console.log("Indic font registered successfully");
+    return true;
+  } catch (error) {
+    console.error("Failed to register Indic font:", error);
+    return false;
+  }
+};
+
+// Get font name based on text content and font availability
 export const getFontForText = (text: string, indicFontAvailable: boolean = false): string => {
   if (indicFontAvailable && containsIndicScript(text)) {
     return "NotoSansKannada";
