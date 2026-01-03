@@ -21,8 +21,9 @@ interface QuizAttempt {
   quizzes?: {
     title: string;
     chapters?: {
+      name: string;
       name_kannada: string;
-      subjects?: { name_kannada: string };
+      subjects?: { name: string; name_kannada: string };
     };
   };
   student_id: string;
@@ -59,7 +60,7 @@ export const ViewReports = () => {
           .from("quiz_attempts")
           .select(`
             *,
-            quizzes(title, chapters(name_kannada, subjects(name_kannada)))
+            quizzes(title, chapters(name, name_kannada, subjects(name, name_kannada)))
           `)
           .order("attempted_at", { ascending: false }),
         supabase.from("profiles").select("*"),
@@ -182,8 +183,8 @@ export const ViewReports = () => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      // Register Indic font for Kannada/Hindi text
-      await registerIndicFont(doc);
+      // Try to register Indic font (will return false - use English fallback)
+      const indicFontLoaded = await registerIndicFont(doc);
 
       // Header
       doc.setFillColor(59, 130, 246);
@@ -221,19 +222,19 @@ export const ViewReports = () => {
       doc.text("Quiz Details", 14, 100);
       doc.setFontSize(11);
       
-      // Use Indic font for Kannada subject/chapter names
-      const subjectName = attempt.quizzes?.chapters?.subjects?.name_kannada || "N/A";
-      const chapterName = attempt.quizzes?.chapters?.name_kannada || "N/A";
+      // Use English names as fallback when Indic font not available
+      const subjectName = indicFontLoaded 
+        ? (attempt.quizzes?.chapters?.subjects?.name_kannada || attempt.quizzes?.chapters?.subjects?.name || "N/A")
+        : (attempt.quizzes?.chapters?.subjects?.name || "N/A");
+      const chapterName = indicFontLoaded 
+        ? (attempt.quizzes?.chapters?.name_kannada || attempt.quizzes?.chapters?.name || "N/A")
+        : (attempt.quizzes?.chapters?.name || "N/A");
       
-      doc.setFont("helvetica", "normal");
-      doc.text("Subject: ", 14, 110);
-      doc.setFont(getFontForText(subjectName), "normal");
-      doc.text(subjectName, 14 + doc.getTextWidth("Subject: "), 110);
+      doc.setFont(getFontForText(subjectName, indicFontLoaded), "normal");
+      doc.text(`Subject: ${subjectName}`, 14, 110);
       
-      doc.setFont("helvetica", "normal");
-      doc.text("Chapter: ", 14, 118);
-      doc.setFont(getFontForText(chapterName), "normal");
-      doc.text(chapterName, 14 + doc.getTextWidth("Chapter: "), 118);
+      doc.setFont(getFontForText(chapterName, indicFontLoaded), "normal");
+      doc.text(`Chapter: ${chapterName}`, 14, 118);
 
       // Score Section
       doc.setFillColor(240, 240, 240);
@@ -312,8 +313,8 @@ export const ViewReports = () => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      // Register Indic font for Kannada/Hindi text
-      await registerIndicFont(doc);
+      // Try to register Indic font (will return false - use English fallback)
+      const indicFontLoaded = await registerIndicFont(doc);
 
       // Header
       doc.setFillColor(59, 130, 246);
@@ -409,9 +410,11 @@ export const ViewReports = () => {
 
       doc.setTextColor(0, 0, 0);
 
-      // Calculate subject-wise stats
+      // Calculate subject-wise stats - use English names when Indic font not available
       const subjectStats = attempts.reduce((acc: any, attempt) => {
-        const subject = attempt.quizzes?.chapters?.subjects?.name_kannada || "Unknown";
+        const subject = indicFontLoaded 
+          ? (attempt.quizzes?.chapters?.subjects?.name_kannada || attempt.quizzes?.chapters?.subjects?.name || "Unknown")
+          : (attempt.quizzes?.chapters?.subjects?.name || "Unknown");
         if (!acc[subject]) {
           acc[subject] = { attempts: 0, totalScore: 0 };
         }
@@ -432,10 +435,10 @@ export const ViewReports = () => {
         body: subjectData,
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
-        styles: { cellPadding: 4, fontSize: 10, font: "NotoSansKannada" },
+        styles: { cellPadding: 4, fontSize: 10 },
         didParseCell: (data) => {
-          // Use Indic font for subject column (column 0) if it contains Kannada text
-          if (data.column.index === 0 && data.cell.raw && containsIndicScript(String(data.cell.raw))) {
+          // Use Indic font for subject column only if font loaded
+          if (indicFontLoaded && data.column.index === 0 && data.cell.raw && containsIndicScript(String(data.cell.raw))) {
             data.cell.styles.font = "NotoSansKannada";
           }
         }
@@ -447,10 +450,15 @@ export const ViewReports = () => {
       doc.setFont("helvetica", "bold");
       doc.text("Detailed Quiz History", 14, historyY);
 
+      // Detailed Quiz History - use English names when Indic font not available
       const historyData = filteredAttempts.slice(0, 50).map(a => [
         a.profiles?.full_name || "Unknown",
-        a.quizzes?.chapters?.subjects?.name_kannada || "N/A",
-        a.quizzes?.chapters?.name_kannada || "N/A",
+        indicFontLoaded 
+          ? (a.quizzes?.chapters?.subjects?.name_kannada || a.quizzes?.chapters?.subjects?.name || "N/A")
+          : (a.quizzes?.chapters?.subjects?.name || "N/A"),
+        indicFontLoaded 
+          ? (a.quizzes?.chapters?.name_kannada || a.quizzes?.chapters?.name || "N/A")
+          : (a.quizzes?.chapters?.name || "N/A"),
         `${a.score}/${a.total_questions}`,
         `${Math.round((a.score / a.total_questions) * 100)}%`,
         new Date(a.attempted_at).toLocaleDateString('en-IN')
@@ -472,8 +480,8 @@ export const ViewReports = () => {
           5: { cellWidth: 25 }
         },
         didParseCell: (data) => {
-          // Use Indic font for Subject (column 1) and Chapter (column 2) if they contain Kannada text
-          if ((data.column.index === 1 || data.column.index === 2) && data.cell.raw && containsIndicScript(String(data.cell.raw))) {
+          // Use Indic font only if font loaded
+          if (indicFontLoaded && (data.column.index === 1 || data.column.index === 2) && data.cell.raw && containsIndicScript(String(data.cell.raw))) {
             data.cell.styles.font = "NotoSansKannada";
           }
         }
