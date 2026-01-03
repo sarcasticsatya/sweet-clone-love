@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { registerIndicFont, getFontForText, containsIndicScript } from "@/lib/pdfFonts";
 
 interface QuizAttempt {
   id: string;
@@ -181,13 +182,18 @@ export const ViewReports = () => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
+      // Register Indic font for Kannada/Hindi text
+      await registerIndicFont(doc);
+
       // Header
       doc.setFillColor(59, 130, 246);
       doc.rect(0, 0, pageWidth, 35, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
       doc.text("Quiz Performance Report", pageWidth / 2, 18, { align: "center" });
       doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
       doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
 
       // Reset text color
@@ -213,10 +219,21 @@ export const ViewReports = () => {
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("Quiz Details", 14, 100);
-      doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
-      doc.text(`Subject: ${attempt.quizzes?.chapters?.subjects?.name_kannada || "N/A"}`, 14, 110);
-      doc.text(`Chapter: ${attempt.quizzes?.chapters?.name_kannada || "N/A"}`, 14, 118);
+      
+      // Use Indic font for Kannada subject/chapter names
+      const subjectName = attempt.quizzes?.chapters?.subjects?.name_kannada || "N/A";
+      const chapterName = attempt.quizzes?.chapters?.name_kannada || "N/A";
+      
+      doc.setFont("helvetica", "normal");
+      doc.text("Subject: ", 14, 110);
+      doc.setFont(getFontForText(subjectName), "normal");
+      doc.text(subjectName, 14 + doc.getTextWidth("Subject: "), 110);
+      
+      doc.setFont("helvetica", "normal");
+      doc.text("Chapter: ", 14, 118);
+      doc.setFont(getFontForText(chapterName), "normal");
+      doc.text(chapterName, 14 + doc.getTextWidth("Chapter: "), 118);
 
       // Score Section
       doc.setFillColor(240, 240, 240);
@@ -265,10 +282,10 @@ export const ViewReports = () => {
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       const assessmentText = studentPercentage >= 70 
-        ? "🌟 Excellent work! Keep it up!" 
+        ? "Excellent work! Keep it up!" 
         : studentPercentage >= 50 
-          ? "👍 Good effort! Room for improvement." 
-          : "💪 Keep practicing! You can do better!";
+          ? "Good effort! Room for improvement." 
+          : "Keep practicing! You can do better!";
       doc.text(assessmentText, pageWidth / 2, assessmentY + 15, { align: "center" });
 
       // Footer
@@ -295,13 +312,18 @@ export const ViewReports = () => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
+      // Register Indic font for Kannada/Hindi text
+      await registerIndicFont(doc);
+
       // Header
       doc.setFillColor(59, 130, 246);
       doc.rect(0, 0, pageWidth, 35, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
       doc.text("Competitive Analysis Report", pageWidth / 2, 18, { align: "center" });
       doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
       doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
 
       // Reset text color
@@ -323,7 +345,7 @@ export const ViewReports = () => {
         ["Total Students", leaderboard.length.toString()],
         ["Total Quiz Attempts", attempts.length.toString()],
         ["Average Score", `${avgScore}%`],
-        ["Pass Rate (≥50%)", `${passRate}%`]
+        ["Pass Rate (>=50%)", `${passRate}%`]
       ];
 
       autoTable(doc, {
@@ -382,6 +404,7 @@ export const ViewReports = () => {
       doc.rect(0, 0, pageWidth, 25, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
       doc.text("Subject-wise Performance", pageWidth / 2, 16, { align: "center" });
 
       doc.setTextColor(0, 0, 0);
@@ -409,7 +432,13 @@ export const ViewReports = () => {
         body: subjectData,
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
-        styles: { cellPadding: 4, fontSize: 10 }
+        styles: { cellPadding: 4, fontSize: 10, font: "NotoSansKannada" },
+        didParseCell: (data) => {
+          // Use Indic font for subject column (column 0) if it contains Kannada text
+          if (data.column.index === 0 && data.cell.raw && containsIndicScript(String(data.cell.raw))) {
+            data.cell.styles.font = "NotoSansKannada";
+          }
+        }
       });
 
       // Detailed Quiz History
@@ -441,6 +470,12 @@ export const ViewReports = () => {
           3: { cellWidth: 20 },
           4: { cellWidth: 15 },
           5: { cellWidth: 25 }
+        },
+        didParseCell: (data) => {
+          // Use Indic font for Subject (column 1) and Chapter (column 2) if they contain Kannada text
+          if ((data.column.index === 1 || data.column.index === 2) && data.cell.raw && containsIndicScript(String(data.cell.raw))) {
+            data.cell.styles.font = "NotoSansKannada";
+          }
         }
       });
 
