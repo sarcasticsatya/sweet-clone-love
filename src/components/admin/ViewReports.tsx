@@ -5,9 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Trophy, Users, TrendingUp, Download, Mail, Search, Loader2, MessageCircle } from "lucide-react";
+import { BarChart, Trophy, Users, TrendingUp, Download, Search, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface QuizAttempt {
   id: string;
@@ -42,7 +44,7 @@ export const ViewReports = () => {
   const [filterSubject, setFilterSubject] = useState("all");
   const [subjects, setSubjects] = useState<any[]>([]);
   const [exporting, setExporting] = useState(false);
-  const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -150,37 +152,15 @@ export const ViewReports = () => {
     toast.success("Report exported successfully!");
   };
 
-  const sendEmailReport = async (studentId: string) => {
-    setExporting(true);
+  const downloadStudentPDF = async (attempt: QuizAttempt) => {
+    setGeneratingPDF(attempt.id);
     try {
-      // This would integrate with Resend API
-      toast.info("Email functionality requires Resend API setup. Export CSV and share manually for now.");
-    } catch (error) {
-      toast.error("Failed to send email");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const sendWhatsAppReport = async (attempt: QuizAttempt) => {
-    setSendingWhatsApp(attempt.id);
-    try {
-      // Fetch student profile with parent mobile
-      const { data: studentProfile, error: profileError } = await supabase
+      // Fetch student profile
+      const { data: studentProfile } = await supabase
         .from("student_profiles")
         .select("*")
         .eq("user_id", attempt.student_id)
         .single();
-
-      if (profileError || !studentProfile) {
-        toast.error("Student profile not found");
-        return;
-      }
-
-      if (!studentProfile.parent_mobile) {
-        toast.error("Parent mobile number not available for this student");
-        return;
-      }
 
       // Calculate competitive analysis
       const studentRank = leaderboard.findIndex(s => s.student_id === attempt.student_id) + 1;
@@ -198,55 +178,291 @@ export const ViewReports = () => {
         ? `+${performanceVsAverage}% above average` 
         : `${performanceVsAverage}% below average`;
 
-      // Build report text
-      const reportText = `📊 *Quiz Report - Nythic AI Edtech*
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
 
-👤 *Student:* ${studentProfile.first_name} ${studentProfile.surname}
-🏫 *School:* ${studentProfile.school_name}
-📍 *City:* ${studentProfile.city}
-📅 *Date:* ${new Date(attempt.attempted_at).toLocaleDateString('en-IN')}
+      // Header
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.text("Quiz Performance Report", pageWidth / 2, 18, { align: "center" });
+      doc.setFontSize(12);
+      doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
 
-📚 *Subject:* ${attempt.quizzes?.chapters?.subjects?.name_kannada || 'N/A'}
-📖 *Chapter:* ${attempt.quizzes?.chapters?.name_kannada || 'N/A'}
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
 
-✅ *Score:* ${attempt.score}/${attempt.total_questions}
-📈 *Percentage:* ${studentPercentage}%
-
-🏆 *Competitive Analysis:*
-• Rank: ${studentRank} of ${totalStudents} students
-• Percentile: Top ${percentile}%
-• Class Average: ${classAverage}%
-• Performance: ${performanceText}
-
-${studentPercentage >= 70 ? '🌟 Excellent work! Keep it up!' : studentPercentage >= 50 ? '👍 Good effort! Room for improvement.' : '💪 Keep practicing! You can do better!'}
-
-_Powered by Nythic AI Edtech_`;
-
-      // Format phone number (remove spaces, dashes, and ensure country code)
-      let phone = studentProfile.parent_mobile.replace(/[\s\-\(\)]/g, '');
-      // Add India country code if not present
-      if (!phone.startsWith('+')) {
-        if (phone.startsWith('91')) {
-          phone = '+' + phone;
-        } else if (phone.startsWith('0')) {
-          phone = '+91' + phone.substring(1);
-        } else {
-          phone = '+91' + phone;
-        }
-      }
-      // Remove the + for wa.me URL
-      phone = phone.replace('+', '');
-
-      // Open WhatsApp with pre-filled message
-      const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(reportText)}`;
-      window.open(whatsappUrl, '_blank');
+      // Student Info Section
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Student Information", 14, 50);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
       
-      toast.success("Opening WhatsApp to send report...");
+      const studentName = studentProfile 
+        ? `${studentProfile.first_name} ${studentProfile.surname}` 
+        : attempt.profiles?.full_name || "Unknown";
+      
+      doc.text(`Name: ${studentName}`, 14, 60);
+      doc.text(`School: ${studentProfile?.school_name || "N/A"}`, 14, 68);
+      doc.text(`City: ${studentProfile?.city || "N/A"}`, 14, 76);
+      doc.text(`Date: ${new Date(attempt.attempted_at).toLocaleDateString('en-IN')}`, 14, 84);
+
+      // Quiz Info Section
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Quiz Details", 14, 100);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text(`Subject: ${attempt.quizzes?.chapters?.subjects?.name_kannada || "N/A"}`, 14, 110);
+      doc.text(`Chapter: ${attempt.quizzes?.chapters?.name_kannada || "N/A"}`, 14, 118);
+
+      // Score Section
+      doc.setFillColor(240, 240, 240);
+      doc.roundedRect(14, 128, pageWidth - 28, 35, 3, 3, 'F');
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Score", 20, 140);
+      doc.setFontSize(24);
+      doc.setTextColor(studentPercentage >= 70 ? 34 : studentPercentage >= 50 ? 234 : 239, 
+                       studentPercentage >= 70 ? 197 : studentPercentage >= 50 ? 179 : 68, 
+                       studentPercentage >= 70 ? 94 : studentPercentage >= 50 ? 8 : 68);
+      doc.text(`${attempt.score}/${attempt.total_questions} (${studentPercentage}%)`, 20, 155);
+
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+
+      // Competitive Analysis Section
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Competitive Analysis", 14, 180);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      
+      const analysisData = [
+        ["Rank", `${studentRank} of ${totalStudents} students`],
+        ["Percentile", `Top ${percentile}%`],
+        ["Class Average", `${classAverage}%`],
+        ["Performance", performanceText]
+      ];
+
+      autoTable(doc, {
+        startY: 185,
+        head: [],
+        body: analysisData,
+        theme: 'plain',
+        styles: { cellPadding: 3, fontSize: 11 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
+      });
+
+      // Performance Assessment
+      const assessmentY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFillColor(studentPercentage >= 70 ? 220 : studentPercentage >= 50 ? 254 : 254, 
+                       studentPercentage >= 70 ? 252 : studentPercentage >= 50 ? 249 : 226, 
+                       studentPercentage >= 70 ? 231 : studentPercentage >= 50 ? 195 : 226);
+      doc.roundedRect(14, assessmentY, pageWidth - 28, 25, 3, 3, 'F');
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      const assessmentText = studentPercentage >= 70 
+        ? "🌟 Excellent work! Keep it up!" 
+        : studentPercentage >= 50 
+          ? "👍 Good effort! Room for improvement." 
+          : "💪 Keep practicing! You can do better!";
+      doc.text(assessmentText, pageWidth / 2, assessmentY + 15, { align: "center" });
+
+      // Footer
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Generated on ${new Date().toLocaleString('en-IN')} | Powered by Nythic AI Edtech`, pageWidth / 2, 285, { align: "center" });
+
+      // Save PDF
+      const fileName = `Quiz_Report_${studentName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      toast.success("PDF report downloaded!");
     } catch (error) {
-      console.error("Error sending WhatsApp report:", error);
-      toast.error("Failed to prepare WhatsApp report");
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF report");
     } finally {
-      setSendingWhatsApp(null);
+      setGeneratingPDF(null);
+    }
+  };
+
+  const downloadGlobalReport = async () => {
+    setExporting(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Header
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.text("Competitive Analysis Report", pageWidth / 2, 18, { align: "center" });
+      doc.setFontSize(12);
+      doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
+
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+
+      // Summary Statistics
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Summary Statistics", 14, 50);
+
+      const avgScore = attempts.length > 0 
+        ? Math.round(attempts.reduce((sum, a) => sum + (a.score / a.total_questions) * 100, 0) / attempts.length)
+        : 0;
+      const passRate = attempts.length > 0 
+        ? Math.round((attempts.filter(a => (a.score / a.total_questions) >= 0.5).length / attempts.length) * 100)
+        : 0;
+
+      const summaryData = [
+        ["Total Students", leaderboard.length.toString()],
+        ["Total Quiz Attempts", attempts.length.toString()],
+        ["Average Score", `${avgScore}%`],
+        ["Pass Rate (≥50%)", `${passRate}%`]
+      ];
+
+      autoTable(doc, {
+        startY: 55,
+        head: [],
+        body: summaryData,
+        theme: 'grid',
+        styles: { cellPadding: 4, fontSize: 11 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } }
+      });
+
+      // Performance Distribution
+      const distY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Performance Distribution", 14, distY);
+
+      const distData = performanceDistribution.map(p => [p.name, p.value.toString(), `${attempts.length > 0 ? Math.round((p.value / attempts.length) * 100) : 0}%`]);
+
+      autoTable(doc, {
+        startY: distY + 5,
+        head: [["Category", "Count", "Percentage"]],
+        body: distData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { cellPadding: 3, fontSize: 10 }
+      });
+
+      // Leaderboard
+      const leaderY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Student Leaderboard", 14, leaderY);
+
+      const leaderData = leaderboard.map((s, idx) => [
+        (idx + 1).toString(),
+        s.student_name,
+        s.total_quizzes.toString(),
+        `${Math.round(s.average_score)}%`
+      ]);
+
+      autoTable(doc, {
+        startY: leaderY + 5,
+        head: [["Rank", "Student Name", "Quizzes", "Avg Score"]],
+        body: leaderData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { cellPadding: 3, fontSize: 9 }
+      });
+
+      // Subject-wise Performance (new page)
+      doc.addPage();
+      
+      // Subject-wise header
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.text("Subject-wise Performance", pageWidth / 2, 16, { align: "center" });
+
+      doc.setTextColor(0, 0, 0);
+
+      // Calculate subject-wise stats
+      const subjectStats = attempts.reduce((acc: any, attempt) => {
+        const subject = attempt.quizzes?.chapters?.subjects?.name_kannada || "Unknown";
+        if (!acc[subject]) {
+          acc[subject] = { attempts: 0, totalScore: 0 };
+        }
+        acc[subject].attempts++;
+        acc[subject].totalScore += (attempt.score / attempt.total_questions) * 100;
+        return acc;
+      }, {});
+
+      const subjectData = Object.entries(subjectStats).map(([subject, stats]: [string, any]) => [
+        subject,
+        stats.attempts.toString(),
+        `${Math.round(stats.totalScore / stats.attempts)}%`
+      ]);
+
+      autoTable(doc, {
+        startY: 35,
+        head: [["Subject", "Attempts", "Avg Score"]],
+        body: subjectData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { cellPadding: 4, fontSize: 10 }
+      });
+
+      // Detailed Quiz History
+      const historyY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Detailed Quiz History", 14, historyY);
+
+      const historyData = filteredAttempts.slice(0, 50).map(a => [
+        a.profiles?.full_name || "Unknown",
+        a.quizzes?.chapters?.subjects?.name_kannada || "N/A",
+        a.quizzes?.chapters?.name_kannada || "N/A",
+        `${a.score}/${a.total_questions}`,
+        `${Math.round((a.score / a.total_questions) * 100)}%`,
+        new Date(a.attempted_at).toLocaleDateString('en-IN')
+      ]);
+
+      autoTable(doc, {
+        startY: historyY + 5,
+        head: [["Student", "Subject", "Chapter", "Score", "%", "Date"]],
+        body: historyData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { cellPadding: 2, fontSize: 8 },
+        columnStyles: { 
+          0: { cellWidth: 35 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 15 },
+          5: { cellWidth: 25 }
+        }
+      });
+
+      // Footer on last page
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleString('en-IN')} | Nythic AI Edtech`, pageWidth / 2, 290, { align: "center" });
+      }
+
+      // Save PDF
+      const fileName = `Global_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      toast.success("Global report downloaded!");
+    } catch (error) {
+      console.error("Error generating global report:", error);
+      toast.error("Failed to generate global report");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -435,6 +651,14 @@ _Powered by Nythic AI Edtech_`;
                 <Download className="w-4 h-4 mr-2" />
                 Export CSV
               </Button>
+              <Button size="sm" onClick={downloadGlobalReport} disabled={exporting}>
+                {exporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4 mr-2" />
+                )}
+                Global Report (PDF)
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -490,31 +714,19 @@ _Powered by Nythic AI Edtech_`;
                         {new Date(attempt.attempted_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => sendEmailReport(attempt.student_id)}
-                            disabled={exporting}
-                            title="Send Email Report"
-                          >
-                            <Mail className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => sendWhatsAppReport(attempt)}
-                            disabled={sendingWhatsApp === attempt.id}
-                            title="Send WhatsApp Report"
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          >
-                            {sendingWhatsApp === attempt.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <MessageCircle className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => downloadStudentPDF(attempt)}
+                          disabled={generatingPDF === attempt.id}
+                          title="Download PDF Report"
+                        >
+                          {generatingPDF === attempt.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
