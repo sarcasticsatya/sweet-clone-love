@@ -6,6 +6,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Detect language from content
+function detectLanguage(content: string, nameKannada: string): "kannada" | "hindi" | "english" {
+  // Check for Kannada script (U+0C80-U+0CFF)
+  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
+    return "kannada";
+  }
+  // Check for Hindi/Devanagari script (U+0900-U+097F)
+  if (/[\u0900-\u097F]/.test(content)) {
+    return "hindi";
+  }
+  return "english";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -75,19 +88,42 @@ serve(async (req) => {
 
     const chapterName = chapter.name_kannada || chapter.name;
 
-    // Detect if chapter is in Kannada (check if name_kannada exists and content has Kannada script)
-    const isKannadaChapter = chapter.name_kannada && /[\u0C80-\u0CFF]/.test(chapter.content_extracted || "");
+    // Detect language
+    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "");
+    console.log("DETECTED LANGUAGE:", language);
+
+    // Build language-specific instructions
+    const languageInstructions = {
+      kannada: {
+        notFound: '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ. ದಯವಿಟ್ಟು ಸರಿಯಾದ ಅಧ್ಯಾಯವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಮತ್ತೆ ಕೇಳಿ."',
+        rules: `- This is a KANNADA chapter - You MUST respond ENTIRELY in Kannada (ಕನ್ನಡ) REGARDLESS of the language the student uses
+   - Even if student asks in English, translate their question and respond in fluent, natural Kannada
+   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar`
+      },
+      hindi: {
+        notFound: '"इस अध्याय में वह जानकारी नहीं है। कृपया सही अध्याय चुनें और फिर से पूछें।"',
+        rules: `- This is a HINDI chapter - You MUST respond ENTIRELY in Hindi (हिन्दी) REGARDLESS of the language the student uses
+   - Even if student asks in English or Kannada, respond in fluent, natural Hindi
+   - Use proper Devanagari script (देवनागरी लिपि) with correct grammar
+   - Act as a helpful and friendly Hindi teacher`
+      },
+      english: {
+        notFound: '"This chapter does not contain that information. Please select the correct chapter and ask again."',
+        rules: `- If student asks in Kannada (ಕನ್ನಡ), respond ENTIRELY in fluent, natural Kannada
+   - If student asks in Hindi (हिन्दी), respond ENTIRELY in fluent, natural Hindi
+   - If student asks in English, respond in English
+   - Use proper script with correct grammar when using regional languages`
+      }
+    };
     
     // Build system prompt with strict source-bound rules and clean markdown output
-    const systemPrompt = `You are an AI tutor for Karnataka SSLC students with EXPERT knowledge of Kannada language. Follow these STRICT rules:
+    const systemPrompt = `You are an AI tutor for Karnataka SSLC students with EXPERT knowledge of multiple languages. Follow these STRICT rules:
 
 1. ANSWER ONLY FROM THE PROVIDED CHAPTER CONTENT - Provide DETAILED, COMPREHENSIVE explanations by default
 2. If the question is NOT answerable from the chapter content, respond EXACTLY with:
-   ${isKannadaChapter ? '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ. ದಯವಿಟ್ಟು ಸರಿಯಾದ ಅಧ್ಯಾಯವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಮತ್ತೆ ಕೇಳಿ."' : '"This chapter does not contain that information. Please select the correct chapter and ask again."'}
+   ${languageInstructions[language].notFound}
 3. LANGUAGE HANDLING (CRITICAL):
-   ${isKannadaChapter 
-     ? '- This is a KANNADA chapter - You MUST respond ENTIRELY in Kannada (ಕನ್ನಡ) REGARDLESS of the language the student uses\n   - Even if student asks in English, translate their question and respond in fluent, natural Kannada\n   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar' 
-     : '- If student asks in Kannada (ಕನ್ನಡ), respond ENTIRELY in fluent, natural Kannada\n   - If student asks in English, respond in English\n   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar when using Kannada'}
+   ${languageInstructions[language].rules}
    - Maintain cultural context appropriate for Karnataka SSLC students
 4. RESPONSE STYLE (CRITICAL):
    - Provide DETAILED, IN-DEPTH explanations (not just point-wise answers)
@@ -102,7 +138,7 @@ serve(async (req) => {
    - NEVER use \\( \\) or \\[ \\] notation
    - NEVER use Unicode escape sequences like \\u0394 or \\u2220
    - USE ACTUAL SYMBOLS directly: ∠ for angle, Δ or △ for triangle/delta, θ for theta, π for pi, ° for degrees
-   - For Kannada text, use ACTUAL Kannada characters (ಕನ್ನಡ), NEVER Unicode escapes like \\u0C95
+   - For regional text, use ACTUAL characters (ಕನ್ನಡ/हिन्दी), NEVER Unicode escapes
    - Write equations naturally in the text like: "The formula is x² + 5x + 6"
    - Keep formatting clean and readable for school students
 6. ALWAYS conclude with a **Summary** or **Final Answer** section
