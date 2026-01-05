@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Trophy, Users, TrendingUp, Download, Search, Loader2, FileText } from "lucide-react";
+import { BarChart, Trophy, Users, TrendingUp, Download, Search, Loader2, FileText, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import jsPDF from "jspdf";
@@ -47,6 +47,7 @@ export const ViewReports = () => {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [exporting, setExporting] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -304,6 +305,189 @@ export const ViewReports = () => {
       toast.error("Failed to generate PDF report");
     } finally {
       setGeneratingPDF(null);
+    }
+  };
+
+  const emailStudentPDF = async (attempt: QuizAttempt) => {
+    setSendingEmail(attempt.id);
+    try {
+      // Fetch student profile which contains email
+      const { data: studentProfile } = await supabase
+        .from("student_profiles")
+        .select("*")
+        .eq("user_id", attempt.student_id)
+        .single();
+
+      const studentEmail = studentProfile?.personal_email || studentProfile?.parent_email;
+
+      if (!studentEmail) {
+        toast.error("Student email not found");
+        return;
+      }
+
+      if (!studentEmail) {
+        toast.error("Student email not found");
+        return;
+      }
+
+      // Calculate competitive analysis
+      const studentRank = leaderboard.findIndex(s => s.student_id === attempt.student_id) + 1;
+      const totalStudents = leaderboard.length;
+      const percentile = totalStudents > 1 
+        ? Math.round(((totalStudents - studentRank) / (totalStudents - 1)) * 100) 
+        : 100;
+      const classAverage = leaderboard.length > 0 
+        ? Math.round(leaderboard.reduce((sum, s) => sum + s.average_score, 0) / leaderboard.length)
+        : 0;
+      
+      const studentPercentage = Math.round((attempt.score / attempt.total_questions) * 100);
+      const performanceVsAverage = studentPercentage - classAverage;
+      const performanceText = performanceVsAverage >= 0 
+        ? `+${performanceVsAverage}% above average` 
+        : `${performanceVsAverage}% below average`;
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Try to register Indic font
+      const indicFontLoaded = await registerIndicFont(doc);
+
+      // Header
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text("Quiz Performance Report", pageWidth / 2, 18, { align: "center" });
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
+
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+
+      // Student Info Section
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Student Information", 14, 50);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      
+      const studentName = studentProfile 
+        ? `${studentProfile.first_name} ${studentProfile.surname}` 
+        : attempt.profiles?.full_name || "Unknown";
+      
+      doc.text(`Name: ${studentName}`, 14, 60);
+      doc.text(`School: ${studentProfile?.school_name || "N/A"}`, 14, 68);
+      doc.text(`City: ${studentProfile?.city || "N/A"}`, 14, 76);
+      doc.text(`Date: ${new Date(attempt.attempted_at).toLocaleDateString('en-IN')}`, 14, 84);
+
+      // Quiz Info Section
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Quiz Details", 14, 100);
+      doc.setFontSize(11);
+      
+      const subjectName = indicFontLoaded 
+        ? (attempt.quizzes?.chapters?.subjects?.name_kannada || attempt.quizzes?.chapters?.subjects?.name || "N/A")
+        : (attempt.quizzes?.chapters?.subjects?.name || "N/A");
+      const chapterName = indicFontLoaded 
+        ? (attempt.quizzes?.chapters?.name_kannada || attempt.quizzes?.chapters?.name || "N/A")
+        : (attempt.quizzes?.chapters?.name || "N/A");
+      
+      doc.setFont(getFontForText(subjectName, indicFontLoaded), "normal");
+      doc.text(`Subject: ${subjectName}`, 14, 110);
+      
+      doc.setFont(getFontForText(chapterName, indicFontLoaded), "normal");
+      doc.text(`Chapter: ${chapterName}`, 14, 118);
+
+      // Score Section
+      doc.setFillColor(240, 240, 240);
+      doc.roundedRect(14, 128, pageWidth - 28, 35, 3, 3, 'F');
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Score", 20, 140);
+      doc.setFontSize(24);
+      doc.setTextColor(studentPercentage >= 70 ? 34 : studentPercentage >= 50 ? 234 : 239, 
+                       studentPercentage >= 70 ? 197 : studentPercentage >= 50 ? 179 : 68, 
+                       studentPercentage >= 70 ? 94 : studentPercentage >= 50 ? 8 : 68);
+      doc.text(`${attempt.score}/${attempt.total_questions} (${studentPercentage}%)`, 20, 155);
+
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+
+      // Competitive Analysis Section
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Competitive Analysis", 14, 180);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      
+      const analysisData = [
+        ["Rank", `${studentRank} of ${totalStudents} students`],
+        ["Percentile", `Top ${percentile}%`],
+        ["Class Average", `${classAverage}%`],
+        ["Performance", performanceText]
+      ];
+
+      autoTable(doc, {
+        startY: 185,
+        head: [],
+        body: analysisData,
+        theme: 'plain',
+        styles: { cellPadding: 3, fontSize: 11 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
+      });
+
+      // Performance Assessment
+      const assessmentY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFillColor(studentPercentage >= 70 ? 220 : studentPercentage >= 50 ? 254 : 254, 
+                       studentPercentage >= 70 ? 252 : studentPercentage >= 50 ? 249 : 226, 
+                       studentPercentage >= 70 ? 231 : studentPercentage >= 50 ? 195 : 226);
+      doc.roundedRect(14, assessmentY, pageWidth - 28, 25, 3, 3, 'F');
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      const assessmentText = studentPercentage >= 70 
+        ? "Excellent work! Keep it up!" 
+        : studentPercentage >= 50 
+          ? "Good effort! Room for improvement." 
+          : "Keep practicing! You can do better!";
+      doc.text(assessmentText, pageWidth / 2, assessmentY + 15, { align: "center" });
+
+      // Footer
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Generated on ${new Date().toLocaleString('en-IN')} | Powered by Nythic AI Edtech`, pageWidth / 2, 285, { align: "center" });
+
+      // Convert PDF to base64
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+      // Send email via edge function
+      const { error } = await supabase.functions.invoke('send-report-email', {
+        body: {
+          pdfBase64,
+          recipientEmail: studentEmail,
+          studentName,
+          reportType: "individual",
+          subject: subjectName,
+          chapter: chapterName,
+          score: `${attempt.score}/${attempt.total_questions}`,
+          percentage: `${studentPercentage}%`,
+          date: new Date(attempt.attempted_at).toLocaleDateString('en-IN'),
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success(`Report emailed to ${studentEmail}`);
+    } catch (error) {
+      console.error("Error emailing PDF:", error);
+      toast.error("Failed to send email");
+    } finally {
+      setSendingEmail(null);
     }
   };
 
@@ -757,19 +941,34 @@ export const ViewReports = () => {
                         {new Date(attempt.attempted_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => downloadStudentPDF(attempt)}
-                          disabled={generatingPDF === attempt.id}
-                          title="Download PDF Report"
-                        >
-                          {generatingPDF === attempt.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Download className="w-4 h-4" />
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => downloadStudentPDF(attempt)}
+                            disabled={generatingPDF === attempt.id}
+                            title="Download PDF Report"
+                          >
+                            {generatingPDF === attempt.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => emailStudentPDF(attempt)}
+                            disabled={sendingEmail === attempt.id}
+                            title="Email PDF Report"
+                          >
+                            {sendingEmail === attempt.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Mail className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
