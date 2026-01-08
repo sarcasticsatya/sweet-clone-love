@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Trophy, Users, TrendingUp, Download, Search, Loader2, FileText, Mail, Send } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BarChart, Trophy, Users, TrendingUp, Download, Search, Loader2, FileText, Mail, Send, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import jsPDF from "jspdf";
@@ -48,6 +49,12 @@ export const ViewReports = () => {
   const [exporting, setExporting] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  
+  // New state for bulk email and date filtering
+  const [selectedAttempts, setSelectedAttempts] = useState<Set<string>>(new Set());
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -131,8 +138,235 @@ export const ViewReports = () => {
                           attempt.quizzes?.chapters?.name_kannada?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSubject = filterSubject === "all" || 
                            attempt.quizzes?.chapters?.subjects?.name_kannada === filterSubject;
-    return matchesSearch && matchesSubject;
+    
+    // Date filtering
+    const attemptDate = new Date(attempt.attempted_at);
+    const matchesStartDate = !startDate || attemptDate >= new Date(startDate);
+    const matchesEndDate = !endDate || attemptDate <= new Date(endDate + 'T23:59:59');
+    
+    return matchesSearch && matchesSubject && matchesStartDate && matchesEndDate;
   });
+
+  // Check if all filtered attempts are selected
+  const allSelected = filteredAttempts.length > 0 && filteredAttempts.every(a => selectedAttempts.has(a.id));
+
+  // Handle select all toggle
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedAttempts(new Set(filteredAttempts.map(a => a.id)));
+    } else {
+      setSelectedAttempts(new Set());
+    }
+  };
+
+  // Handle individual selection
+  const handleSelectOne = (attemptId: string, checked: boolean) => {
+    const newSet = new Set(selectedAttempts);
+    if (checked) {
+      newSet.add(attemptId);
+    } else {
+      newSet.delete(attemptId);
+    }
+    setSelectedAttempts(newSet);
+  };
+
+  // Bulk email function
+  const sendBulkEmails = async () => {
+    const selected = filteredAttempts.filter(a => selectedAttempts.has(a.id));
+    if (selected.length === 0) {
+      toast.error("No reports selected");
+      return;
+    }
+
+    setSendingBulkEmail(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const attempt of selected) {
+      try {
+        // Fetch student profile which contains email
+        const { data: studentProfile } = await supabase
+          .from("student_profiles")
+          .select("*")
+          .eq("user_id", attempt.student_id)
+          .single();
+
+        const studentEmail = studentProfile?.personal_email || studentProfile?.parent_email;
+
+        if (!studentEmail) {
+          failCount++;
+          continue;
+        }
+
+        // Calculate competitive analysis
+        const studentRank = leaderboard.findIndex(s => s.student_id === attempt.student_id) + 1;
+        const totalStudents = leaderboard.length;
+        const percentile = totalStudents > 1 
+          ? Math.round(((totalStudents - studentRank) / (totalStudents - 1)) * 100) 
+          : 100;
+        const classAverage = leaderboard.length > 0 
+          ? Math.round(leaderboard.reduce((sum, s) => sum + s.average_score, 0) / leaderboard.length)
+          : 0;
+        
+        const studentPercentage = Math.round((attempt.score / attempt.total_questions) * 100);
+        const performanceVsAverage = studentPercentage - classAverage;
+
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // Try to register Indic font
+        const indicFontLoaded = await registerIndicFont(doc);
+
+        // Header
+        doc.setFillColor(59, 130, 246);
+        doc.rect(0, 0, pageWidth, 35, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.text("Quiz Performance Report", pageWidth / 2, 18, { align: "center" });
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
+
+        doc.setTextColor(0, 0, 0);
+
+        // Student Info Section
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Student Information", 14, 50);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        
+        const studentName = studentProfile 
+          ? `${studentProfile.first_name} ${studentProfile.surname}` 
+          : attempt.profiles?.full_name || "Unknown";
+        
+        doc.text(`Name: ${studentName}`, 14, 60);
+        doc.text(`School: ${studentProfile?.school_name || "N/A"}`, 14, 68);
+        doc.text(`City: ${studentProfile?.city || "N/A"}`, 14, 76);
+        doc.text(`Date: ${new Date(attempt.attempted_at).toLocaleDateString('en-IN')}`, 14, 84);
+
+        // Quiz Info Section
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Quiz Details", 14, 100);
+        doc.setFontSize(11);
+        
+        const subjectName = indicFontLoaded 
+          ? (attempt.quizzes?.chapters?.subjects?.name_kannada || attempt.quizzes?.chapters?.subjects?.name || "N/A")
+          : (attempt.quizzes?.chapters?.subjects?.name || "N/A");
+        const chapterName = indicFontLoaded 
+          ? (attempt.quizzes?.chapters?.name_kannada || attempt.quizzes?.chapters?.name || "N/A")
+          : (attempt.quizzes?.chapters?.name || "N/A");
+        
+        doc.setFont(getFontForText(subjectName, indicFontLoaded), "normal");
+        doc.text(`Subject: ${subjectName}`, 14, 110);
+        
+        doc.setFont(getFontForText(chapterName, indicFontLoaded), "normal");
+        doc.text(`Chapter: ${chapterName}`, 14, 118);
+
+        // Score Section
+        doc.setFillColor(240, 240, 240);
+        doc.roundedRect(14, 128, pageWidth - 28, 35, 3, 3, 'F');
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Score", 20, 140);
+        doc.setFontSize(24);
+        doc.setTextColor(studentPercentage >= 70 ? 34 : studentPercentage >= 50 ? 234 : 239, 
+                         studentPercentage >= 70 ? 197 : studentPercentage >= 50 ? 179 : 68, 
+                         studentPercentage >= 70 ? 94 : studentPercentage >= 50 ? 8 : 68);
+        doc.text(`${attempt.score}/${attempt.total_questions} (${studentPercentage}%)`, 20, 155);
+
+        doc.setTextColor(0, 0, 0);
+
+        // Competitive Analysis Section
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Competitive Analysis", 14, 180);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        
+        const performanceText = performanceVsAverage >= 0 
+          ? `+${performanceVsAverage}% above average` 
+          : `${performanceVsAverage}% below average`;
+
+        const analysisData = [
+          ["Rank", `${studentRank} of ${totalStudents} students`],
+          ["Percentile", `Top ${percentile}%`],
+          ["Class Average", `${classAverage}%`],
+          ["Performance", performanceText]
+        ];
+
+        autoTable(doc, {
+          startY: 185,
+          head: [],
+          body: analysisData,
+          theme: 'plain',
+          styles: { cellPadding: 3, fontSize: 11 },
+          columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
+        });
+
+        // Performance Assessment
+        const assessmentY = (doc as any).lastAutoTable.finalY + 15;
+        doc.setFillColor(studentPercentage >= 70 ? 220 : studentPercentage >= 50 ? 254 : 254, 
+                         studentPercentage >= 70 ? 252 : studentPercentage >= 50 ? 249 : 226, 
+                         studentPercentage >= 70 ? 231 : studentPercentage >= 50 ? 195 : 226);
+        doc.roundedRect(14, assessmentY, pageWidth - 28, 25, 3, 3, 'F');
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        const assessmentText = studentPercentage >= 70 
+          ? "Excellent work! Keep it up!" 
+          : studentPercentage >= 50 
+            ? "Good effort! Room for improvement." 
+            : "Keep practicing! You can do better!";
+        doc.text(assessmentText, pageWidth / 2, assessmentY + 15, { align: "center" });
+
+        // Footer
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Generated on ${new Date().toLocaleString('en-IN')} | Powered by Nythic AI Edtech`, pageWidth / 2, 285, { align: "center" });
+
+        // Convert PDF to base64
+        const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+        // Send email via edge function
+        const { error } = await supabase.functions.invoke('send-report-email', {
+          body: {
+            pdfBase64,
+            recipientEmail: studentEmail,
+            studentName,
+            reportType: "individual",
+            subject: subjectName,
+            chapter: chapterName,
+            score: `${attempt.score}/${attempt.total_questions}`,
+            percentage: `${studentPercentage}%`,
+            date: new Date(attempt.attempted_at).toLocaleDateString('en-IN'),
+          }
+        });
+
+        if (error) {
+          failCount++;
+        } else {
+          successCount++;
+        }
+      } catch (error) {
+        console.error("Error sending bulk email:", error);
+        failCount++;
+      }
+    }
+
+    setSendingBulkEmail(false);
+    setSelectedAttempts(new Set());
+    
+    if (successCount > 0 && failCount === 0) {
+      toast.success(`Successfully sent ${successCount} email(s)`);
+    } else if (successCount > 0 && failCount > 0) {
+      toast.warning(`Sent ${successCount} email(s), ${failCount} failed`);
+    } else {
+      toast.error(`Failed to send emails`);
+    }
+  };
 
   const exportToCSV = () => {
     const csvContent = [
@@ -853,18 +1087,18 @@ export const ViewReports = () => {
               </CardTitle>
               <CardDescription>Detailed quiz attempt history</CardDescription>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-[200px]"
+                  className="pl-9 w-[180px]"
                 />
               </div>
               <Select value={filterSubject} onValueChange={setFilterSubject}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Subject" />
                 </SelectTrigger>
                 <SelectContent>
@@ -874,18 +1108,51 @@ export const ViewReports = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-[130px]"
+                  placeholder="From"
+                />
+                <span className="text-muted-foreground">-</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-[130px]"
+                  placeholder="To"
+                />
+              </div>
               <Button variant="outline" size="sm" onClick={exportToCSV}>
                 <Download className="w-4 h-4 mr-2" />
-                Export CSV
+                CSV
               </Button>
-              <Button size="sm" onClick={downloadGlobalReport} disabled={exporting}>
+              <Button variant="outline" size="sm" onClick={downloadGlobalReport} disabled={exporting}>
                 {exporting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <FileText className="w-4 h-4 mr-2" />
                 )}
-                Global Report (PDF)
+                PDF
               </Button>
+              {selectedAttempts.size > 0 && (
+                <Button 
+                  size="sm" 
+                  onClick={sendBulkEmails} 
+                  disabled={sendingBulkEmail}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {sendingBulkEmail ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  Email ({selectedAttempts.size})
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -894,6 +1161,12 @@ export const ViewReports = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox 
+                      checked={allSelected}
+                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    />
+                  </TableHead>
                   <TableHead>Student</TableHead>
                   <TableHead>Subject/Chapter</TableHead>
                   <TableHead>Score</TableHead>
@@ -905,13 +1178,19 @@ export const ViewReports = () => {
               <TableBody>
                 {filteredAttempts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No quiz attempts found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredAttempts.map((attempt) => (
                     <TableRow key={attempt.id}>
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedAttempts.has(attempt.id)}
+                          onCheckedChange={(checked) => handleSelectOne(attempt.id, !!checked)}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{attempt.profiles?.full_name}</TableCell>
                       <TableCell>
                         <div className="text-sm">
