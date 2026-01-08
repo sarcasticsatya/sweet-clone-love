@@ -118,13 +118,21 @@ serve(async (req) => {
       kannada: {
         notFound: '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ. ದಯವಿಟ್ಟು ಸರಿಯಾದ ಅಧ್ಯಾಯವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಮತ್ತೆ ಕೇಳಿ."',
         rules: `- This is a KANNADA chapter - You MUST respond ENTIRELY in Kannada (ಕನ್ನಡ) REGARDLESS of the language the student uses
-   - Even if student asks in English, translate their question and respond in fluent, natural Kannada
+   - CRITICAL: Even if the student asks in HINDI (हिन्दी), you MUST respond ONLY in Kannada
+   - CRITICAL: Even if the student asks in ENGLISH, you MUST respond ONLY in Kannada
+   - NEVER respond in Hindi or English for Kannada chapters - ALWAYS use Kannada
+   - The response language is determined by the SUBJECT, not the student's question language
+   - Translate the student's question mentally and answer in Kannada
    - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar`
       },
       hindi: {
         notFound: '"इस अध्याय में वह जानकारी नहीं है। कृपया सही अध्याय चुनें और फिर से पूछें।"',
         rules: `- This is a HINDI chapter - You MUST respond ENTIRELY in Hindi (हिन्दी) REGARDLESS of the language the student uses
-   - Even if student asks in English or Kannada, respond in fluent, natural Hindi
+   - CRITICAL: Even if the student asks in KANNADA (ಕನ್ನಡ), you MUST respond ONLY in Hindi
+   - CRITICAL: Even if the student asks in ENGLISH, you MUST respond ONLY in Hindi
+   - NEVER respond in Kannada for Hindi chapters - ALWAYS use Hindi
+   - The response language is determined by the SUBJECT, not the student's question language
+   - Translate the student's question mentally and answer in Hindi
    - Use proper Devanagari script (देवनागरी लिपि) with correct grammar
    - Act as a helpful and friendly Hindi teacher`
       },
