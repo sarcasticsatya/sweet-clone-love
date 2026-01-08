@@ -90,9 +90,9 @@ const Auth = () => {
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
-        .single();
+        .order('role', { ascending: true }); // 'admin' comes before 'student' alphabetically
       
-      roleData = data;
+      roleData = data?.[0] || null;
       
       if (!roleData && attempts < maxAttempts - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));

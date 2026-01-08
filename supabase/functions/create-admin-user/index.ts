@@ -71,6 +71,13 @@ serve(async (req) => {
       throw roleError;
     }
 
+    // Remove student role if it was auto-assigned by trigger
+    await supabaseAdmin
+      .from('user_roles')
+      .delete()
+      .eq('user_id', newUser.user.id)
+      .eq('role', 'student');
+
     return new Response(
       JSON.stringify({ success: true, message: 'Admin user created successfully' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
