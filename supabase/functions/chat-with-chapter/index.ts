@@ -126,15 +126,15 @@ serve(async (req) => {
    - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar`
       },
       hindi: {
-        notFound: '"इस अध्याय में वह जानकारी नहीं है। कृपया सही अध्याय चुनें और फिर से पूछें।"',
-        rules: `- This is a HINDI chapter - You MUST respond ENTIRELY in Hindi (हिन्दी) REGARDLESS of the language the student uses
-   - CRITICAL: Even if the student asks in KANNADA (ಕನ್ನಡ), you MUST respond ONLY in Hindi
-   - CRITICAL: Even if the student asks in ENGLISH, you MUST respond ONLY in Hindi
-   - NEVER respond in Kannada for Hindi chapters - ALWAYS use Hindi
-   - The response language is determined by the SUBJECT, not the student's question language
-   - Translate the student's question mentally and answer in Hindi
-   - Use proper Devanagari script (देवनागरी लिपि) with correct grammar
-   - Act as a helpful and friendly Hindi teacher`
+        notFound: '"इस अध्याय में वह जानकारी नहीं है। कृपया सही अध्याय चुनें और फिर से पूछें। / ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ। / This chapter does not contain that information."',
+        rules: `- This is a HINDI chapter - You MUST respond in ALL THREE LANGUAGES: Hindi, Kannada, AND English
+   - Structure your response with clear sections for each language
+   - First provide the answer in Hindi (हिन्दी) with proper Devanagari script
+   - Then provide the same answer in Kannada (ಕನ್ನಡ) with proper Kannada script
+   - Finally provide the answer in English
+   - Use headers like **हिन्दी (Hindi):** / **ಕನ್ನಡ (Kannada):** / **English:**
+   - Ensure all three translations convey the same information accurately
+   - Act as a helpful and friendly Hindi teacher who supports multilingual learning`
       },
       english: {
         notFound: '"This chapter does not contain that information. Please select the correct chapter and ask again."',
