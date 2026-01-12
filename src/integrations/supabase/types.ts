@@ -237,6 +237,8 @@ export type Database = {
           id: string
           image_url: string
           image_urls: Json | null
+          images_pending: boolean | null
+          pages_data: Json | null
         }
         Insert: {
           chapter_id: string
@@ -244,6 +246,8 @@ export type Database = {
           id?: string
           image_url: string
           image_urls?: Json | null
+          images_pending?: boolean | null
+          pages_data?: Json | null
         }
         Update: {
           chapter_id?: string
@@ -251,6 +255,8 @@ export type Database = {
           id?: string
           image_url?: string
           image_urls?: Json | null
+          images_pending?: boolean | null
+          pages_data?: Json | null
         }
         Relationships: [
           {
@@ -390,6 +396,7 @@ export type Database = {
       }
       student_profiles: {
         Row: {
+          active_session_id: string | null
           city: string
           created_at: string
           date_of_birth: string
@@ -402,6 +409,7 @@ export type Database = {
           parent_mobile: string
           personal_email: string
           school_name: string
+          session_updated_at: string | null
           surname: string
           updated_at: string
           user_id: string
@@ -409,6 +417,7 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          active_session_id?: string | null
           city: string
           created_at?: string
           date_of_birth: string
@@ -421,6 +430,7 @@ export type Database = {
           parent_mobile: string
           personal_email: string
           school_name: string
+          session_updated_at?: string | null
           surname: string
           updated_at?: string
           user_id: string
@@ -428,6 +438,7 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          active_session_id?: string | null
           city?: string
           created_at?: string
           date_of_birth?: string
@@ -440,6 +451,7 @@ export type Database = {
           parent_mobile?: string
           personal_email?: string
           school_name?: string
+          session_updated_at?: string | null
           surname?: string
           updated_at?: string
           user_id?: string

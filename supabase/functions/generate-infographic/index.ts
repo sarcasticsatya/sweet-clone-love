@@ -9,8 +9,6 @@ const corsHeaders = {
 
 // Detect language from content with subject-based priority
 function detectLanguage(content: string, nameKannada: string, subjectName: string): "kannada" | "hindi" | "english" {
-  // First priority: Check subject name for Hindi
-  // "ಹಿಂದಿ" is "Hindi" written in Kannada script
   if (subjectName && (
     subjectName.toLowerCase().includes('hindi') || 
     subjectName === 'ಹಿಂದಿ'
@@ -19,12 +17,10 @@ function detectLanguage(content: string, nameKannada: string, subjectName: strin
     return "hindi";
   }
   
-  // Check for Hindi/Devanagari script in content (U+0900-U+097F)
   if (/[\u0900-\u097F]/.test(content)) {
     return "hindi";
   }
   
-  // Check for Kannada script (U+0C80-U+0CFF)
   if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
     return "kannada";
   }
@@ -32,59 +28,44 @@ function detectLanguage(content: string, nameKannada: string, subjectName: strin
   return "english";
 }
 
-// Generate visual diagram (no text) and extract key points in target language
-async function generateInfographicPage(
+// Extract key points only (fast operation) - NO IMAGE GENERATION
+async function extractKeyPoints(
   sectionContent: string,
   sectionTitle: string,
   pageNumber: number,
-  totalPages: number,
   language: "kannada" | "hindi" | "english",
   apiKey: string
-): Promise<{ imageUrl: string | null; keyPoints: string[]; title: string }> {
+): Promise<{ keyPoints: string[]; title: string }> {
   try {
-    console.log(`Generating infographic page ${pageNumber}/${totalPages}: ${sectionTitle}`);
+    console.log(`Extracting key points for page ${pageNumber}: ${sectionTitle}`);
 
     const languagePrompts = {
       kannada: {
         system: `Extract 4-5 KEY POINTS from this educational content.
-
 CRITICAL: Return ALL points in KANNADA (ಕನ್ನಡ) language.
 If content is in English, translate to Kannada.
-
 Format: Return ONLY a JSON object:
 {"points": ["ಮೊದಲ ಪ್ರಮುಖ ಅಂಶ", "ಎರಡನೆಯ ಪ್ರಮುಖ ಅಂಶ"], "title": "ವಿಭಾಗದ ಶೀರ್ಷಿಕೆ"}
-
-Each point should be 5-15 words in Kannada.
-Title should be the section topic in Kannada.`,
+Each point should be 5-15 words in Kannada.`,
         fallback: ["ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೧", "ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೨", "ಪ್ರಮುಖ ಪರಿಕಲ್ಪನೆ ೩"]
       },
       hindi: {
         system: `Extract 4-5 KEY POINTS from this educational content.
-
 CRITICAL: Return ALL points in HINDI (हिन्दी) language.
-If content is in English, translate to Hindi.
-Use proper Devanagari script (देवनागरी).
-
 Format: Return ONLY a JSON object:
 {"points": ["पहला प्रमुख बिंदु", "दूसरा प्रमुख बिंदु"], "title": "खंड शीर्षक"}
-
-Each point should be 5-15 words in Hindi.
-Title should be the section topic in Hindi.`,
+Each point should be 5-15 words in Hindi.`,
         fallback: ["प्रमुख अवधारणा १", "प्रमुख अवधारणा २", "प्रमुख अवधारणा ३"]
       },
       english: {
         system: `Extract 4-5 KEY POINTS from this educational content.
-
 Format: Return ONLY a JSON object:
 {"points": ["First key point", "Second key point"], "title": "Section Title"}
-
-Each point should be 5-15 words.
-Title should be the section topic.`,
+Each point should be 5-15 words.`,
         fallback: ["Key concept 1", "Key concept 2", "Key concept 3"]
       }
     };
 
-    // Extract key points in target language
     const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -94,14 +75,8 @@ Title should be the section topic.`,
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          {
-            role: "system",
-            content: languagePrompts[language].system
-          },
-          {
-            role: "user",
-            content: `Section: ${sectionTitle}\n\nContent:\n${sectionContent.substring(0, 4000)}`
-          }
+          { role: "system", content: languagePrompts[language].system },
+          { role: "user", content: `Section: ${sectionTitle}\n\nContent:\n${sectionContent.substring(0, 4000)}` }
         ],
         response_format: { type: "json_object" }
       }),
@@ -123,13 +98,25 @@ Title should be the section topic.`,
       keyPoints = languagePrompts[language].fallback;
     }
 
-    console.log(`${language} key points for page ${pageNumber}:`, keyPoints);
+    return { keyPoints, title: localizedTitle };
+  } catch (error) {
+    console.error(`Error extracting key points for page ${pageNumber}:`, error);
+    return { keyPoints: [], title: sectionTitle };
+  }
+}
 
-    // Generate VISUAL-ONLY diagram (NO TEXT in image)
+// Generate image for a page (slow operation)
+async function generateImage(
+  sectionTitle: string,
+  pageNumber: number,
+  totalPages: number,
+  apiKey: string
+): Promise<string | null> {
+  try {
+    console.log(`Generating image for page ${pageNumber}/${totalPages}`);
+
     const imagePrompt = `Create a beautiful EDUCATIONAL DIAGRAM IMAGE.
-
 TOPIC: ${sectionTitle} (Page ${pageNumber}/${totalPages})
-
 STRICT REQUIREMENTS:
 1. Create VISUAL DIAGRAMS and ILLUSTRATIONS ONLY
 2. DO NOT include ANY text, labels, or words in the image
@@ -139,12 +126,7 @@ STRICT REQUIREMENTS:
 6. White/light background
 7. Professional, clean educational poster style
 8. Include relevant scientific/educational illustrations
-9. Show relationships with arrows and connectors
-10. Make it visually appealing and informative through imagery alone
-
 IMPORTANT: This is a VISUAL-ONLY image. No text at all.
-The text will be added separately.
-
 Ultra high resolution educational diagram.`;
 
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -155,28 +137,21 @@ Ultra high resolution educational diagram.`;
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: imagePrompt
-          }
-        ],
+        messages: [{ role: "user", content: imagePrompt }],
         modalities: ["image", "text"]
       }),
     });
 
-    let imageUrl: string | null = null;
     if (imageResponse.ok) {
       const imageData = await imageResponse.json();
-      imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
-    } else {
-      console.error(`Image generation failed for page ${pageNumber}`);
+      return imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
     }
-
-    return { imageUrl, keyPoints, title: localizedTitle };
+    
+    console.error(`Image generation failed for page ${pageNumber}`);
+    return null;
   } catch (error) {
-    console.error(`Error generating page ${pageNumber}:`, error);
-    return { imageUrl: null, keyPoints: [], title: sectionTitle };
+    console.error(`Error generating image for page ${pageNumber}:`, error);
+    return null;
   }
 }
 
@@ -195,22 +170,17 @@ async function splitIntoSections(content: string, chapterName: string, apiKey: s
           {
             role: "system",
             content: `Split the chapter content into 4 logical sections.
-
 Return a JSON object:
 {
   "sections": [
     { "title": "Section Title", "startPhrase": "first few words of this section" }
   ]
 }
-
 Rules:
 - Create exactly 4 sections
 - Each section should cover a distinct topic`
           },
-          {
-            role: "user",
-            content: `Chapter: ${chapterName}\n\nContent:\n${content.substring(0, 8000)}`
-          }
+          { role: "user", content: `Chapter: ${chapterName}\n\nContent:\n${content.substring(0, 8000)}` }
         ],
         response_format: { type: "json_object" }
       }),
@@ -245,16 +215,10 @@ Rules:
         : content.length;
       
       if (startIdx !== -1 && endIdx > startIdx) {
-        sections.push({
-          title: section.title,
-          content: content.substring(startIdx, endIdx)
-        });
+        sections.push({ title: section.title, content: content.substring(startIdx, endIdx) });
       } else {
         const partLength = Math.ceil(content.length / result.sections.length);
-        sections.push({
-          title: section.title,
-          content: content.substring(i * partLength, (i + 1) * partLength)
-        });
+        sections.push({ title: section.title, content: content.substring(i * partLength, (i + 1) * partLength) });
       }
     }
 
@@ -282,7 +246,7 @@ serve(async (req) => {
   }
 
   try {
-    const { chapterId, regenerate } = await req.json();
+    const { chapterId, regenerate, mode = "full" } = await req.json();
     const authHeader = req.headers.get("authorization");
 
     if (!chapterId) {
@@ -307,15 +271,8 @@ serve(async (req) => {
       );
     }
 
-    // If regenerate, delete existing first
-    if (regenerate) {
-      console.log("Regenerating - deleting existing infographic...");
-      await supabaseClient
-        .from("infographics")
-        .delete()
-        .eq("chapter_id", chapterId);
-    } else {
-      // Check for existing infographic (cached)
+    // Mode: "poll" - just return current state from DB
+    if (mode === "poll") {
       const { data: existing } = await supabaseClient
         .from("infographics")
         .select("*")
@@ -323,9 +280,47 @@ serve(async (req) => {
         .single();
 
       if (existing) {
-        console.log("Returning cached infographic");
+        const storedData = existing.image_urls as any;
         return new Response(
-          JSON.stringify({ infographic: existing }),
+          JSON.stringify({ 
+            infographic: {
+              ...existing,
+              kannada_pages: storedData?.kannada_pages || [],
+              images_pending: existing.images_pending || false
+            }
+          }),
+          { headers: corsHeaders }
+        );
+      }
+      return new Response(
+        JSON.stringify({ infographic: null }),
+        { headers: corsHeaders }
+      );
+    }
+
+    // If regenerate, delete existing first
+    if (regenerate) {
+      console.log("Regenerating - deleting existing infographic...");
+      await supabaseClient.from("infographics").delete().eq("chapter_id", chapterId);
+    } else {
+      // Check for existing complete infographic (cached)
+      const { data: existing } = await supabaseClient
+        .from("infographics")
+        .select("*")
+        .eq("chapter_id", chapterId)
+        .single();
+
+      if (existing && !existing.images_pending) {
+        console.log("Returning cached infographic");
+        const storedData = existing.image_urls as any;
+        return new Response(
+          JSON.stringify({ 
+            infographic: {
+              ...existing,
+              kannada_pages: storedData?.kannada_pages || [],
+              images_pending: false
+            }
+          }),
           { headers: corsHeaders }
         );
       }
@@ -363,68 +358,117 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    // Split content into sections
+    // PHASE 1: Quick mode - extract key points only (returns in ~2-3 seconds)
     console.log("Splitting chapter into sections...");
     const sections = await splitIntoSections(chapter.content_extracted, chapterName, LOVABLE_API_KEY);
     console.log(`Created ${sections.length} sections`);
 
-    // Generate infographic pages with language-specific key points
-    const pagePromises = sections.slice(0, 4).map((section, idx) =>
-      generateInfographicPage(
-        section.content,
-        section.title,
-        idx + 1,
-        4,
-        language,
-        LOVABLE_API_KEY
-      )
+    // Extract key points for all sections in parallel (fast)
+    const keyPointsPromises = sections.slice(0, 4).map((section, idx) =>
+      extractKeyPoints(section.content, section.title, idx + 1, language, LOVABLE_API_KEY)
     );
+    const keyPointsResults = await Promise.all(keyPointsPromises);
 
-    const pageResults = await Promise.all(pagePromises);
-    
-    // Extract image URLs and localized data
-    const imageUrls = pageResults.map(p => p.imageUrl).filter((url): url is string => url !== null);
-    const localizedPages = pageResults.map((p, idx) => ({
-      title: p.title,
-      keyPoints: p.keyPoints,
-      imageUrl: p.imageUrl
+    // Create initial pages with key points but no images
+    const initialPages = keyPointsResults.map((result, idx) => ({
+      title: result.title,
+      keyPoints: result.keyPoints,
+      imageUrl: null as string | null
     }));
 
-    if (imageUrls.length === 0 && localizedPages.every(p => p.keyPoints.length === 0)) {
-      throw new Error("Failed to generate infographic content");
-    }
-
-    console.log(`Generated ${imageUrls.length} images and ${language} content for ${localizedPages.length} pages`);
-
-    // Store in database with localized pages data
-    const infographicData = {
+    // Store initial data with images_pending = true
+    const initialData = {
       chapter_id: chapterId,
-      image_url: imageUrls[0] || "",
-      image_urls: imageUrls,
-      kannada_pages: localizedPages, // Keep field name for backwards compatibility
-      language: language
+      image_url: "pending",
+      image_urls: {
+        image_urls: [],
+        kannada_pages: initialPages,
+        language: language
+      },
+      images_pending: true,
+      pages_data: initialPages
     };
 
-    const { data: infographic, error: insertError } = await supabaseClient
+    // Insert/update with pending state
+    const { data: insertedInfographic, error: insertError } = await supabaseClient
       .from("infographics")
-      .insert({
+      .upsert({
         chapter_id: chapterId,
-        image_url: imageUrls[0] || "no-image",
-        image_urls: infographicData
-      })
+        image_url: "pending",
+        image_urls: initialData.image_urls,
+        images_pending: true,
+        pages_data: initialPages
+      }, { onConflict: 'chapter_id' })
       .select()
       .single();
 
     if (insertError) {
       console.error("Insert error:", insertError);
+    }
+
+    // If mode is "quick", return immediately with key points
+    if (mode === "quick") {
+      console.log("Quick mode: returning key points immediately");
       return new Response(
-        JSON.stringify({ infographic: infographicData }),
+        JSON.stringify({ 
+          infographic: {
+            chapter_id: chapterId,
+            image_url: "pending",
+            kannada_pages: initialPages,
+            images_pending: true
+          }
+        }),
         { headers: corsHeaders }
       );
     }
 
+    // PHASE 2: Full mode - generate images (takes 10-15 seconds)
+    console.log("Generating images for all pages...");
+    const imagePromises = sections.slice(0, 4).map((section, idx) =>
+      generateImage(section.title, idx + 1, 4, LOVABLE_API_KEY)
+    );
+    const imageResults = await Promise.all(imagePromises);
+
+    // Update pages with images
+    const finalPages = initialPages.map((page, idx) => ({
+      ...page,
+      imageUrl: imageResults[idx]
+    }));
+
+    const imageUrls = imageResults.filter((url): url is string => url !== null);
+
+    // Update database with complete data
+    const finalData = {
+      image_urls: imageUrls,
+      kannada_pages: finalPages,
+      language: language
+    };
+
+    const { error: updateError } = await supabaseClient
+      .from("infographics")
+      .update({
+        image_url: imageUrls[0] || "no-image",
+        image_urls: finalData,
+        images_pending: false,
+        pages_data: finalPages
+      })
+      .eq("chapter_id", chapterId);
+
+    if (updateError) {
+      console.error("Update error:", updateError);
+    }
+
+    console.log(`Generated ${imageUrls.length} images for ${finalPages.length} pages`);
+
     return new Response(
-      JSON.stringify({ infographic: { ...infographic, ...infographicData } }),
+      JSON.stringify({ 
+        infographic: {
+          chapter_id: chapterId,
+          image_url: imageUrls[0] || "no-image",
+          kannada_pages: finalPages,
+          images_pending: false
+        }
+      }),
       { headers: corsHeaders }
     );
 

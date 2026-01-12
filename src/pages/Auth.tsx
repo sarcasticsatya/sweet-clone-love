@@ -223,12 +223,28 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      // Generate and store session ID for single-device enforcement
+      if (data.user) {
+        const newSessionId = crypto.randomUUID();
+        localStorage.setItem('nythic_session_id', newSessionId);
+        
+        // Update session in backend (for students only, handled by edge function)
+        try {
+          await supabase.functions.invoke('update-session', {
+            body: { sessionId: newSessionId }
+          });
+        } catch (sessionError) {
+          console.error('Failed to update session:', sessionError);
+          // Don't block login if session update fails
+        }
+      }
     } catch (error: any) {
       toast.error(error.message || "An error occurred during sign in");
     } finally {

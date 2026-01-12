@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Loader2, Image, Download, RefreshCw, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2, Image, RefreshCw, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ interface Infographic {
   image_url: string;
   image_urls?: any;
   kannada_pages?: KannadaPage[];
+  images_pending?: boolean;
 }
 
 export const InfographicView = ({ chapterId }: InfographicViewProps) => {
@@ -28,15 +30,59 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [imagesPending, setImagesPending] = useState(false);
+  const [imagesReady, setImagesReady] = useState(0);
 
   useEffect(() => {
     setInfographic(null);
     setCurrentPage(0);
     setInitialLoad(true);
+    setImagesPending(false);
+    setImagesReady(0);
     if (chapterId) {
       loadInfographic();
     }
   }, [chapterId]);
+
+  // Poll for image updates when images are pending
+  useEffect(() => {
+    if (!imagesPending || !chapterId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data } = await supabase.functions.invoke("generate-infographic", {
+          body: { chapterId, mode: "poll" },
+        });
+
+        if (data?.infographic) {
+          const infographicData = data.infographic;
+          const storedData = infographicData.image_urls as any;
+          const pages = storedData?.kannada_pages || infographicData.kannada_pages || [];
+          
+          // Count ready images
+          const readyCount = pages.filter((p: KannadaPage) => p.imageUrl).length;
+          setImagesReady(readyCount);
+
+          // Update pages
+          setInfographic(prev => ({
+            ...prev!,
+            kannada_pages: pages,
+            images_pending: infographicData.images_pending
+          }));
+
+          // Stop polling when all images are ready
+          if (!infographicData.images_pending) {
+            setImagesPending(false);
+            toast.success("ಚಿತ್ರಗಳು ಸಿದ್ಧವಾಗಿವೆ! / Images ready!");
+          }
+        }
+      } catch (error) {
+        console.error("Poll error:", error);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [imagesPending, chapterId]);
 
   const loadInfographic = async () => {
     if (!chapterId) return;
@@ -45,33 +91,33 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
     try {
       const { data: existing, error } = await supabase
         .from("infographics")
-        .select("image_url, image_urls")
+        .select("image_url, image_urls, images_pending")
         .eq("chapter_id", chapterId)
         .single();
 
-      console.log("Loaded infographic data:", existing);
-
       if (existing && !error) {
-        // Parse the stored data - the edge function stores the full data object in image_urls
         const storedData = existing.image_urls as any;
-        console.log("Stored data structure:", storedData);
         
-        // The edge function stores: { chapter_id, image_url, image_urls: [...], kannada_pages: [...] }
         if (storedData?.kannada_pages && Array.isArray(storedData.kannada_pages)) {
-          console.log("Found kannada_pages:", storedData.kannada_pages);
           setInfographic({
             image_url: existing.image_url,
             image_urls: storedData.image_urls || [],
-            kannada_pages: storedData.kannada_pages
+            kannada_pages: storedData.kannada_pages,
+            images_pending: existing.images_pending
           });
+          
+          // If images are still pending, start polling
+          if (existing.images_pending) {
+            setImagesPending(true);
+            const readyCount = storedData.kannada_pages.filter((p: KannadaPage) => p.imageUrl).length;
+            setImagesReady(readyCount);
+          }
         } else if (Array.isArray(storedData)) {
-          // Legacy format: just an array of image URLs
           setInfographic({
             image_url: existing.image_url,
             image_urls: storedData
           });
         } else {
-          // Fallback
           setInfographic({
             image_url: existing.image_url,
             image_urls: storedData?.image_urls || []
@@ -89,24 +135,46 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
   const generateInfographic = async (regenerate = false) => {
     setLoading(true);
     setCurrentPage(0);
+    setImagesPending(false);
+    setImagesReady(0);
+    
     try {
-      const { data, error } = await supabase.functions.invoke("generate-infographic", {
-        body: { chapterId, regenerate },
+      // First, request quick mode to get key points immediately
+      const { data: quickData, error: quickError } = await supabase.functions.invoke("generate-infographic", {
+        body: { chapterId, regenerate, mode: "quick" },
       });
 
-      if (error) throw error;
+      if (quickError) throw quickError;
 
-      const infographicData = data.infographic;
-      setInfographic({
-        image_url: infographicData.image_url,
-        image_urls: infographicData.image_urls || [],
-        kannada_pages: infographicData.kannada_pages || []
-      });
-      toast.success(regenerate ? "ಇನ್ಫೋಗ್ರಾಫಿಕ್ ಮರುರಚಿಸಲಾಗಿದೆ!" : "ಇನ್ಫೋಗ್ರಾಫಿಕ್ ರಚಿಸಲಾಗಿದೆ!");
+      if (quickData?.infographic) {
+        // Show key points immediately
+        setInfographic({
+          image_url: quickData.infographic.image_url,
+          kannada_pages: quickData.infographic.kannada_pages || [],
+          images_pending: true
+        });
+        setLoading(false);
+        setImagesPending(true);
+        toast.success("ಪ್ರಮುಖ ಅಂಶಗಳು ಸಿದ್ಧ! / Key points ready!");
+
+        // Now trigger full generation in background
+        supabase.functions.invoke("generate-infographic", {
+          body: { chapterId, regenerate: false, mode: "full" },
+        }).then(({ data: fullData }) => {
+          if (fullData?.infographic) {
+            setInfographic({
+              image_url: fullData.infographic.image_url,
+              kannada_pages: fullData.infographic.kannada_pages || [],
+              images_pending: false
+            });
+            setImagesPending(false);
+            toast.success("ಇನ್ಫೋಗ್ರಾಫಿಕ್ ಸಂಪೂರ್ಣ! / Infographic complete!");
+          }
+        }).catch(console.error);
+      }
     } catch (error) {
       console.error("Error generating infographic:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate");
-    } finally {
       setLoading(false);
     }
   };
@@ -164,6 +232,12 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
         <p className="text-[10px] text-muted-foreground">
           ಅಧ್ಯಾಯದ ದೃಶ್ಯ ಸಾರಾಂಶ
         </p>
+        {imagesPending && (
+          <div className="mt-2 flex items-center gap-2 text-[10px] text-primary">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span>ಚಿತ್ರಗಳನ್ನು ರಚಿಸಲಾಗುತ್ತಿದೆ... ({imagesReady}/{totalPages})</span>
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1">
@@ -177,9 +251,9 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-xs font-medium text-foreground">ಇನ್ಫೋಗ್ರಾಫಿಕ್ ರಚಿಸಲಾಗುತ್ತಿದೆ...</p>
+                <p className="text-xs font-medium text-foreground">ಪ್ರಮುಖ ಅಂಶಗಳನ್ನು ಹೊರತೆಗೆಯಲಾಗುತ್ತಿದೆ...</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Generating Infographic
+                  Extracting key points (~3 seconds)
                 </p>
               </div>
             </div>
@@ -219,8 +293,8 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                 </div>
               )}
 
-              {/* Visual Diagram (if available) */}
-              {currentImageUrl && (
+              {/* Visual Diagram or Loading Skeleton */}
+              {currentImageUrl ? (
                 <div 
                   className="relative cursor-pointer group"
                   onClick={() => setZoomedImage(currentImageUrl)}
@@ -234,9 +308,17 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                     <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
                   </div>
                 </div>
-              )}
+              ) : imagesPending ? (
+                <div className="space-y-2">
+                  <Skeleton className="w-full h-48 rounded-lg" />
+                  <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>ಚಿತ್ರ ರಚಿಸಲಾಗುತ್ತಿದೆ / Generating image...</span>
+                  </div>
+                </div>
+              ) : null}
 
-              {/* Kannada Key Points */}
+              {/* Key Points */}
               {currentKannadaPage?.keyPoints && currentKannadaPage.keyPoints.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">
@@ -271,7 +353,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                 </div>
               )}
             </div>
-          ) : infographic?.image_url ? (
+          ) : infographic?.image_url && infographic.image_url !== "pending" ? (
             <div className="space-y-3">
               <div 
                 className="relative cursor-pointer group"
