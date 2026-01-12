@@ -252,9 +252,6 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
               </div>
               <div className="text-center">
                 <p className="text-xs font-medium text-foreground">ಪ್ರಮುಖ ಅಂಶಗಳನ್ನು ಹೊರತೆಗೆಯಲಾಗುತ್ತಿದೆ...</p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Extracting key points (~3 seconds)
-                </p>
               </div>
             </div>
           ) : kannadaPages.length > 0 ? (
