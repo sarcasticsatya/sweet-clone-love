@@ -169,7 +169,7 @@ async function splitIntoSections(content: string, chapterName: string, apiKey: s
         messages: [
           {
             role: "system",
-            content: `Split the chapter content into 4 logical sections.
+            content: `Split the chapter content into 2 logical sections.
 Return a JSON object:
 {
   "sections": [
@@ -177,7 +177,7 @@ Return a JSON object:
   ]
 }
 Rules:
-- Create exactly 4 sections
+- Create exactly 2 sections
 - Each section should cover a distinct topic`
           },
           { role: "user", content: `Chapter: ${chapterName}\n\nContent:\n${content.substring(0, 8000)}` }
@@ -194,12 +194,10 @@ Rules:
     const result = JSON.parse(data.choices[0]?.message?.content || "{}");
     
     if (!result.sections || result.sections.length === 0) {
-      const partLength = Math.ceil(content.length / 4);
+      const partLength = Math.ceil(content.length / 2);
       return [
-        { title: "Introduction", content: content.substring(0, partLength) },
-        { title: "Core Concepts", content: content.substring(partLength, partLength * 2) },
-        { title: "Key Details", content: content.substring(partLength * 2, partLength * 3) },
-        { title: "Summary", content: content.substring(partLength * 3) }
+        { title: "Key Concepts", content: content.substring(0, partLength) },
+        { title: "Summary", content: content.substring(partLength) }
       ];
     }
 
@@ -223,19 +221,15 @@ Rules:
     }
 
     return sections.length > 0 ? sections : [
-      { title: "Introduction", content: content.substring(0, Math.ceil(content.length / 4)) },
-      { title: "Main Concepts", content: content.substring(Math.ceil(content.length / 4), Math.ceil(content.length / 2)) },
-      { title: "Details", content: content.substring(Math.ceil(content.length / 2), Math.ceil(content.length * 3 / 4)) },
-      { title: "Conclusion", content: content.substring(Math.ceil(content.length * 3 / 4)) }
+      { title: "Key Concepts", content: content.substring(0, Math.ceil(content.length / 2)) },
+      { title: "Summary", content: content.substring(Math.ceil(content.length / 2)) }
     ];
   } catch (error) {
     console.error("Error splitting sections:", error);
-    const partLength = Math.ceil(content.length / 4);
+    const partLength = Math.ceil(content.length / 2);
     return [
-      { title: "Introduction", content: content.substring(0, partLength) },
-      { title: "Main Concepts", content: content.substring(partLength, partLength * 2) },
-      { title: "Details", content: content.substring(partLength * 2, partLength * 3) },
-      { title: "Conclusion", content: content.substring(partLength * 3) }
+      { title: "Key Concepts", content: content.substring(0, partLength) },
+      { title: "Summary", content: content.substring(partLength) }
     ];
   }
 }
@@ -364,7 +358,7 @@ serve(async (req) => {
     console.log(`Created ${sections.length} sections`);
 
     // Extract key points for all sections in parallel (fast)
-    const keyPointsPromises = sections.slice(0, 4).map((section, idx) =>
+    const keyPointsPromises = sections.slice(0, 2).map((section, idx) =>
       extractKeyPoints(section.content, section.title, idx + 1, language, LOVABLE_API_KEY)
     );
     const keyPointsResults = await Promise.all(keyPointsPromises);
@@ -422,10 +416,10 @@ serve(async (req) => {
       );
     }
 
-    // PHASE 2: Full mode - generate images (takes 10-15 seconds)
+    // PHASE 2: Full mode - generate images (takes ~6-8 seconds with 2 pages)
     console.log("Generating images for all pages...");
-    const imagePromises = sections.slice(0, 4).map((section, idx) =>
-      generateImage(section.title, idx + 1, 4, LOVABLE_API_KEY)
+    const imagePromises = sections.slice(0, 2).map((section, idx) =>
+      generateImage(section.title, idx + 1, 2, LOVABLE_API_KEY)
     );
     const imageResults = await Promise.all(imagePromises);
 
