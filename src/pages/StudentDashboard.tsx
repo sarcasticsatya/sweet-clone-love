@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { SourcesPanel } from "@/components/student/SourcesPanel";
 import { ChatPanel } from "@/components/student/ChatPanel";
 import { ToolsPanel } from "@/components/student/ToolsPanel";
 import { MobileNav } from "@/components/student/MobileNav";
+import { SessionExpiredDialog } from "@/components/student/SessionExpiredDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const StudentDashboard = () => {
@@ -17,10 +18,42 @@ const StudentDashboard = () => {
   const [hasSubjectAccess, setHasSubjectAccess] = useState<boolean | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [sessionInvalid, setSessionInvalid] = useState(false);
+
+  const validateSession = useCallback(async () => {
+    const sessionId = localStorage.getItem('nythic_session_id');
+    if (!sessionId) {
+      // No session ID means old login - don't kick them out, just skip validation
+      return;
+    }
+
+    try {
+      const { data } = await supabase.functions.invoke('validate-session', {
+        body: { sessionId }
+      });
+
+      if (data && !data.valid) {
+        console.log('Session invalidated:', data.reason);
+        setSessionInvalid(true);
+      }
+    } catch (error) {
+      console.error('Session validation error:', error);
+      // Don't kick user out on network errors
+    }
+  }, []);
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Session validation: check on mount and every 30 seconds
+  useEffect(() => {
+    if (user) {
+      validateSession();
+      const interval = setInterval(validateSession, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user, validateSession]);
 
   const checkAuth = async () => {
     const {
@@ -49,9 +82,17 @@ const StudentDashboard = () => {
 
   const handleSignOut = async () => {
     setUser(null);
+    localStorage.removeItem('nythic_session_id');
     // Set flag to prevent auto-login on auth page
     sessionStorage.setItem('just_signed_out', 'true');
     await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
+  };
+
+  const handleSessionExpiredSignIn = () => {
+    localStorage.removeItem('nythic_session_id');
+    sessionStorage.setItem('just_signed_out', 'true');
+    supabase.auth.signOut();
     navigate("/auth", { replace: true });
   };
 
@@ -111,6 +152,9 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
+      {/* Session Expired Dialog */}
+      <SessionExpiredDialog open={sessionInvalid} onSignIn={handleSessionExpiredSignIn} />
+
       {/* NotebookLM-style Header */}
       <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
         <div className="flex items-center gap-2">
