@@ -44,10 +44,10 @@ serve(async (req) => {
       );
     }
 
-    // Get quiz
+    // Get quiz with chapter info to check access
     const { data: quiz } = await supabaseClient
       .from("quizzes")
-      .select("questions")
+      .select("questions, chapter_id, chapters!inner(subject_id)")
       .eq("id", quizId)
       .single();
 
@@ -56,6 +56,33 @@ serve(async (req) => {
         JSON.stringify({ error: "Quiz not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Check if user is admin
+    const { data: roleData } = await supabaseClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    const isAdmin = roleData?.role === "admin";
+
+    if (!isAdmin) {
+      // Check if user has access to this subject
+      const subjectId = (quiz.chapters as any)?.subject_id;
+      const { data: accessData } = await supabaseClient
+        .from("student_subject_access")
+        .select("id")
+        .eq("student_id", user.id)
+        .eq("subject_id", subjectId)
+        .single();
+
+      if (!accessData) {
+        return new Response(
+          JSON.stringify({ error: "Access denied. Please purchase this course to submit quizzes." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Calculate score
