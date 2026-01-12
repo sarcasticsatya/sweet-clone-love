@@ -137,11 +137,15 @@ serve(async (req) => {
    - Act as a helpful and friendly Hindi teacher who supports multilingual learning`
       },
       english: {
-        notFound: '"This chapter does not contain that information. Please select the correct chapter and ask again."',
-        rules: `- If student asks in Kannada (ಕನ್ನಡ), respond ENTIRELY in fluent, natural Kannada
-   - If student asks in Hindi (हिन्दी), respond ENTIRELY in fluent, natural Hindi
-   - If student asks in English, respond in English
-   - Use proper script with correct grammar when using regional languages`
+        notFound: '"This chapter does not contain that information. / ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ। / इस अध्याय में वह जानकारी नहीं है।"',
+        rules: `- This is an ENGLISH chapter - You MUST respond in ALL THREE LANGUAGES: English, Kannada, AND Hindi
+   - Structure your response with clear sections for each language
+   - First provide the answer in English
+   - Then provide the same answer in Kannada (ಕನ್ನಡ) with proper Kannada script
+   - Finally provide the answer in Hindi (हिन्दी) with proper Devanagari script
+   - Use headers like **English:** / **ಕನ್ನಡ (Kannada):** / **हिन्दी (Hindi):**
+   - Ensure all three translations convey the same information accurately
+   - Maintain cultural context appropriate for Karnataka SSLC students`
       }
     };
     
