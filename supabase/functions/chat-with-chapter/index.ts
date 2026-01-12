@@ -31,6 +31,41 @@ function detectLanguage(content: string, nameKannada: string, subjectName: strin
   return "english";
 }
 
+// Helper function to check subject access
+async function checkSubjectAccess(supabaseClient: any, userId: string, chapterId: string): Promise<{ hasAccess: boolean; isAdmin: boolean; chapter: any }> {
+  // Get chapter with subject_id
+  const { data: chapter, error: chapterError } = await supabaseClient
+    .from("chapters")
+    .select("subject_id, content_extracted, name, name_kannada, subjects!inner(name, name_kannada)")
+    .eq("id", chapterId)
+    .single();
+
+  if (chapterError || !chapter) {
+    return { hasAccess: false, isAdmin: false, chapter: null };
+  }
+
+  // Check if user is admin
+  const { data: roleData } = await supabaseClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .single();
+
+  if (roleData?.role === "admin") {
+    return { hasAccess: true, isAdmin: true, chapter };
+  }
+
+  // Check if user has access to this subject
+  const { data: accessData } = await supabaseClient
+    .from("student_subject_access")
+    .select("id")
+    .eq("student_id", userId)
+    .eq("subject_id", chapter.subject_id)
+    .single();
+
+  return { hasAccess: !!accessData, isAdmin: false, chapter };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,6 +73,7 @@ serve(async (req) => {
 
   try {
     const { chapterId, message, conversationHistory } = await req.json();
+    const authHeader = req.headers.get("authorization");
 
     if (!chapterId || !message) {
       return new Response(JSON.stringify({ error: "Chapter ID and message are required" }), {
@@ -52,24 +88,30 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    // Get chapter content with subject info
-    const { data: chapter, error: chapterError } = await supabaseClient
-      .from("chapters")
-      .select(`
-        content_extracted, 
-        name, 
-        name_kannada,
-        subjects!inner (
-          name,
-          name_kannada
-        )
-      `)
-      .eq("id", chapterId)
-      .single();
+    // Authentication check
+    const token = authHeader?.replace("Bearer ", "");
+    const { data: { user } } = await supabaseClient.auth.getUser(token || "");
 
-    if (chapterError || !chapter) {
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check subject access
+    const { hasAccess, chapter } = await checkSubjectAccess(supabaseClient, user.id, chapterId);
+
+    if (!chapter) {
       return new Response(JSON.stringify({ error: "Chapter not found" }), {
         status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!hasAccess) {
+      return new Response(JSON.stringify({ error: "Access denied. Please purchase this course to access chat." }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

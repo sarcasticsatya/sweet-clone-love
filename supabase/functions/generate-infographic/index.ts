@@ -234,6 +234,41 @@ Rules:
   }
 }
 
+// Helper function to check subject access
+async function checkSubjectAccess(supabaseClient: any, userId: string, chapterId: string): Promise<{ hasAccess: boolean; isAdmin: boolean; subjectId: string | null }> {
+  // Get chapter's subject_id
+  const { data: chapter } = await supabaseClient
+    .from("chapters")
+    .select("subject_id")
+    .eq("id", chapterId)
+    .single();
+
+  if (!chapter) {
+    return { hasAccess: false, isAdmin: false, subjectId: null };
+  }
+
+  // Check if user is admin
+  const { data: roleData } = await supabaseClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .single();
+
+  if (roleData?.role === "admin") {
+    return { hasAccess: true, isAdmin: true, subjectId: chapter.subject_id };
+  }
+
+  // Check if user has access to this subject
+  const { data: accessData } = await supabaseClient
+    .from("student_subject_access")
+    .select("id")
+    .eq("student_id", userId)
+    .eq("subject_id", chapter.subject_id)
+    .single();
+
+  return { hasAccess: !!accessData, isAdmin: false, subjectId: chapter.subject_id };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -262,6 +297,16 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Check subject access
+    const { hasAccess } = await checkSubjectAccess(supabaseClient, user.id, chapterId);
+
+    if (!hasAccess) {
+      return new Response(
+        JSON.stringify({ error: "Access denied. Please purchase this course to access infographics." }),
+        { status: 403, headers: corsHeaders }
       );
     }
 

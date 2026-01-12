@@ -14,6 +14,7 @@ serve(async (req) => {
 
   try {
     const { chapterId } = await req.json();
+    const authHeader = req.headers.get("authorization");
 
     if (!chapterId) {
       return new Response(
@@ -26,6 +27,31 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // Authentication check
+    const token = authHeader?.replace("Bearer ", "");
+    const { data: { user } } = await supabaseClient.auth.getUser(token || "");
+
+    if (!user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Admin authorization check - only admins can extract PDF text
+    const { data: roleData } = await supabaseClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (roleData?.role !== "admin") {
+      return new Response(
+        JSON.stringify({ error: "Admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get chapter details
     const { data: chapter, error: chapterError } = await supabaseClient
