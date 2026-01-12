@@ -116,13 +116,14 @@ serve(async (req) => {
     // Build language-specific instructions
     const languageInstructions = {
       kannada: {
-        notFound: '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ. ದಯವಿಟ್ಟು ಸರಿಯಾದ ಅಧ್ಯಾಯವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಮತ್ತೆ ಕೇಳಿ."',
-        rules: `- This is a KANNADA chapter - You MUST respond ENTIRELY in Kannada (ಕನ್ನಡ) REGARDLESS of the language the student uses
-   - CRITICAL: Even if the student asks in HINDI (हिन्दी), you MUST respond ONLY in Kannada
-   - CRITICAL: Even if the student asks in ENGLISH, you MUST respond ONLY in Kannada
-   - NEVER respond in Hindi or English for Kannada chapters - ALWAYS use Kannada
-   - The response language is determined by the SUBJECT, not the student's question language
-   - Translate the student's question mentally and answer in Kannada
+        notFound: '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ. / This chapter does not contain that information."',
+        rules: `- This is a KANNADA chapter - You MUST respond in TWO LANGUAGES: Kannada AND English
+   - Structure your response with clear sections for each language
+   - First provide the answer in Kannada (ಕನ್ನಡ) with proper Kannada script
+   - Then provide the same answer in English
+   - Use headers like **ಕನ್ನಡ (Kannada):** / **English:**
+   - DO NOT include Hindi in the response
+   - Ensure both translations convey the same information accurately
    - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar`
       },
       hindi: {
@@ -137,14 +138,14 @@ serve(async (req) => {
    - Act as a helpful and friendly Hindi teacher who supports multilingual learning`
       },
       english: {
-        notFound: '"This chapter does not contain that information. / ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ। / इस अध्याय में वह जानकारी नहीं है।"',
-        rules: `- This is an ENGLISH chapter - You MUST respond in ALL THREE LANGUAGES: English, Kannada, AND Hindi
+        notFound: '"This chapter does not contain that information. / ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ."',
+        rules: `- This is an ENGLISH chapter - You MUST respond in TWO LANGUAGES: English AND Kannada
    - Structure your response with clear sections for each language
    - First provide the answer in English
    - Then provide the same answer in Kannada (ಕನ್ನಡ) with proper Kannada script
-   - Finally provide the answer in Hindi (हिन्दी) with proper Devanagari script
-   - Use headers like **English:** / **ಕನ್ನಡ (Kannada):** / **हिन्दी (Hindi):**
-   - Ensure all three translations convey the same information accurately
+   - Use headers like **English:** / **ಕನ್ನಡ (Kannada):**
+   - DO NOT include Hindi in the response
+   - Ensure both translations convey the same information accurately
    - Maintain cultural context appropriate for Karnataka SSLC students`
       }
     };
