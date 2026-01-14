@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { ManageContent } from "@/components/admin/ManageContent";
 import { ManageVideos } from "@/components/admin/ManageVideos";
 import { ViewReports } from "@/components/admin/ViewReports";
 import { DataExport } from "@/components/admin/DataExport";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
+import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -42,14 +44,34 @@ const AdminDashboard = () => {
   };
 
   const handleSignOut = async () => {
+    localStorage.removeItem('nythic_session_id');
+    sessionStorage.setItem('just_signed_out', 'true');
     await supabase.auth.signOut();
-    navigate("/auth");
+    navigate("/auth", { replace: true });
   };
+
+  // Inactivity auto-logout (30 minutes)
+  const handleInactivityLogout = useCallback(() => {
+    toast.info("You have been logged out due to inactivity");
+    handleSignOut();
+  }, []);
+
+  const { showWarning: showInactivityWarning, remainingSeconds, dismissWarning } = useInactivityLogout({
+    timeoutMs: 30 * 60 * 1000, // 30 minutes
+    onLogout: handleInactivityLogout
+  });
 
   if (!user) return null;
 
   return (
     <div className="min-h-screen bg-muted/30">
+      {/* Inactivity Warning Dialog */}
+      <InactivityWarningDialog 
+        open={showInactivityWarning} 
+        remainingSeconds={remainingSeconds}
+        onStayLoggedIn={dismissWarning}
+      />
+
       {/* Header */}
       <header className="border-b border-border px-6 py-4 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">

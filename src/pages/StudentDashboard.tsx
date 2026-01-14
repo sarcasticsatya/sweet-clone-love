@@ -12,6 +12,8 @@ import { ToolsPanel } from "@/components/student/ToolsPanel";
 import { MobileNav } from "@/components/student/MobileNav";
 import { SessionExpiredDialog } from "@/components/student/SessionExpiredDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
+import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -98,6 +100,17 @@ const StudentDashboard = () => {
     navigate("/auth", { replace: true });
   };
 
+  // Inactivity auto-logout (30 minutes)
+  const handleInactivityLogout = useCallback(() => {
+    toast.info("You have been logged out due to inactivity");
+    handleSignOut();
+  }, []);
+
+  const { showWarning: showInactivityWarning, remainingSeconds, dismissWarning } = useInactivityLogout({
+    timeoutMs: 30 * 60 * 1000, // 30 minutes
+    onLogout: handleInactivityLogout
+  });
+
   if (!user) return null;
 
   // Show waiting for admin state if no subject access
@@ -156,6 +169,13 @@ const StudentDashboard = () => {
     <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
       {/* Session Expired Dialog */}
       <SessionExpiredDialog open={sessionInvalid} onSignIn={handleSessionExpiredSignIn} />
+      
+      {/* Inactivity Warning Dialog */}
+      <InactivityWarningDialog 
+        open={showInactivityWarning} 
+        remainingSeconds={remainingSeconds}
+        onStayLoggedIn={dismissWarning}
+      />
 
       {/* NotebookLM-style Header */}
       <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
