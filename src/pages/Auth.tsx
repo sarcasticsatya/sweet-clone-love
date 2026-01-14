@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { BookOpen, Loader2, CheckCircle2, Mail } from "lucide-react";
+import { Loader2, CheckCircle2, Mail } from "lucide-react";
 import { z } from "zod";
+import { Logo } from "@/components/Logo";
 
 // Zod validation schema for signup
 const signupSchema = z.object({
@@ -296,8 +297,8 @@ const Auth = () => {
       <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-primary-foreground" />
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1">
+              <Logo size="md" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Nythic AI</CardTitle>

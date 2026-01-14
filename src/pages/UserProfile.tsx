@@ -22,8 +22,10 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle,
-  Clock
+  Clock,
+  MessageCircle
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { format, differenceInDays } from "date-fns";
 
 interface StudentProfile {
@@ -178,8 +180,8 @@ const UserProfile = () => {
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-            <BookOpen className="w-4 h-4 text-primary-foreground" />
+          <div className="w-8 h-8 bg-primary rounded flex items-center justify-center p-0.5">
+            <Logo size="sm" />
           </div>
           <span className="font-medium">Nythic AI</span>
         </div>
@@ -363,6 +365,28 @@ const UserProfile = () => {
               <Button variant="outline" onClick={() => setChangePasswordOpen(true)}>
                 Change Password
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Customer Support */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageCircle className="w-5 h-5" />
+                Customer Support
+              </CardTitle>
+              <CardDescription>Need help? Contact us on WhatsApp</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => window.open('https://wa.me/918277323208?text=Hi%2C%20I%20need%20help%20with%20Nythic%20AI', '_blank')}
+              >
+                <MessageCircle className="w-4 h-4" />
+                Chat on WhatsApp
+              </Button>
+              <p className="text-sm text-muted-foreground">+91 82773 23208</p>
             </CardContent>
           </Card>
         </div>

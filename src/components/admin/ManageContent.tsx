@@ -51,6 +51,35 @@ export const ManageContent = () => {
     loadSubjects();
   }, [selectedMedium]);
 
+  // Function to get signed URL for private PDFs
+  const getSignedPdfUrl = async (storagePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('chapter-pdfs')
+        .createSignedUrl(storagePath, 3600); // 1 hour expiry
+      if (error) throw error;
+      return data.signedUrl;
+    } catch (error) {
+      console.error("Error getting signed URL:", error);
+      toast.error("Failed to access PDF");
+      return null;
+    }
+  };
+
+  const handlePreviewPdf = async (storagePath: string) => {
+    const signedUrl = await getSignedPdfUrl(storagePath);
+    if (signedUrl) {
+      setPreviewPdfUrl(signedUrl);
+    }
+  };
+
+  const handleOpenPdfInNewTab = async (storagePath: string) => {
+    const signedUrl = await getSignedPdfUrl(storagePath);
+    if (signedUrl) {
+      window.open(signedUrl, '_blank');
+    }
+  };
+
   const loadSubjects = async () => {
     const { data } = await supabase
       .from("subjects")
@@ -688,7 +717,7 @@ export const ManageContent = () => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setPreviewPdfUrl(chapter.pdf_url)}
+                              onClick={() => handlePreviewPdf(chapter.pdf_storage_path)}
                               title="Preview PDF"
                             >
                               <Eye className="w-4 h-4" />
@@ -696,7 +725,7 @@ export const ManageContent = () => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => window.open(chapter.pdf_url, '_blank')}
+                              onClick={() => handleOpenPdfInNewTab(chapter.pdf_storage_path)}
                               title="Open PDF in new tab"
                             >
                               <ExternalLink className="w-4 h-4" />

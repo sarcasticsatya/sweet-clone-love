@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, BookOpen, Users, Video, FileText, BarChart, Download } from "lucide-react";
+import { LogOut, Users, Video, FileText, BarChart, Download } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageStudents } from "@/components/admin/ManageStudents";
 import { ManageContent } from "@/components/admin/ManageContent";
@@ -52,8 +53,8 @@ const AdminDashboard = () => {
       {/* Header */}
       <header className="border-b border-border px-6 py-4 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-primary-foreground" />
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center p-1">
+            <Logo size="md" />
           </div>
           <div>
             <h1 className="text-xl font-bold">Admin Dashboard</h1>

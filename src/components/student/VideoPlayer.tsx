@@ -32,6 +32,7 @@ export const VideoPlayer = ({
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -168,16 +169,40 @@ export const VideoPlayer = ({
     }, 3000);
   };
 
+  // YouTube seeking function using postMessage API
+  const seekYouTube = (timeInSeconds: number) => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func: 'seekTo',
+          args: [timeInSeconds, true]
+        }),
+        '*'
+      );
+      // Also try to play after seeking
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func: 'playVideo',
+          args: []
+        }),
+        '*'
+      );
+    }
+  };
+
   // YouTube embed handling
   if (videoType === "youtube") {
     const videoId = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
-    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?rel=0` : null;
+    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&enablejsapi=1&origin=${window.location.origin}` : null;
 
     return (
       <div className="space-y-4">
         <div ref={containerRef} className="relative aspect-video bg-black rounded-lg overflow-hidden">
           {embedUrl ? (
             <iframe
+              ref={iframeRef}
               src={embedUrl}
               className="w-full h-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -194,7 +219,7 @@ export const VideoPlayer = ({
           <h3 className="font-semibold text-foreground">{title}</h3>
           {description && (
             <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {renderDescriptionWithTimestamps(description, seekToTimestamp)}
+              {renderDescriptionWithTimestamps(description, seekYouTube)}
             </div>
           )}
         </div>
@@ -209,10 +234,7 @@ export const VideoPlayer = ({
                   variant="outline"
                   size="sm"
                   className="text-xs"
-                  onClick={() => {
-                    // For YouTube, we'd need to use YouTube API - this is a placeholder
-                    console.log(`Seek to ${ts.time}s: ${ts.label}`);
-                  }}
+                  onClick={() => seekYouTube(ts.time)}
                 >
                   {formatTime(ts.time)} - {ts.label}
                 </Button>

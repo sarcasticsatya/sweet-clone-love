@@ -131,21 +131,24 @@ serve(async (req) => {
       .select("id, title, title_kannada, timestamps")
       .eq("chapter_id", chapterId);
 
-    // Build video reference context
+    // Build video reference context - ONLY include videos with actual timestamps
     let videoContext = "";
     if (videos && videos.length > 0) {
-      videoContext = "\n\nRELATED VIDEOS:\n";
-      videos.forEach(video => {
-        const videoTitle = video.title_kannada || video.title;
-        videoContext += `- ${videoTitle}`;
-        if (video.timestamps && Array.isArray(video.timestamps)) {
+      const videosWithTimestamps = videos.filter(video => 
+        video.timestamps && 
+        Array.isArray(video.timestamps) && 
+        (video.timestamps as Array<{ time: string; label: string }>).length > 0
+      );
+      
+      if (videosWithTimestamps.length > 0) {
+        videoContext = "\n\nRELATED VIDEOS WITH TIMESTAMPS:\n";
+        videosWithTimestamps.forEach(video => {
+          const videoTitle = video.title_kannada || video.title;
           const timestamps = video.timestamps as Array<{ time: string; label: string }>;
-          if (timestamps.length > 0) {
-            videoContext += ` (Timestamps: ${timestamps.map(t => `${t.time} - ${t.label}`).join(", ")})`;
-          }
-        }
-        videoContext += "\n";
-      });
+          videoContext += `- ${videoTitle}: ${timestamps.map(t => `${t.time} - ${t.label}`).join(", ")}\n`;
+        });
+        videoContext += "\nIMPORTANT: ONLY reference these video timestamps if the timestamp labels EXACTLY match or are directly relevant to the topic being discussed. DO NOT suggest timestamps or videos if there is no clear match.";
+      }
     }
 
     const chapterName = chapter.name_kannada || chapter.name;
@@ -218,9 +221,12 @@ serve(async (req) => {
    - Write equations naturally in the text like: "The formula is x² + 5x + 6"
    - Keep formatting clean and readable for school students
 6. ALWAYS conclude with a **Summary** or **Final Answer** section
-7. VIDEO REFERENCES: When your answer relates to topics covered in the available videos, include a reference like:
-   📹 Watch: [Video Title] at [timestamp] for visual explanation
-   Only reference videos that are actually relevant to the question.
+7. VIDEO REFERENCES (STRICT RULES):
+   - ONLY reference videos if their timestamp labels EXACTLY match or are DIRECTLY relevant to the question topic
+   - If no video timestamps match the topic, DO NOT mention any videos
+   - NEVER make up or guess timestamps - only use timestamps provided in the video list above
+   - If the video list above is empty or has no matching topics, do NOT reference any videos
+   - Format: 📹 Watch: [Video Title] at [timestamp] for visual explanation
 ${videoContext}
 CHAPTER: ${chapterName}
 CHAPTER CONTENT:
