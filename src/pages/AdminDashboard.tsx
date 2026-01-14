@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LogOut, Users, Video, FileText, BarChart, Download } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageStudents } from "@/components/admin/ManageStudents";
 import { ManageContent } from "@/components/admin/ManageContent";
@@ -84,13 +83,10 @@ const AdminDashboard = () => {
             <p className="text-sm text-muted-foreground">Nythic AI Edtech Platform</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Button variant="ghost" size="sm" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={handleSignOut}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </Button>
       </header>
 
       {/* Main Content */}

@@ -394,51 +394,6 @@ export type Database = {
           },
         ]
       }
-      student_activity_logs: {
-        Row: {
-          activity_type: string
-          chapter_id: string | null
-          created_at: string | null
-          duration_seconds: number | null
-          id: string
-          student_id: string
-          subject_id: string | null
-        }
-        Insert: {
-          activity_type: string
-          chapter_id?: string | null
-          created_at?: string | null
-          duration_seconds?: number | null
-          id?: string
-          student_id: string
-          subject_id?: string | null
-        }
-        Update: {
-          activity_type?: string
-          chapter_id?: string | null
-          created_at?: string | null
-          duration_seconds?: number | null
-          id?: string
-          student_id?: string
-          subject_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_activity_logs_chapter_id_fkey"
-            columns: ["chapter_id"]
-            isOneToOne: false
-            referencedRelation: "chapters"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_activity_logs_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "subjects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       student_profiles: {
         Row: {
           active_session_id: string | null
