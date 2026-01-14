@@ -180,13 +180,21 @@ serve(async (req) => {
       );
       
       if (videosWithTimestamps.length > 0) {
-        videoContext = "\n\nRELATED VIDEOS WITH TIMESTAMPS:\n";
+        videoContext = "\n\n=== RELATED VIDEOS WITH TIMESTAMPS (YOU CAN USE THIS DATA TO ANSWER) ===\n";
         videosWithTimestamps.forEach(video => {
           const videoTitle = video.title_kannada || video.title;
           const timestamps = video.timestamps as Array<{ time: string; label: string }>;
-          videoContext += `- ${videoTitle}: ${timestamps.map(t => `${t.time} - ${t.label}`).join(", ")}\n`;
+          videoContext += `\nVIDEO: ${videoTitle}\n`;
+          videoContext += `TOPICS COVERED:\n`;
+          timestamps.forEach(t => {
+            videoContext += `  - ${t.time}: ${t.label}\n`;
+          });
         });
-        videoContext += "\nIMPORTANT: ONLY reference these video timestamps if the timestamp labels EXACTLY match or are directly relevant to the topic being discussed. DO NOT suggest timestamps or videos if there is no clear match.";
+        videoContext += "\n=== VIDEO INSTRUCTIONS ===";
+        videoContext += "\n- When user asks about videos, video content, video summary, or timestamps - USE THIS DATA to answer";
+        videoContext += "\n- You CAN and SHOULD provide a summary of video topics using these timestamps when asked";
+        videoContext += "\n- When referencing specific topics, use format: 📹 Watch: [Video Title] at [timestamp]";
+        videoContext += "\n- The video timestamps above ARE part of the chapter's learning resources - they are NOT external";
       }
     }
 
@@ -237,8 +245,10 @@ serve(async (req) => {
     // Build system prompt with strict source-bound rules and clean markdown output
     const systemPrompt = `You are an AI tutor for Karnataka SSLC students with EXPERT knowledge of multiple languages. Follow these STRICT rules:
 
-1. ANSWER ONLY FROM THE PROVIDED CHAPTER CONTENT - Provide DETAILED, COMPREHENSIVE explanations by default
-2. If the question is NOT answerable from the chapter content, respond EXACTLY with:
+1. ANSWER FROM TWO SOURCES: (A) Chapter Content AND (B) Video Timestamps listed below
+   - Provide DETAILED, COMPREHENSIVE explanations by default
+   - For questions about videos, summaries, or timestamps - USE THE VIDEO TIMESTAMPS DATA below
+2. If the question is NOT answerable from EITHER the chapter content OR the video timestamps, respond EXACTLY with:
    ${languageInstructions[language].notFound}
 3. LANGUAGE HANDLING (CRITICAL):
    ${languageInstructions[language].rules}
