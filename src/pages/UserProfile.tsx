@@ -373,20 +373,18 @@ const UserProfile = () => {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <MessageCircle className="w-5 h-5" />
-                Customer Support
+                Contact Support
               </CardTitle>
-              <CardDescription>Need help? Contact us on WhatsApp</CardDescription>
+              <CardDescription>Need help? Reach us on WhatsApp</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={() => window.open('https://wa.me/918277323208?text=Hi%2C%20I%20need%20help%20with%20Nythic%20AI', '_blank')}
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat on WhatsApp
-              </Button>
-              <p className="text-sm text-muted-foreground">+91 82773 23208</p>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-green-600" />
+                <span className="font-medium">+91 82773 23208</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Save this number and message us on WhatsApp for assistance
+              </p>
             </CardContent>
           </Card>
         </div>

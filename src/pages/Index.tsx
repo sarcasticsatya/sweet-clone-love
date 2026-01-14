@@ -56,15 +56,13 @@ const Index = () => {
 
         {/* Customer Support */}
         <div className="pt-6 border-t border-border">
-          <p className="text-sm text-muted-foreground mb-2">Need help?</p>
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => window.open('https://wa.me/918277323208?text=Hi%2C%20I%20need%20help%20with%20Nythic%20AI', '_blank')}
-          >
-            <MessageCircle className="w-4 h-4" />
-            Contact Support on WhatsApp
-          </Button>
+          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <MessageCircle className="w-5 h-5" />
+            <span className="font-medium">Contact Support</span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            WhatsApp: +91 82773 23208
+          </p>
         </div>
       </div>
     </div>;
