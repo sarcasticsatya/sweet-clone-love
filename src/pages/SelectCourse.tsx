@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Check, CreditCard, Calendar, BookOpen, Loader2 } from "lucide-react";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
+import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
+import { toast as sonnerToast } from "sonner";
 
 interface CoursBundle {
   id: string;
@@ -191,6 +194,24 @@ const SelectCourse = () => {
     navigate("/student");
   };
 
+  // Inactivity auto-logout (30 minutes)
+  const handleSignOut = useCallback(async () => {
+    localStorage.removeItem('nythic_session_id');
+    sessionStorage.setItem('just_signed_out', 'true');
+    await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
+  }, [navigate]);
+
+  const handleInactivityLogout = useCallback(() => {
+    sonnerToast.info("You have been logged out due to inactivity");
+    handleSignOut();
+  }, [handleSignOut]);
+
+  const { showWarning: showInactivityWarning, remainingSeconds, dismissWarning } = useInactivityLogout({
+    timeoutMs: 30 * 60 * 1000, // 30 minutes
+    onLogout: handleInactivityLogout
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -201,6 +222,12 @@ const SelectCourse = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Inactivity Warning Dialog */}
+      <InactivityWarningDialog 
+        open={showInactivityWarning} 
+        remainingSeconds={remainingSeconds}
+        onStayLoggedIn={dismissWarning}
+      />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Choose Your Course</h1>

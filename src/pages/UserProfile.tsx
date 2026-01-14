@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { format, differenceInDays } from "date-fns";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
+import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 
 interface StudentProfile {
   first_name: string;
@@ -152,6 +154,24 @@ const UserProfile = () => {
     setChangingPassword(false);
   };
 
+  // Inactivity auto-logout (30 minutes)
+  const handleSignOut = useCallback(async () => {
+    localStorage.removeItem('nythic_session_id');
+    sessionStorage.setItem('just_signed_out', 'true');
+    await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
+  }, [navigate]);
+
+  const handleInactivityLogout = useCallback(() => {
+    toast.info("You have been logged out due to inactivity");
+    handleSignOut();
+  }, [handleSignOut]);
+
+  const { showWarning: showInactivityWarning, remainingSeconds, dismissWarning } = useInactivityLogout({
+    timeoutMs: 30 * 60 * 1000, // 30 minutes
+    onLogout: handleInactivityLogout
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -172,6 +192,13 @@ const UserProfile = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Inactivity Warning Dialog */}
+      <InactivityWarningDialog 
+        open={showInactivityWarning} 
+        remainingSeconds={remainingSeconds}
+        onStayLoggedIn={dismissWarning}
+      />
+
       {/* Header */}
       <header className="border-b border-border px-4 py-3 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
