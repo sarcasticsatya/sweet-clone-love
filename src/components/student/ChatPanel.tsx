@@ -226,8 +226,10 @@ export const ChatPanel = ({
 
       <div ref={scrollContainerRef} className="flex-1 px-6 py-4 overflow-y-auto overscroll-contain" style={{
       WebkitOverflowScrolling: 'touch',
-      touchAction: 'pan-y',
-      overflowX: 'hidden'
+      touchAction: 'pan-y pinch-zoom',
+      overflowX: 'hidden',
+      willChange: 'scroll-position',
+      transform: 'translateZ(0)'
     }}>
         {!selectedChapterId ? <div className="flex items-center justify-center h-full text-center">
             <div className="space-y-3 max-w-sm">
@@ -278,15 +280,15 @@ export const ChatPanel = ({
           </div>}
       </div>
 
-      <div className="px-6 py-4 border-t border-border bg-card/30 shrink-0">
+      <div className="px-6 py-4 border-t border-border bg-card/30 shrink-0" style={{ touchAction: 'manipulation' }}>
         <div className="max-w-3xl mx-auto flex gap-2">
           <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleSend();
           }
-        }} placeholder={selectedChapterId ? "Ask a question about this chapter..." : "Select a chapter first"} disabled={!selectedChapterId || loading} className="min-h-[52px] resize-none rounded-xl text-sm" />
-          <Button onClick={handleSend} disabled={!selectedChapterId || !input.trim() || loading} size="icon" className="h-[52px] w-[52px] rounded-xl">
+        }} placeholder={selectedChapterId ? "Ask a question about this chapter..." : "Select a chapter first"} disabled={!selectedChapterId || loading} className="min-h-[52px] resize-none rounded-xl text-sm" style={{ fontSize: '16px' }} />
+          <Button onClick={handleSend} disabled={!selectedChapterId || !input.trim() || loading} size="icon" className="h-[52px] w-[52px] rounded-xl shrink-0">
             <Send className="w-4 h-4" />
           </Button>
         </div>

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, BookOpen, Clock, Mail, User } from "lucide-react";
+import { LogOut, Clock, Mail, User } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { SourcesPanel } from "@/components/student/SourcesPanel";
 import { ChatPanel } from "@/components/student/ChatPanel";
 import { ToolsPanel } from "@/components/student/ToolsPanel";
@@ -104,8 +105,8 @@ const StudentDashboard = () => {
       <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
         <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center">
-              <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-foreground" />
+            <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center p-0.5">
+              <Logo size="sm" />
             </div>
             <div>
               <h1 className="text-sm md:text-base font-medium">Nythic AI</h1>
@@ -158,8 +159,8 @@ const StudentDashboard = () => {
       {/* NotebookLM-style Header */}
       <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center">
-            <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-foreground" />
+          <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center p-0.5">
+            <Logo size="sm" />
           </div>
           <div>
             <h1 className="text-sm md:text-base font-medium">Nythic AI</h1>
