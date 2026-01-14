@@ -65,20 +65,27 @@ export const VideosView = ({ chapterId }: VideosViewProps) => {
   // Video player in a dialog for better fullscreen access
   const renderVideoDialog = () => (
     <Dialog open={!!selectedVideo} onOpenChange={(open) => !open && setSelectedVideo(null)}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 flex flex-col">
-        <ScrollArea className="flex-1 max-h-[calc(90vh-2rem)]">
-          <div className="p-4">
-            {selectedVideo && (
-              <VideoPlayer
-                videoUrl={selectedVideo.video_url}
-                videoType={selectedVideo.video_type as "youtube" | "upload"}
-                title={selectedVideo.title_kannada || selectedVideo.title}
-                description={selectedVideo.description}
-                timestamps={selectedVideo.timestamps}
-              />
-            )}
-          </div>
-        </ScrollArea>
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden">
+        <div 
+          className="flex-1 p-4 overflow-y-auto overscroll-contain"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y pinch-zoom',
+            overflowX: 'hidden',
+            willChange: 'scroll-position',
+            transform: 'translateZ(0)'
+          }}
+        >
+          {selectedVideo && (
+            <VideoPlayer
+              videoUrl={selectedVideo.video_url}
+              videoType={selectedVideo.video_type as "youtube" | "upload"}
+              title={selectedVideo.title_kannada || selectedVideo.title}
+              description={selectedVideo.description}
+              timestamps={selectedVideo.timestamps}
+            />
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
