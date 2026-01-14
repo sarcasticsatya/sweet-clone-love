@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Clock, Mail, User, MessageCircle, Copy } from "lucide-react";
+import { LogOut, Clock, Mail, User, MessageCircle, Copy, BarChart3 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SourcesPanel } from "@/components/student/SourcesPanel";
 import { ChatPanel } from "@/components/student/ChatPanel";
 import { ToolsPanel } from "@/components/student/ToolsPanel";
@@ -188,7 +189,7 @@ const StudentDashboard = () => {
             <p className="text-[9px] md:text-[10px] text-muted-foreground">Karnataka SSLC Edtech Platform</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 md:h-8 text-[10px] md:text-xs">
@@ -220,10 +221,15 @@ const StudentDashboard = () => {
               </div>
             </PopoverContent>
           </Popover>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/progress")} className="h-7 md:h-8 text-[10px] md:text-xs">
+            <BarChart3 className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
+            <span className="hidden md:inline">Progress</span>
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => navigate("/profile")} className="h-7 md:h-8 text-[10px] md:text-xs">
             <User className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
             <span className="hidden md:inline">Profile</span>
           </Button>
+          <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-7 md:h-8 text-[10px] md:text-xs">
             <LogOut className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
             <span className="hidden md:inline">Sign Out</span>

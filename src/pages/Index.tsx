@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, MessageCircle, Copy } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
 const Index = () => {
   const navigate = useNavigate();
@@ -29,7 +30,11 @@ const Index = () => {
       navigate("/student");
     }
   };
-  return <div className="min-h-screen flex items-center justify-center bg-muted/30">
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="max-w-2xl text-center space-y-8 p-8">
         <div className="flex justify-center">
           <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center p-2">
@@ -78,6 +83,7 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
 export default Index;
