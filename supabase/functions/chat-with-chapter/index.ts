@@ -136,13 +136,30 @@ serve(async (req) => {
       if (!description) return [];
       
       const timestamps: Array<{ time: string; label: string }> = [];
-      const regex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]?\s*(.+?)(?=\n|$)/g;
+      
+      // Pattern for START_TIME-END_TIME LABEL format (e.g., "00:00:01-00:00:12  ಪರಿಚಯ")
+      const rangeRegex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+?)(?=\n|$)/g;
       let match;
       
-      while ((match = regex.exec(description)) !== null) {
+      while ((match = rangeRegex.exec(description)) !== null) {
+        // Use start time (match[1]) and label (match[3])
+        timestamps.push({ time: match[1], label: match[3].trim() });
+      }
+      
+      // If range pattern found timestamps, return them
+      if (timestamps.length > 0) {
+        console.log("Parsed timestamps (range format):", JSON.stringify(timestamps));
+        return timestamps;
+      }
+      
+      // Fallback: Standard TIME - LABEL format (e.g., "0:30 - Introduction")
+      // Make sure label doesn't start with a digit (to avoid matching end times)
+      const simpleRegex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*([^\d\n].+?)(?=\n|$)/g;
+      while ((match = simpleRegex.exec(description)) !== null) {
         timestamps.push({ time: match[1], label: match[2].trim() });
       }
       
+      console.log("Parsed timestamps (simple format):", JSON.stringify(timestamps));
       return timestamps;
     }
 

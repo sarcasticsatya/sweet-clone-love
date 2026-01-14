@@ -388,10 +388,34 @@ function parseTimestampsFromDescription(description?: string | null): Timestamp[
   if (!description) return [];
 
   const timestamps: Timestamp[] = [];
-  const regex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]?\s*(.+?)(?=\n|$)/g;
+  
+  // Pattern for START_TIME-END_TIME LABEL format (e.g., "00:00:01-00:00:12  ಪರಿಚಯ")
+  const rangeRegex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+?)(?=\n|$)/g;
   let match;
 
-  while ((match = regex.exec(description)) !== null) {
+  while ((match = rangeRegex.exec(description)) !== null) {
+    const timeStr = match[1]; // Start time
+    const label = match[3].trim();
+
+    const parts = timeStr.split(":").map(Number);
+    let seconds = 0;
+    if (parts.length === 3) {
+      seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+      seconds = parts[0] * 60 + parts[1];
+    }
+
+    timestamps.push({ time: seconds, label });
+  }
+
+  // If range pattern found timestamps, return them
+  if (timestamps.length > 0) {
+    return timestamps;
+  }
+
+  // Fallback: Standard TIME - LABEL format (e.g., "0:30 - Introduction")
+  const simpleRegex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*([^\d\n].+?)(?=\n|$)/g;
+  while ((match = simpleRegex.exec(description)) !== null) {
     const timeStr = match[1];
     const label = match[2].trim();
 
