@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { VideoPlayer } from "./VideoPlayer";
 import { Play } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Video {
   id: string;
@@ -61,70 +62,68 @@ export const VideosView = ({ chapterId }: VideosViewProps) => {
     );
   }
 
-  // If a video is selected, show the player
-  if (selectedVideo) {
-    return (
-      <ScrollArea className="h-full">
-        <div className="p-4 space-y-4">
-          <button
-            onClick={() => setSelectedVideo(null)}
-            className="text-sm text-primary hover:underline"
-          >
-            ← Back to video list
-          </button>
-
-          <VideoPlayer
-            videoUrl={selectedVideo.video_url}
-            videoType={selectedVideo.video_type as "youtube" | "upload"}
-            title={selectedVideo.title_kannada || selectedVideo.title}
-            description={selectedVideo.description}
-            timestamps={selectedVideo.timestamps}
-          />
+  // Video player in a dialog for better fullscreen access
+  const renderVideoDialog = () => (
+    <Dialog open={!!selectedVideo} onOpenChange={(open) => !open && setSelectedVideo(null)}>
+      <DialogContent className="max-w-4xl w-[95vw] p-0 overflow-hidden">
+        <div className="p-4">
+          {selectedVideo && (
+            <VideoPlayer
+              videoUrl={selectedVideo.video_url}
+              videoType={selectedVideo.video_type as "youtube" | "upload"}
+              title={selectedVideo.title_kannada || selectedVideo.title}
+              description={selectedVideo.description}
+              timestamps={selectedVideo.timestamps}
+            />
+          )}
         </div>
-      </ScrollArea>
-    );
-  }
+      </DialogContent>
+    </Dialog>
+  );
 
   // Video list view
   return (
-    <ScrollArea className="h-full">
-      <div className="p-4 space-y-3">
-        {videos.map((video) => (
-          <Card
-            key={video.id}
-            className="overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-            onClick={() => setSelectedVideo(video)}
-          >
-            <CardContent className="p-0">
-              <div className="relative aspect-video bg-muted">
-                {video.video_type === "youtube" ? (
-                  <YoutubeThumbnail url={video.video_url} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
-                    <Play className="w-12 h-12 text-muted-foreground/50" />
-                  </div>
-                )}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-                  <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
-                    <Play className="w-6 h-6 text-primary-foreground ml-0.5" />
+    <>
+      {renderVideoDialog()}
+      <ScrollArea className="h-full">
+        <div className="p-4 space-y-3">
+          {videos.map((video) => (
+            <Card
+              key={video.id}
+              className="overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => setSelectedVideo(video)}
+            >
+              <CardContent className="p-0">
+                <div className="relative aspect-video bg-muted">
+                  {video.video_type === "youtube" ? (
+                    <YoutubeThumbnail url={video.video_url} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
+                      <Play className="w-12 h-12 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                    <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
+                      <Play className="w-6 h-6 text-primary-foreground ml-0.5" />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-3">
-                <h4 className="font-medium text-sm line-clamp-2">
-                  {video.title_kannada || video.title}
-                </h4>
-                {video.description && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    {video.description}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </ScrollArea>
+                <div className="p-3">
+                  <h4 className="font-medium text-sm line-clamp-2">
+                    {video.title_kannada || video.title}
+                  </h4>
+                  {video.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {video.description}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
+    </>
   );
 };
 

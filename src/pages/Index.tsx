@@ -2,8 +2,9 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { ArrowRight, MessageCircle, Copy } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { toast } from "sonner";
 const Index = () => {
   const navigate = useNavigate();
   useEffect(() => {
@@ -60,9 +61,21 @@ const Index = () => {
             <MessageCircle className="w-5 h-5" />
             <span className="font-medium">Contact Support</span>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            WhatsApp: +91 82773 23208
-          </p>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <MessageCircle className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-muted-foreground">+91 82773 23208</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6"
+              onClick={() => {
+                navigator.clipboard.writeText("8277323208");
+                toast.success("Phone number copied!");
+              }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>;

@@ -125,16 +125,38 @@ serve(async (req) => {
       );
     }
 
-    // Get videos with timestamps for this chapter
+    // Get videos with timestamps for this chapter (also fetch description to parse timestamps)
     const { data: videos } = await supabaseClient
       .from("videos")
-      .select("id, title, title_kannada, timestamps")
+      .select("id, title, title_kannada, timestamps, description")
       .eq("chapter_id", chapterId);
+
+    // Helper function to parse timestamps from video description
+    function parseTimestampsFromDescription(description: string | null): Array<{ time: string; label: string }> {
+      if (!description) return [];
+      
+      const timestamps: Array<{ time: string; label: string }> = [];
+      const regex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]?\s*(.+?)(?=\n|$)/g;
+      let match;
+      
+      while ((match = regex.exec(description)) !== null) {
+        timestamps.push({ time: match[1], label: match[2].trim() });
+      }
+      
+      return timestamps;
+    }
 
     // Build video reference context - ONLY include videos with actual timestamps
     let videoContext = "";
     if (videos && videos.length > 0) {
-      const videosWithTimestamps = videos.filter(video => 
+      const videosWithTimestamps = videos.map(video => {
+        // Check timestamps column first, then parse from description
+        let parsedTimestamps = video.timestamps;
+        if (!parsedTimestamps || (Array.isArray(parsedTimestamps) && parsedTimestamps.length === 0)) {
+          parsedTimestamps = parseTimestampsFromDescription(video.description);
+        }
+        return { ...video, timestamps: parsedTimestamps };
+      }).filter(video => 
         video.timestamps && 
         Array.isArray(video.timestamps) && 
         (video.timestamps as Array<{ time: string; label: string }>).length > 0

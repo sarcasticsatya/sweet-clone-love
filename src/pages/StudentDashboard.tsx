@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Clock, Mail, User } from "lucide-react";
+import { LogOut, Clock, Mail, User, MessageCircle, Copy } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Logo } from "@/components/Logo";
 import { SourcesPanel } from "@/components/student/SourcesPanel";
 import { ChatPanel } from "@/components/student/ChatPanel";
@@ -168,6 +169,37 @@ const StudentDashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 md:h-8 text-[10px] md:text-xs">
+                <MessageCircle className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
+                <span className="hidden md:inline">Support</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Contact Support</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm">+91 82773 23208</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6"
+                    onClick={() => {
+                      navigator.clipboard.writeText("8277323208");
+                      toast.success("Phone number copied!");
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">WhatsApp only</p>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button variant="ghost" size="sm" onClick={() => navigate("/profile")} className="h-7 md:h-8 text-[10px] md:text-xs">
             <User className="w-3 h-3 md:w-3.5 md:h-3.5 md:mr-1.5" />
             <span className="hidden md:inline">Profile</span>
