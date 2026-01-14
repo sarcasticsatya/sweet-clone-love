@@ -23,7 +23,8 @@ import {
   Loader2,
   CheckCircle,
   Clock,
-  MessageCircle
+  MessageCircle,
+  Copy
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { format, differenceInDays } from "date-fns";
@@ -381,6 +382,17 @@ const UserProfile = () => {
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-5 h-5 text-green-600" />
                 <span className="font-medium">+91 82773 23208</span>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6"
+                  onClick={() => {
+                    navigator.clipboard.writeText("8277323208");
+                    toast.success("Phone number copied!");
+                  }}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
                 Save this number and message us on WhatsApp for assistance
