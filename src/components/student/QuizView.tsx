@@ -67,6 +67,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [pastAttempts, setPastAttempts] = useState<QuizAttempt[]>([]);
+  const [quizStartTime, setQuizStartTime] = useState<string | null>(null);
 
   useEffect(() => {
     loadPastAttempts();
@@ -106,6 +107,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
     setResult(null);
     setAnswers({});
     setCurrentQuestionIndex(0);
+    setQuizStartTime(null);
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -120,6 +122,8 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
       if (error) throw error;
       setQuiz(data.quiz);
+      // Record quiz start time when quiz is loaded
+      setQuizStartTime(new Date().toISOString());
     } catch (error: any) {
       toast.error("Failed to load quiz: " + error.message);
     } finally {
@@ -154,12 +158,13 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
         return;
       }
 
-      console.log("Submitting quiz with:", { quizId: quiz.id, answers: Object.values(answers) });
+      console.log("Submitting quiz with:", { quizId: quiz.id, answers: Object.values(answers), startedAt: quizStartTime });
 
       const { data, error } = await supabase.functions.invoke("submit-quiz", {
         body: {
           quizId: quiz.id,
-          answers: Object.values(answers)
+          answers: Object.values(answers),
+          startedAt: quizStartTime
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`
