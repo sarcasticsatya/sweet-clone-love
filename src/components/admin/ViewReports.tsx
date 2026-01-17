@@ -276,7 +276,14 @@ export const ViewReports = () => {
     doc.text(`Name: ${studentName}`, 14, 60);
     doc.text(`School: ${studentProfile?.school_name || "N/A"}`, 14, 68);
     doc.text(`City: ${studentProfile?.city || "N/A"}`, 14, 76);
-    doc.text(`Date: ${new Date(attempt.attempted_at).toLocaleDateString('en-IN')}`, 14, 84);
+    doc.text(`Date & Time: ${new Date(attempt.attempted_at).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })}`, 14, 84);
 
     // Quiz Info Section
     doc.setFontSize(14);
@@ -407,14 +414,21 @@ export const ViewReports = () => {
 
   const exportToCSV = () => {
     const csvContent = [
-      ["Student", "Subject", "Chapter", "Score", "Percentage", "Date"].join(","),
+      ["Student", "Subject", "Chapter", "Score", "Percentage", "Date & Time"].join(","),
       ...filteredAttempts.map(a => [
         `"${a.profiles?.full_name || 'Unknown'}"`,
         `"${a.quizzes?.chapters?.subjects?.name_kannada || ''}"`,
         `"${a.quizzes?.chapters?.name_kannada || ''}"`,
         `${a.score}/${a.total_questions}`,
         `${Math.round((a.score / a.total_questions) * 100)}%`,
-        new Date(a.attempted_at).toLocaleDateString()
+        `"${new Date(a.attempted_at).toLocaleString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })}"`
       ].join(","))
     ].join("\n");
 
@@ -622,12 +636,19 @@ export const ViewReports = () => {
           : (a.quizzes?.chapters?.name || "N/A"),
         `${a.score}/${a.total_questions}`,
         `${Math.round((a.score / a.total_questions) * 100)}%`,
-        new Date(a.attempted_at).toLocaleDateString('en-IN')
+        new Date(a.attempted_at).toLocaleString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })
       ]);
 
       autoTable(doc, {
         startY: historyY + 5,
-        head: [["Student", "Subject", "Chapter", "Score", "%", "Date"]],
+        head: [["Student", "Subject", "Chapter", "Score", "%", "Date & Time"]],
         body: historyData,
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
@@ -939,7 +960,7 @@ export const ViewReports = () => {
                   <TableHead>Subject/Chapter</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Percentage</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Date & Time</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -985,7 +1006,14 @@ export const ViewReports = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(attempt.attempted_at).toLocaleDateString()}
+                        {new Date(attempt.attempted_at).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
                       </TableCell>
                       <TableCell>
                         <Button 

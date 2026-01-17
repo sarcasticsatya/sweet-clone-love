@@ -19,6 +19,17 @@ export const DataExport = () => {
     URL.revokeObjectURL(link.href);
   };
 
+  const formatDateTime = (date: string) => {
+    return new Date(date).toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+  
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("en-IN", {
       year: "numeric",
@@ -158,7 +169,7 @@ export const DataExport = () => {
       const headers = [
         "Nythic AI Platform - Quiz Reports Export",
         "",
-        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Attempted At",
+        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Date & Time",
       ];
 
       const rows = (attempts || []).map((a) => {
@@ -171,7 +182,7 @@ export const DataExport = () => {
           a.score,
           a.total_questions,
           `${Math.round((a.score / a.total_questions) * 100)}%`,
-          formatDate(a.attempted_at),
+          `"${formatDateTime(a.attempted_at)}"`,
         ].join(",");
       });
 
@@ -282,10 +293,10 @@ export const DataExport = () => {
       const quizCSV = [
         "Nythic AI Platform - Quiz Reports Export",
         "",
-        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Attempted At",
+        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Date & Time",
         ...(attemptsRes.data || []).map((a) => {
           const quiz = a.quizzes as any;
-          return [profileMap.get(a.student_id) || "Unknown", quiz?.chapters?.subjects?.name || "N/A", quiz?.chapters?.name || "N/A", quiz?.title || "N/A", a.score, a.total_questions, `${Math.round((a.score / a.total_questions) * 100)}%`, formatDate(a.attempted_at)].join(",");
+          return [profileMap.get(a.student_id) || "Unknown", quiz?.chapters?.subjects?.name || "N/A", quiz?.chapters?.name || "N/A", quiz?.title || "N/A", a.score, a.total_questions, `${Math.round((a.score / a.total_questions) * 100)}%`, `"${formatDateTime(a.attempted_at)}"`].join(",");
         }),
       ].join("\n");
       zip.file("quiz-reports.csv", quizCSV);
