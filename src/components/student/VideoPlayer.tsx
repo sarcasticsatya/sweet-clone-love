@@ -215,13 +215,9 @@ export const VideoPlayer = ({
           )}
         </div>
 
-        <div className="space-y-2">
+      <div className="space-y-2">
           <h3 className="font-semibold text-foreground">{title}</h3>
-          {description && (
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {renderDescriptionWithTimestamps(description, seekYouTube)}
-            </div>
-          )}
+          {/* Description timestamps hidden - only showing boxed timestamps */}
         </div>
 
         {parsedTimestamps && parsedTimestamps.length > 0 && (
@@ -354,11 +350,7 @@ export const VideoPlayer = ({
 
       <div className="space-y-2">
         <h3 className="font-semibold text-foreground">{title}</h3>
-        {description && (
-          <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-            {renderDescriptionWithTimestamps(description, seekToTimestamp)}
-          </div>
-        )}
+        {/* Description timestamps hidden - only showing boxed timestamps */}
       </div>
 
       {parsedTimestamps && parsedTimestamps.length > 0 && (
