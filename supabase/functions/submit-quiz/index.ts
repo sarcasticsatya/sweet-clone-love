@@ -15,11 +15,12 @@ serve(async (req) => {
   }
 
   try {
-    const { quizId, answers } = await req.json();
+    const { quizId, answers, startedAt } = await req.json();
     console.log("Quiz ID received:", quizId);
     console.log("Answers received:", answers);
     console.log("Answers type:", typeof answers);
     console.log("Answers length:", Array.isArray(answers) ? answers.length : "not an array");
+    console.log("Started At received:", startedAt);
     const authHeader = req.headers.get("authorization");
 
     if (!quizId || !answers) {
@@ -94,16 +95,23 @@ serve(async (req) => {
       }
     });
 
-    // Save attempt
+    // Save attempt with started_at timestamp
+    const attemptData: any = {
+      quiz_id: quizId,
+      student_id: user.id,
+      score,
+      total_questions: questions.length,
+      answers
+    };
+    
+    // Add started_at if provided
+    if (startedAt) {
+      attemptData.started_at = startedAt;
+    }
+
     const { data: attempt, error } = await supabaseClient
       .from("quiz_attempts")
-      .insert({
-        quiz_id: quizId,
-        student_id: user.id,
-        score,
-        total_questions: questions.length,
-        answers
-      })
+      .insert(attemptData)
       .select()
       .single();
 

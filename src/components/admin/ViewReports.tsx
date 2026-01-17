@@ -19,6 +19,7 @@ interface QuizAttempt {
   score: number;
   total_questions: number;
   attempted_at: string;
+  started_at?: string | null;
   profiles?: { full_name: string };
   quizzes?: {
     title: string;
@@ -51,6 +52,26 @@ interface StudentStats {
 }
 
 const COLORS = ['#22c55e', '#eab308', '#ef4444', '#3b82f6', '#8b5cf6'];
+
+// Helper function to format duration
+const formatDuration = (startedAt: string | null | undefined, attemptedAt: string): string => {
+  if (!startedAt) return "N/A";
+  
+  const start = new Date(startedAt).getTime();
+  const end = new Date(attemptedAt).getTime();
+  const durationMs = end - start;
+  
+  if (durationMs < 0) return "N/A";
+  
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  if (minutes === 0) {
+    return `${seconds}s`;
+  }
+  return `${minutes}m ${seconds}s`;
+};
 
 export const ViewReports = () => {
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
@@ -284,6 +305,7 @@ export const ViewReports = () => {
       minute: '2-digit',
       hour12: true
     })}`, 14, 84);
+    doc.text(`Duration: ${formatDuration(attempt.started_at, attempt.attempted_at)}`, 100, 84);
 
     // Quiz Info Section
     doc.setFontSize(14);
@@ -414,13 +436,14 @@ export const ViewReports = () => {
 
   const exportToCSV = () => {
     const csvContent = [
-      ["Student", "Subject", "Chapter", "Score", "Percentage", "Date & Time"].join(","),
+      ["Student", "Subject", "Chapter", "Score", "Percentage", "Duration", "Date & Time"].join(","),
       ...filteredAttempts.map(a => [
         `"${a.profiles?.full_name || 'Unknown'}"`,
         `"${a.quizzes?.chapters?.subjects?.name_kannada || ''}"`,
         `"${a.quizzes?.chapters?.name_kannada || ''}"`,
         `${a.score}/${a.total_questions}`,
         `${Math.round((a.score / a.total_questions) * 100)}%`,
+        formatDuration(a.started_at, a.attempted_at),
         `"${new Date(a.attempted_at).toLocaleString('en-IN', {
           day: '2-digit',
           month: 'short',
@@ -636,6 +659,7 @@ export const ViewReports = () => {
           : (a.quizzes?.chapters?.name || "N/A"),
         `${a.score}/${a.total_questions}`,
         `${Math.round((a.score / a.total_questions) * 100)}%`,
+        formatDuration(a.started_at, a.attempted_at),
         new Date(a.attempted_at).toLocaleString('en-IN', {
           day: '2-digit',
           month: 'short',
@@ -648,18 +672,19 @@ export const ViewReports = () => {
 
       autoTable(doc, {
         startY: historyY + 5,
-        head: [["Student", "Subject", "Chapter", "Score", "%", "Date & Time"]],
+        head: [["Student", "Subject", "Chapter", "Score", "%", "Duration", "Date & Time"]],
         body: historyData,
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
         styles: { cellPadding: 2, fontSize: 8 },
         columnStyles: { 
-          0: { cellWidth: 35 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 40 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 15 },
-          5: { cellWidth: 25 }
+          0: { cellWidth: 30 },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 12 },
+          5: { cellWidth: 18 },
+          6: { cellWidth: 30 }
         },
         didParseCell: (data) => {
           if (indicFontLoaded && (data.column.index === 1 || data.column.index === 2) && data.cell.raw && containsIndicScript(String(data.cell.raw))) {
@@ -960,6 +985,7 @@ export const ViewReports = () => {
                   <TableHead>Subject/Chapter</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Percentage</TableHead>
+                  <TableHead>Duration</TableHead>
                   <TableHead>Date & Time</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -967,7 +993,7 @@ export const ViewReports = () => {
               <TableBody>
                 {filteredAttempts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No quiz attempts found
                     </TableCell>
                   </TableRow>
@@ -1004,6 +1030,9 @@ export const ViewReports = () => {
                         }`}>
                           {Math.round((attempt.score / attempt.total_questions) * 100)}%
                         </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDuration(attempt.started_at, attempt.attempted_at)}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(attempt.attempted_at).toLocaleString('en-IN', {

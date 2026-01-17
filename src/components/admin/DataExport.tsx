@@ -38,6 +38,25 @@ export const DataExport = () => {
     });
   };
 
+  const formatDuration = (startedAt: string | null | undefined, attemptedAt: string): string => {
+    if (!startedAt) return "N/A";
+    
+    const start = new Date(startedAt).getTime();
+    const end = new Date(attemptedAt).getTime();
+    const durationMs = end - start;
+    
+    if (durationMs < 0) return "N/A";
+    
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (minutes === 0) {
+      return `${seconds}s`;
+    }
+    return `${minutes}m ${seconds}s`;
+  };
+
   const exportStudents = async () => {
     setExporting("students");
     try {
@@ -169,10 +188,10 @@ export const DataExport = () => {
       const headers = [
         "Nythic AI Platform - Quiz Reports Export",
         "",
-        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Date & Time",
+        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Duration,Date & Time",
       ];
 
-      const rows = (attempts || []).map((a) => {
+      const rows = (attempts || []).map((a: any) => {
         const quiz = a.quizzes as any;
         return [
           profileMap.get(a.student_id) || "Unknown Student",
@@ -182,6 +201,7 @@ export const DataExport = () => {
           a.score,
           a.total_questions,
           `${Math.round((a.score / a.total_questions) * 100)}%`,
+          formatDuration(a.started_at, a.attempted_at),
           `"${formatDateTime(a.attempted_at)}"`,
         ].join(",");
       });
@@ -293,10 +313,10 @@ export const DataExport = () => {
       const quizCSV = [
         "Nythic AI Platform - Quiz Reports Export",
         "",
-        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Date & Time",
-        ...(attemptsRes.data || []).map((a) => {
+        "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Duration,Date & Time",
+        ...(attemptsRes.data || []).map((a: any) => {
           const quiz = a.quizzes as any;
-          return [profileMap.get(a.student_id) || "Unknown", quiz?.chapters?.subjects?.name || "N/A", quiz?.chapters?.name || "N/A", quiz?.title || "N/A", a.score, a.total_questions, `${Math.round((a.score / a.total_questions) * 100)}%`, `"${formatDateTime(a.attempted_at)}"`].join(",");
+          return [profileMap.get(a.student_id) || "Unknown", quiz?.chapters?.subjects?.name || "N/A", quiz?.chapters?.name || "N/A", quiz?.title || "N/A", a.score, a.total_questions, `${Math.round((a.score / a.total_questions) * 100)}%`, formatDuration(a.started_at, a.attempted_at), `"${formatDateTime(a.attempted_at)}"`].join(",");
         }),
       ].join("\n");
       zip.file("quiz-reports.csv", quizCSV);
