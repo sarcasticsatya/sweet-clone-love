@@ -180,7 +180,12 @@ serve(async (req) => {
       );
       
       if (videosWithTimestamps.length > 0) {
-        videoContext = "\n\n=== RELATED VIDEOS WITH TIMESTAMPS (YOU CAN USE THIS DATA TO ANSWER) ===\n";
+        videoContext = "\n\n7. VIDEO REFERENCES (STRICT RULES):";
+        videoContext += "\n   - ONLY reference videos if their timestamp labels EXACTLY match or are DIRECTLY relevant to the question topic";
+        videoContext += "\n   - If no video timestamps match the topic, DO NOT mention any videos";
+        videoContext += "\n   - NEVER make up or guess timestamps - only use timestamps provided in the video list below";
+        videoContext += "\n   - Format: 📹 Watch: [Video Title] at [timestamp] for visual explanation";
+        videoContext += "\n\n=== RELATED VIDEOS WITH TIMESTAMPS (YOU CAN USE THIS DATA TO ANSWER) ===\n";
         videosWithTimestamps.forEach(video => {
           const videoTitle = video.title_kannada || video.title;
           const timestamps = video.timestamps as Array<{ time: string; label: string }>;
@@ -270,12 +275,6 @@ serve(async (req) => {
    - Write equations naturally in the text like: "The formula is x² + 5x + 6"
    - Keep formatting clean and readable for school students
 6. ALWAYS conclude with a **Summary** or **Final Answer** section
-7. VIDEO REFERENCES (STRICT RULES):
-   - ONLY reference videos if their timestamp labels EXACTLY match or are DIRECTLY relevant to the question topic
-   - If no video timestamps match the topic, DO NOT mention any videos
-   - NEVER make up or guess timestamps - only use timestamps provided in the video list above
-   - If the video list above is empty or has no matching topics, do NOT reference any videos
-   - Format: 📹 Watch: [Video Title] at [timestamp] for visual explanation
 ${videoContext}
 CHAPTER: ${chapterName}
 CHAPTER CONTENT:
