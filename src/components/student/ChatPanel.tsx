@@ -6,6 +6,7 @@ import { Send, AlertCircle, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { Logo } from "@/components/Logo";
 interface ChatPanelProps {
   selectedChapterId: string | null;
   selectedSubjectId: string | null;
@@ -257,16 +258,16 @@ export const ChatPanel = ({
             </div>
           </div> : <div className="space-y-6 max-w-3xl mx-auto">
             {messages.map((message, idx) => <div key={message.id || idx} className={cn("flex gap-3", message.role === "user" ? "justify-end" : "justify-start")}>
-                {message.role === "assistant" && <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                    <span className="text-xs font-semibold text-primary">AI</span>
+                {message.role === "assistant" && <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1 p-1">
+                    <Logo size="xs" />
                   </div>}
                 <div className={cn("max-w-[75%] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed", message.role === "user" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/50 text-foreground border border-border/50")}>
                   {renderMessageContent(message.content, message.role)}
                 </div>
               </div>)}
             {loading && <div className="flex gap-3 justify-start">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-semibold text-primary">AI</span>
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 p-1">
+                  <Logo size="xs" />
                 </div>
                 <div className="bg-muted/50 border border-border/50 rounded-2xl px-4 py-2.5 text-[13px]">
                   <span className="flex items-center gap-1">

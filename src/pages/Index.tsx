@@ -38,12 +38,12 @@ const Index = () => {
         </div>
         
         <div className="space-y-4">
-          <h1 className="text-5xl font-bold tracking-tight">Nythic AI</h1>
+          <h1 className="text-5xl font-bold tracking-tight">NythicAI</h1>
           <h2 className="text-3xl font-semibold text-muted-foreground">
             EdTech Learning Platform
           </h2>
           <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            AI-powered learning platform for Kannada-medium SSLC students. 
+            AI-powered learning platform for English and Kannada medium SSLC students. 
             Access subjects, study materials, and interactive tools.
           </p>
         </div>
