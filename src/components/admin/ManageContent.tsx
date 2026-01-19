@@ -81,26 +81,17 @@ export const ManageContent = () => {
   };
 
   const loadSubjects = async () => {
-    // Clear chapters when loading new subjects to prevent stale data
-    setChapters({});
-    
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("subjects")
       .select("*")
       .eq("medium", selectedMedium)
       .order("name");
     
-    if (error) {
-      console.error("Error loading subjects:", error);
-      toast.error("Failed to load subjects");
-      return;
-    }
-    
     setSubjects(data || []);
     
-    // Load chapters for all subjects and wait for completion
-    if (data && data.length > 0) {
-      await Promise.all(data.map(subject => loadChapters(subject.id)));
+    // Load chapters for each subject
+    if (data) {
+      data.forEach(subject => loadChapters(subject.id));
     }
   };
 
