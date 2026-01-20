@@ -6,37 +6,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Detect language from content with subject-based priority
-function detectLanguage(content: string, nameKannada: string, subjectName: string): "kannada" | "hindi" | "english" {
-  // First priority: Check subject name for Hindi
-  // "ಹಿಂದಿ" is "Hindi" written in Kannada script
-  if (subjectName && (
-    subjectName.toLowerCase().includes('hindi') || 
-    subjectName === 'ಹಿಂದಿ'
-  )) {
-    console.log("Detected HINDI from subject name:", subjectName);
-    return "hindi";
-  }
+// Determine response language(s) based on subject name and medium
+function getResponseLanguages(subjectName: string, medium: string): "kannada_only" | "english_only" | "english_kannada" | "hindi_kannada" {
+  const normalizedSubject = subjectName.toLowerCase();
   
-  // Check for Hindi/Devanagari script in content (U+0900-U+097F)
-  if (/[\u0900-\u097F]/.test(content)) {
-    return "hindi";
+  if (medium === "English") {
+    // English Medium Rules
+    if (normalizedSubject.includes("kannada") || normalizedSubject.includes("ಕನ್ನಡ")) return "kannada_only";
+    if (normalizedSubject.includes("hindi") || normalizedSubject.includes("ಹಿಂದಿ")) return "hindi_kannada";
+    if (normalizedSubject.includes("maths") || normalizedSubject.includes("math") || normalizedSubject.includes("mathematics")) return "english_only";
+    // English, Social, Science - English + Kannada
+    return "english_kannada";
+  } else {
+    // Kannada Medium Rules
+    if (normalizedSubject === "ಕನ್ನಡ" || normalizedSubject.includes("ಕನ್ನಡ") || (normalizedSubject.includes("kannada") && !normalizedSubject.includes("english"))) return "kannada_only";
+    if (normalizedSubject === "ಇಂಗ್ಲೀಷ" || normalizedSubject.includes("english") || normalizedSubject.includes("ಇಂಗ್ಲೀಷ")) return "english_kannada";
+    if (normalizedSubject === "ಹಿಂದಿ" || normalizedSubject.includes("hindi") || normalizedSubject.includes("ಹಿಂದಿ")) return "hindi_kannada";
+    // ವಿಜ್ಞಾನ, ಗಣಿತ, ಸಮಾಜ ವಿಜ್ಞಾನ - Kannada only
+    return "kannada_only";
   }
-  
-  // Check for Kannada script (U+0C80-U+0CFF)
-  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
-    return "kannada";
-  }
-  
-  return "english";
 }
 
 // Helper function to check subject access
 async function checkSubjectAccess(supabaseClient: any, userId: string, chapterId: string): Promise<{ hasAccess: boolean; isAdmin: boolean; chapter: any }> {
-  // Get chapter with subject_id
+  // Get chapter with subject_id and medium
   const { data: chapter, error: chapterError } = await supabaseClient
     .from("chapters")
-    .select("subject_id, content_extracted, name, name_kannada, subjects!inner(name, name_kannada)")
+    .select("subject_id, content_extracted, name, name_kannada, subjects!inner(name, name_kannada, medium)")
     .eq("id", chapterId)
     .single();
 
@@ -205,45 +201,45 @@ serve(async (req) => {
 
     const chapterName = chapter.name_kannada || chapter.name;
     const subjectName = (chapter.subjects as any)?.name || (chapter.subjects as any)?.name_kannada || "";
+    const subjectMedium = (chapter.subjects as any)?.medium || "English";
 
-    // Detect language
-    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "", subjectName);
-    console.log("DETECTED LANGUAGE:", language);
+    // Get response language based on subject and medium
+    const responseLanguage = getResponseLanguages(subjectName, subjectMedium);
+    console.log("SUBJECT:", subjectName, "MEDIUM:", subjectMedium, "RESPONSE_LANGUAGE:", responseLanguage);
 
-    // Build language-specific instructions
+    // Build language-specific instructions based on the matrix
     const languageInstructions = {
-      kannada: {
-        notFound: '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ. / This chapter does not contain that information."',
-        rules: `- This is a KANNADA chapter - You MUST respond in TWO LANGUAGES: Kannada AND English
-   - Structure your response with clear sections for each language
-   - First provide the answer in Kannada (ಕನ್ನಡ) with proper Kannada script
-   - Then provide the same answer in English
-   - Use headers like **ಕನ್ನಡ (Kannada):** / **English:**
-   - DO NOT include Hindi in the response
-   - Ensure both translations convey the same information accurately
-   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar`
+      kannada_only: {
+        notFound: '"ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ."',
+        rules: `- Respond ONLY in Kannada (ಕನ್ನಡ)
+   - Use proper Kannada script (ಕನ್ನಡ ಲಿಪಿ) with correct grammar
+   - DO NOT include English or Hindi translations
+   - This is a Kannada-only subject - ALL responses must be in Kannada`
       },
-      hindi: {
-        notFound: '"इस अध्याय में वह जानकारी नहीं है। कृपया सही अध्याय चुनें और फिर से पूछें। / ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ। / This chapter does not contain that information."',
-        rules: `- This is a HINDI chapter - You MUST respond in ALL THREE LANGUAGES: Hindi, Kannada, AND English
-   - Structure your response with clear sections for each language
-   - First provide the answer in Hindi (हिन्दी) with proper Devanagari script
-   - Then provide the same answer in Kannada (ಕನ್ನಡ) with proper Kannada script
-   - Finally provide the answer in English
-   - Use headers like **हिन्दी (Hindi):** / **ಕನ್ನಡ (Kannada):** / **English:**
-   - Ensure all three translations convey the same information accurately
-   - Act as a helpful and friendly Hindi teacher who supports multilingual learning`
+      english_only: {
+        notFound: '"This chapter does not contain that information."',
+        rules: `- Respond ONLY in English
+   - DO NOT include Kannada or Hindi translations
+   - Use clear, simple English appropriate for SSLC students
+   - This is a Mathematics subject - English only responses`
       },
-      english: {
+      english_kannada: {
         notFound: '"This chapter does not contain that information. / ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ."',
-        rules: `- This is an ENGLISH chapter - You MUST respond in TWO LANGUAGES: English AND Kannada
-   - Structure your response with clear sections for each language
+        rules: `- Respond in TWO languages: English AND Kannada
    - First provide the answer in English
-   - Then provide the same answer in Kannada (ಕನ್ನಡ) with proper Kannada script
+   - Then provide the same answer in Kannada (ಕನ್ನಡ)
    - Use headers like **English:** / **ಕನ್ನಡ (Kannada):**
-   - DO NOT include Hindi in the response
-   - Ensure both translations convey the same information accurately
-   - Maintain cultural context appropriate for Karnataka SSLC students`
+   - DO NOT include Hindi
+   - Ensure both translations convey the same information accurately`
+      },
+      hindi_kannada: {
+        notFound: '"इस अध्याय में वह जानकारी नहीं है। / ಈ ಅಧ್ಯಾಯವು ಆ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ."',
+        rules: `- Respond in TWO languages: Hindi AND Kannada
+   - First provide the answer in Hindi (हिन्दी) with proper Devanagari script
+   - Then provide the same answer in Kannada (ಕನ್ನಡ)
+   - Use headers like **हिन्दी (Hindi):** / **ಕನ್ನಡ (Kannada):**
+   - DO NOT include English
+   - This is a Hindi language subject`
       }
     };
     
@@ -254,9 +250,9 @@ serve(async (req) => {
    - Provide DETAILED, COMPREHENSIVE explanations by default
    - For questions about videos, summaries, or timestamps - USE THE VIDEO TIMESTAMPS DATA below
 2. If the question is NOT answerable from EITHER the chapter content OR the video timestamps, respond EXACTLY with:
-   ${languageInstructions[language].notFound}
+   ${languageInstructions[responseLanguage].notFound}
 3. LANGUAGE HANDLING (CRITICAL):
-   ${languageInstructions[language].rules}
+   ${languageInstructions[responseLanguage].rules}
    - Maintain cultural context appropriate for Karnataka SSLC students
 4. RESPONSE STYLE (CRITICAL):
    - Provide DETAILED, IN-DEPTH explanations (not just point-wise answers)

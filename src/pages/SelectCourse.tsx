@@ -186,7 +186,7 @@ const SelectCourse = () => {
 
     toast({
       title: "Payment Successful!",
-      description: "Welcome to Nythic AI. Your course is now active.",
+      description: "Welcome to NythicAI. Your course is now active.",
     });
 
     setProcessing(false);

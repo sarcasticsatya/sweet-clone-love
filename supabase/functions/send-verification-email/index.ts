@@ -77,9 +77,9 @@ serve(async (req) => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Nythic AI <noreply@nythicai.com>",
+        from: "NythicAI <noreply@nythicai.com>",
         to: [email],
-        subject: "Verify your Nythic AI account",
+        subject: "Verify your NythicAI account",
         html: `
           <!DOCTYPE html>
           <html>
@@ -97,10 +97,10 @@ serve(async (req) => {
                         <!-- Logo/Header -->
                         <div style="margin-bottom: 32px;">
                           <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #18181b;">
-                            🎓 Nythic AI
+                            🎓 NythicAI
                           </h1>
                           <p style="margin: 8px 0 0; font-size: 14px; color: #71717a;">
-                            Your Learning Companion
+                            Your 24 X 7 Personal Teacher
                           </p>
                         </div>
                         
@@ -110,7 +110,7 @@ serve(async (req) => {
                         </h2>
                         
                         <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">
-                          Thank you for signing up for Nythic AI. Please verify your email address to complete your registration and start learning.
+                          Thank you for signing up for NythicAI. Please verify your email address to complete your registration and start learning.
                         </p>
                         
                         <!-- CTA Button -->
@@ -134,7 +134,7 @@ serve(async (req) => {
                         <hr style="margin: 32px 0; border: none; border-top: 1px solid #e4e4e7;">
                         
                         <p style="margin: 0; font-size: 12px; color: #a1a1aa;">
-                          If you didn't create an account with Nythic AI, you can safely ignore this email.
+                          If you didn't create an account with NythicAI, you can safely ignore this email.
                         </p>
                       </td>
                     </tr>
