@@ -52,7 +52,7 @@ serve(async (req) => {
     // Generate email content based on report type
     const emailSubject = reportType === "individual"
       ? `Quiz Performance Report - ${subject || "Quiz"}`
-      : "Competitive Analysis Report - Nythic AI Edtech";
+      : "Competitive Analysis Report - NythicAI Edtech";
 
     const emailHtml = reportType === "individual"
       ? `
@@ -65,7 +65,7 @@ serve(async (req) => {
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
           <div style="background-color: #3b82f6; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
             <h1 style="margin: 0; font-size: 24px;">Quiz Performance Report</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">Nythic AI Edtech</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">NythicAI Edtech</p>
           </div>
           
           <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px;">
@@ -107,12 +107,12 @@ serve(async (req) => {
             
             <p style="color: #555; margin-top: 30px;">
               Best regards,<br>
-              <strong>Nythic AI Edtech Team</strong>
+              <strong>NythicAI Edtech Team</strong>
             </p>
           </div>
           
           <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-            <p>This is an automated email from Nythic AI Edtech.</p>
+            <p>This is an automated email from NythicAI Edtech.</p>
           </div>
         </body>
         </html>
@@ -127,7 +127,7 @@ serve(async (req) => {
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
           <div style="background-color: #3b82f6; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
             <h1 style="margin: 0; font-size: 24px;">Competitive Analysis Report</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">Nythic AI Edtech</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">NythicAI Edtech</p>
           </div>
           
           <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px;">
@@ -143,12 +143,12 @@ serve(async (req) => {
             
             <p style="color: #555; margin-top: 30px;">
               Best regards,<br>
-              <strong>Nythic AI Edtech Team</strong>
+              <strong>NythicAI Edtech Team</strong>
             </p>
           </div>
           
           <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-            <p>This is an automated email from Nythic AI Edtech.</p>
+            <p>This is an automated email from NythicAI Edtech.</p>
           </div>
         </body>
         </html>
@@ -167,7 +167,7 @@ serve(async (req) => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Nythic AI <noreply@nythicai.com>",
+        from: "NythicAI <noreply@nythicai.com>",
         to: [recipientEmail],
         subject: emailSubject,
         html: emailHtml,

@@ -123,8 +123,8 @@ const StudentDashboard = () => {
               <Logo size="sm" />
             </div>
             <div>
-              <h1 className="text-sm md:text-base font-medium">Nythic AI</h1>
-              <p className="text-[9px] md:text-[10px] text-muted-foreground">Karnataka SSLC Edtech Platform</p>
+              <h1 className="text-sm md:text-base font-medium">NythicAI</h1>
+              <p className="text-[9px] md:text-[10px] text-muted-foreground">Your 24 X 7 Personal Teacher</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-7 md:h-8 text-[10px] md:text-xs">
@@ -184,8 +184,8 @@ const StudentDashboard = () => {
             <Logo size="sm" />
           </div>
           <div>
-            <h1 className="text-sm md:text-base font-medium">Nythic AI</h1>
-            <p className="text-[9px] md:text-[10px] text-muted-foreground">Karnataka SSLC Edtech Platform</p>
+            <h1 className="text-sm md:text-base font-medium">NythicAI</h1>
+            <p className="text-[9px] md:text-[10px] text-muted-foreground">Your 24 X 7 Personal Teacher</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

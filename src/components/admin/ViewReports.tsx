@@ -279,7 +279,7 @@ export const ViewReports = () => {
     doc.text("Quiz Performance Report", pageWidth / 2, 18, { align: "center" });
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
+    doc.text("NythicAI Edtech", pageWidth / 2, 28, { align: "center" });
 
     doc.setTextColor(0, 0, 0);
 
@@ -382,7 +382,7 @@ export const ViewReports = () => {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(128, 128, 128);
-    doc.text(`Generated on ${new Date().toLocaleString('en-IN')} | Powered by Nythic AI Edtech`, pageWidth / 2, 285, { align: "center" });
+    doc.text(`Generated on ${new Date().toLocaleString('en-IN')} | Powered by NythicAI Edtech`, pageWidth / 2, 285, { align: "center" });
 
     const fileName = `Quiz_Report_${studentName.replace(/\s+/g, '_')}_${new Date(attempt.attempted_at).toISOString().split('T')[0]}.pdf`;
     
@@ -509,7 +509,7 @@ export const ViewReports = () => {
       doc.text("Competitive Analysis Report", pageWidth / 2, 18, { align: "center" });
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
-      doc.text("Nythic AI Edtech", pageWidth / 2, 28, { align: "center" });
+      doc.text("NythicAI Edtech", pageWidth / 2, 28, { align: "center" });
 
       doc.setTextColor(0, 0, 0);
 
@@ -700,7 +700,7 @@ export const ViewReports = () => {
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(128, 128, 128);
-        doc.text(`Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleString('en-IN')} | Nythic AI Edtech`, pageWidth / 2, 290, { align: "center" });
+        doc.text(`Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleString('en-IN')} | NythicAI Edtech`, pageWidth / 2, 290, { align: "center" });
       }
 
       // Generate filename based on filters

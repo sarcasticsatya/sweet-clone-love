@@ -80,7 +80,7 @@ const AdminDashboard = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Nythic AI Edtech Platform</p>
+            <p className="text-sm text-muted-foreground">NythicAI Edtech Platform</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={handleSignOut}>

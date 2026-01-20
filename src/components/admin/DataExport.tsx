@@ -68,7 +68,7 @@ export const DataExport = () => {
       if (error) throw error;
 
       const headers = [
-        "Nythic AI Platform - Student Data Export",
+        "NythicAI Platform - Student Data Export",
         "",
         "First Name,Surname,Personal Email,Parent Email,Parent Mobile,Date of Birth,City,School Name,Medium,Email Verified,Account Verified,Created At",
       ];
@@ -120,7 +120,7 @@ export const DataExport = () => {
       const chapters = (chaptersData || []).sort(naturalSortChapters);
 
       const headers = [
-        "Nythic AI Platform - Subjects & Chapters Export",
+        "NythicAI Platform - Subjects & Chapters Export",
         "",
         "Subject Name,Subject Name (Kannada),Chapter Number,Chapter Name,Chapter Name (Kannada),PDF URL",
       ];
@@ -186,7 +186,7 @@ export const DataExport = () => {
       );
 
       const headers = [
-        "Nythic AI Platform - Quiz Reports Export",
+        "NythicAI Platform - Quiz Reports Export",
         "",
         "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Duration,Date & Time",
       ];
@@ -233,7 +233,7 @@ export const DataExport = () => {
       if (flashcardsError) throw flashcardsError;
 
       const headers = [
-        "Nythic AI Platform - Flashcards Export",
+        "NythicAI Platform - Flashcards Export",
         "",
         "Subject,Chapter,Question,Answer,Created At",
       ];
@@ -278,7 +278,7 @@ export const DataExport = () => {
 
       // Students CSV
       const studentsCSV = [
-        "Nythic AI Platform - Student Data Export",
+        "NythicAI Platform - Student Data Export",
         "",
         "First Name,Surname,Personal Email,Parent Email,Parent Mobile,Date of Birth,City,School Name,Medium,Email Verified,Account Verified,Created At",
         ...(studentsRes.data || []).map((s) =>
@@ -301,7 +301,7 @@ export const DataExport = () => {
         }
       });
       const subjectsCSV = [
-        "Nythic AI Platform - Subjects & Chapters Export",
+        "NythicAI Platform - Subjects & Chapters Export",
         "",
         "Subject Name,Subject Name (Kannada),Chapter Number,Chapter Name,Chapter Name (Kannada),PDF URL",
         ...subjectsRows,
@@ -311,7 +311,7 @@ export const DataExport = () => {
       // Quiz Reports CSV
       const profileMap = new Map((profilesRes.data || []).map((p) => [p.user_id, `${p.first_name} ${p.surname}`]));
       const quizCSV = [
-        "Nythic AI Platform - Quiz Reports Export",
+        "NythicAI Platform - Quiz Reports Export",
         "",
         "Student Name,Subject,Chapter,Quiz Title,Score,Total Questions,Percentage,Duration,Date & Time",
         ...(attemptsRes.data || []).map((a: any) => {
@@ -323,7 +323,7 @@ export const DataExport = () => {
 
       // Flashcards CSV
       const flashcardsCSV = [
-        "Nythic AI Platform - Flashcards Export",
+        "NythicAI Platform - Flashcards Export",
         "",
         "Subject,Chapter,Question,Answer,Created At",
         ...(flashcardsRes.data || []).map((f) => {
@@ -367,7 +367,7 @@ export const DataExport = () => {
           </CardTitle>
           <CardDescription>
             Download a complete backup of all platform data as a ZIP file containing multiple CSV files.
-            All exports are branded with "Nythic AI Platform" headers.
+            All exports are branded with "NythicAI Platform" headers.
           </CardDescription>
         </CardHeader>
         <CardContent>

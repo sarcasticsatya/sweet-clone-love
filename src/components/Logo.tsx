@@ -17,7 +17,7 @@ export const Logo = ({ size = "md", className }: LogoProps) => {
   return (
     <img 
       src={nythicLogo} 
-      alt="Nythic AI" 
+      alt="NythicAI" 
       className={cn(sizeClasses[size], "object-contain", className)}
     />
   );

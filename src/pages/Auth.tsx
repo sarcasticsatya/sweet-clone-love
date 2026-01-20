@@ -301,8 +301,8 @@ const Auth = () => {
               <Logo size="md" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Nythic AI</CardTitle>
-          <CardDescription>Sign in to access your learning platform</CardDescription>
+          <CardTitle className="text-2xl font-bold">NythicAI</CardTitle>
+          <CardDescription>Your 24 X 7 Personal Teacher</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
