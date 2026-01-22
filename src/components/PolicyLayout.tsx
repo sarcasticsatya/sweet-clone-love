@@ -3,15 +3,15 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-
 interface PolicyLayoutProps {
   title: string;
   children: ReactNode;
 }
-
-export const PolicyLayout = ({ title, children }: PolicyLayoutProps) => {
-  return (
-    <div className="min-h-screen bg-background">
+export const PolicyLayout = ({
+  title,
+  children
+}: PolicyLayoutProps) => {
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -52,9 +52,7 @@ export const PolicyLayout = ({ title, children }: PolicyLayoutProps) => {
       <footer className="border-t border-border bg-card mt-12">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              © 2025 NythicAI. All rights reserved.
-            </p>
+            <p className="text-sm text-muted-foreground">© 2025 NythicAI.</p>
             <div className="flex items-center gap-6 text-sm">
               <Link to="/terms-and-conditions" className="text-muted-foreground hover:text-foreground transition-colors">
                 Terms & Conditions
@@ -69,8 +67,6 @@ export const PolicyLayout = ({ title, children }: PolicyLayoutProps) => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default PolicyLayout;
