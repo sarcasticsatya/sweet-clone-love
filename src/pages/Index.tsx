@@ -65,15 +65,10 @@ const Index = () => {
           <div className="flex items-center justify-center gap-2 mt-2">
             <MessageCircle className="w-4 h-4 text-primary" />
             <span className="text-sm text-muted-foreground">+91 82773 23208</span>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6"
-              onClick={() => {
-                navigator.clipboard.writeText("8277323208");
-                toast.success("Phone number copied!");
-              }}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+            navigator.clipboard.writeText("8277323208");
+            toast.success("Phone number copied!");
+          }}>
               <Copy className="w-3.5 h-3.5" />
             </Button>
           </div>
@@ -82,31 +77,20 @@ const Index = () => {
         {/* Policy Links */}
         <div className="pt-6 border-t border-border">
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
-            <Link 
-              to="/terms-and-conditions" 
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <Link to="/terms-and-conditions" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
               <FileText className="w-4 h-4" />
               Terms & Conditions
             </Link>
-            <Link 
-              to="/privacy-policy" 
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <Link to="/privacy-policy" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
               <Shield className="w-4 h-4" />
               Privacy Policy
             </Link>
-            <Link 
-              to="/refund-policy" 
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <Link to="/refund-policy" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
               <RefreshCw className="w-4 h-4" />
               Refund Policy
             </Link>
           </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            © 2025 NythicAI. All rights reserved.
-          </p>
+          <p className="text-xs text-muted-foreground mt-4">© 2025 NythicAI.</p>
         </div>
       </div>
     </div>;
