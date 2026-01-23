@@ -18,11 +18,20 @@ function getResponseLanguages(subjectName: string, medium: string): "kannada_onl
     // English, Social, Science - English + Kannada
     return "english_kannada";
   } else {
-    // Kannada Medium Rules
-    if (normalizedSubject === "ಕನ್ನಡ" || normalizedSubject.includes("ಕನ್ನಡ") || (normalizedSubject.includes("kannada") && !normalizedSubject.includes("english"))) return "kannada_only";
-    if (normalizedSubject === "ಇಂಗ್ಲೀಷ" || normalizedSubject.includes("english") || normalizedSubject.includes("ಇಂಗ್ಲೀಷ")) return "english_kannada";
-    if (normalizedSubject === "ಹಿಂದಿ" || normalizedSubject.includes("hindi") || normalizedSubject.includes("ಹಿಂದಿ")) return "hindi_kannada";
-    // ವಿಜ್ಞಾನ, ಗಣಿತ, ಸಮಾಜ ವಿಜ್ಞಾನ - Kannada only
+    // Kannada Medium Rules - use original subject name to preserve Kannada script
+    const subject = subjectName.trim();
+    
+    // English subject in Kannada medium (ಇಂಗ್ಲೀಷ) - bilingual English + Kannada
+    if (subject === "ಇಂಗ್ಲೀಷ" || subject.includes("ಇಂಗ್ಲೀಷ") || normalizedSubject.includes("english")) {
+      return "english_kannada";
+    }
+    
+    // Hindi subject in Kannada medium (ಹಿಂದಿ) - bilingual Hindi + Kannada
+    if (subject === "ಹಿಂದಿ" || subject.includes("ಹಿಂದಿ") || normalizedSubject.includes("hindi")) {
+      return "hindi_kannada";
+    }
+    
+    // All other Kannada medium subjects (ಕನ್ನಡ, ಗಣಿತ, ವಿಜ್ಞಾನ, ಸಮಾಜ ವಿಜ್ಞಾನ) - Kannada only
     return "kannada_only";
   }
 }
