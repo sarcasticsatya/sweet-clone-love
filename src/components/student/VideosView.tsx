@@ -56,8 +56,14 @@ export const VideosView = ({ chapterId }: VideosViewProps) => {
 
   if (videos.length === 0) {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground">
-        No videos available for this chapter yet
+      <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+        <div className="w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
+          <Play className="w-8 h-8 text-muted-foreground/50" />
+        </div>
+        <h4 className="font-medium text-base mb-1">Coming Soon...</h4>
+        <p className="text-sm text-muted-foreground">
+          Videos for this chapter are being prepared
+        </p>
       </div>
     );
   }
