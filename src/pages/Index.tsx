@@ -39,7 +39,7 @@ const Index = () => {
         
         <div className="space-y-4">
           <h1 className="text-5xl font-bold tracking-tight">NythicAI</h1>
-          <p className="text-sm text-primary font-medium">Your 24 X 7 Personal Teacher</p>
+          <p className="text-sm text-primary font-medium">Your 24 x 7 Personal Teacher</p>
           <h2 className="text-3xl font-semibold text-muted-foreground">
             EdTech Learning Platform
           </h2>
