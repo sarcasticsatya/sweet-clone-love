@@ -14,7 +14,6 @@ import { SessionExpiredDialog } from "@/components/student/SessionExpiredDialog"
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
-
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -23,19 +22,20 @@ const StudentDashboard = () => {
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [sessionInvalid, setSessionInvalid] = useState(false);
-
   const validateSession = useCallback(async () => {
     const sessionId = localStorage.getItem('nythic_session_id');
     if (!sessionId) {
       // No session ID means old login - don't kick them out, just skip validation
       return;
     }
-
     try {
-      const { data } = await supabase.functions.invoke('validate-session', {
-        body: { sessionId }
+      const {
+        data
+      } = await supabase.functions.invoke('validate-session', {
+        body: {
+          sessionId
+        }
       });
-
       if (data && !data.valid) {
         console.log('Session invalidated:', data.reason);
         setSessionInvalid(true);
@@ -45,7 +45,6 @@ const StudentDashboard = () => {
       // Don't kick user out on network errors
     }
   }, []);
-
   useEffect(() => {
     checkAuth();
   }, []);
@@ -58,16 +57,19 @@ const StudentDashboard = () => {
       return () => clearInterval(interval);
     }
   }, [user, validateSession]);
-
   const checkAuth = async () => {
     const {
-      data: { session },
+      data: {
+        session
+      }
     } = await supabase.auth.getSession();
     if (!session) {
       navigate("/auth");
       return;
     }
-    const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).single();
+    const {
+      data: roleData
+    } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).single();
     if (roleData?.role !== "student") {
       toast.error("Access denied. Students only.");
       navigate("/auth");
@@ -75,29 +77,29 @@ const StudentDashboard = () => {
     }
 
     // Check if student has any subject access
-    const { data: accessData } = await supabase
-      .from("student_subject_access")
-      .select("subject_id")
-      .eq("student_id", session.user.id);
-
+    const {
+      data: accessData
+    } = await supabase.from("student_subject_access").select("subject_id").eq("student_id", session.user.id);
     setHasSubjectAccess(accessData && accessData.length > 0);
     setUser(session.user);
   };
-
   const handleSignOut = async () => {
     setUser(null);
     localStorage.removeItem('nythic_session_id');
     // Set flag to prevent auto-login on auth page
     sessionStorage.setItem('just_signed_out', 'true');
     await supabase.auth.signOut();
-    navigate("/auth", { replace: true });
+    navigate("/auth", {
+      replace: true
+    });
   };
-
   const handleSessionExpiredSignIn = () => {
     localStorage.removeItem('nythic_session_id');
     sessionStorage.setItem('just_signed_out', 'true');
     supabase.auth.signOut();
-    navigate("/auth", { replace: true });
+    navigate("/auth", {
+      replace: true
+    });
   };
 
   // Inactivity auto-logout (30 minutes)
@@ -105,18 +107,20 @@ const StudentDashboard = () => {
     toast.info("You have been logged out due to inactivity");
     handleSignOut();
   }, []);
-
-  const { showWarning: showInactivityWarning, remainingSeconds, dismissWarning } = useInactivityLogout({
-    timeoutMs: 30 * 60 * 1000, // 30 minutes
+  const {
+    showWarning: showInactivityWarning,
+    remainingSeconds,
+    dismissWarning
+  } = useInactivityLogout({
+    timeoutMs: 30 * 60 * 1000,
+    // 30 minutes
     onLogout: handleInactivityLogout
   });
-
   if (!user) return null;
 
   // Show waiting for admin state if no subject access
   if (hasSubjectAccess === false) {
-    return (
-      <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
+    return <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
         <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center p-0.5">
@@ -161,21 +165,14 @@ const StudentDashboard = () => {
             </Button>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
+  return <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
       {/* Session Expired Dialog */}
       <SessionExpiredDialog open={sessionInvalid} onSignIn={handleSessionExpiredSignIn} />
       
       {/* Inactivity Warning Dialog */}
-      <InactivityWarningDialog 
-        open={showInactivityWarning} 
-        remainingSeconds={remainingSeconds}
-        onStayLoggedIn={dismissWarning}
-      />
+      <InactivityWarningDialog open={showInactivityWarning} remainingSeconds={remainingSeconds} onStayLoggedIn={dismissWarning} />
 
       {/* NotebookLM-style Header */}
       <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
@@ -185,7 +182,7 @@ const StudentDashboard = () => {
           </div>
           <div>
             <h1 className="text-sm md:text-base font-medium">NythicAI</h1>
-            <p className="text-[9px] md:text-[10px] text-muted-foreground">Your 24 X 7 Personal Teacher</p>
+            <p className="text-[9px] md:text-[10px] text-muted-foreground">Your 24x7 Personal Teacher</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -204,15 +201,10 @@ const StudentDashboard = () => {
                     <MessageCircle className="w-4 h-4 text-green-600" />
                     <span className="text-sm">+91 82773 23208</span>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={() => {
-                      navigator.clipboard.writeText("8277323208");
-                      toast.success("Phone number copied!");
-                    }}
-                  >
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                  navigator.clipboard.writeText("8277323208");
+                  toast.success("Phone number copied!");
+                }}>
                     <Copy className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -232,15 +224,11 @@ const StudentDashboard = () => {
       </header>
 
       {/* Desktop: Three-panel layout */}
-      {!isMobile && (
-        <div className="flex-1 flex overflow-hidden bg-muted/10" style={{ height: 'calc(100dvh - 56px)' }}>
+      {!isMobile && <div className="flex-1 flex overflow-hidden bg-muted/10" style={{
+      height: 'calc(100dvh - 56px)'
+    }}>
           <div className="w-80 border-r border-border bg-card shadow-sm overflow-hidden">
-            <SourcesPanel
-              selectedChapterId={selectedChapterId}
-              selectedSubjectId={selectedSubjectId}
-              onSelectChapter={setSelectedChapterId}
-              onSelectSubject={setSelectedSubjectId}
-            />
+            <SourcesPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} onSelectChapter={setSelectedChapterId} onSelectSubject={setSelectedSubjectId} />
           </div>
 
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -250,25 +238,18 @@ const StudentDashboard = () => {
           <div className="w-80 border-l border-border bg-card shadow-sm overflow-hidden">
             <ToolsPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} />
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Mobile: Full-screen chat with bottom navigation */}
-      {isMobile && (
-        <>
-          <div className="flex-1 flex flex-col overflow-hidden" style={{ height: 'calc(100dvh - 56px)', paddingBottom: '72px' }}>
+      {isMobile && <>
+          <div className="flex-1 flex flex-col overflow-hidden" style={{
+        height: 'calc(100dvh - 56px)',
+        paddingBottom: '72px'
+      }}>
             <ChatPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} />
           </div>
-          <MobileNav
-            selectedChapterId={selectedChapterId}
-            selectedSubjectId={selectedSubjectId}
-            onSelectChapter={setSelectedChapterId}
-            onSelectSubject={setSelectedSubjectId}
-          />
-        </>
-      )}
-    </div>
-  );
+          <MobileNav selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} onSelectChapter={setSelectedChapterId} onSelectSubject={setSelectedSubjectId} />
+        </>}
+    </div>;
 };
-
 export default StudentDashboard;
