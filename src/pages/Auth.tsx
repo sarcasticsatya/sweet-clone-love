@@ -286,7 +286,7 @@ const Auth = () => {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">NythicAI</CardTitle>
-          <CardDescription>Your 24 x 7 Personal Teacher</CardDescription>
+          <CardDescription>Your 24x7 Personal Teacher</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
