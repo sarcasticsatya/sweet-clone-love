@@ -65,6 +65,11 @@ export const PolicyLayout = ({
               </Link>
             </div>
           </div>
+          <div className="text-center mt-4 pt-4 border-t border-border/50">
+            <p className="text-xs text-muted-foreground/70">
+              Developed by <span className="font-medium text-muted-foreground">AIWOS</span>
+            </p>
+          </div>
         </div>
       </footer>
     </div>;

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Loader2, BookOpen } from "lucide-react";
+import { Footer } from "@/components/Footer";
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -50,69 +51,72 @@ const VerifyEmail = () => {
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="p-8 text-center space-y-6">
-          {/* Logo */}
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-primary-foreground" />
+    <div className="min-h-screen flex flex-col bg-muted/30">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center space-y-6">
+            {/* Logo */}
+            <div className="flex justify-center">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-primary-foreground" />
+              </div>
             </div>
-          </div>
 
-          {status === "loading" && (
-            <>
-              <Loader2 className="w-16 h-16 mx-auto text-primary animate-spin" />
-              <h2 className="text-xl font-semibold">Verifying your email...</h2>
-              <p className="text-muted-foreground">Please wait while we verify your account.</p>
-            </>
-          )}
+            {status === "loading" && (
+              <>
+                <Loader2 className="w-16 h-16 mx-auto text-primary animate-spin" />
+                <h2 className="text-xl font-semibold">Verifying your email...</h2>
+                <p className="text-muted-foreground">Please wait while we verify your account.</p>
+              </>
+            )}
 
-          {status === "success" && (
-            <>
-              <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-400" />
-              </div>
-              <h2 className="text-xl font-semibold text-green-600 dark:text-green-400">
-                Email Verified!
-              </h2>
-              <p className="text-muted-foreground">
-                {email ? (
-                  <>Your email <strong>{email}</strong> has been verified successfully.</>
-                ) : (
-                  "Your email has been verified successfully."
-                )}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                You can now sign in to your account. An admin will review and approve your account shortly.
-              </p>
-              <Button onClick={() => navigate("/auth")} className="w-full">
-                Go to Sign In
-              </Button>
-            </>
-          )}
-
-          {status === "error" && (
-            <>
-              <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                <XCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
-              </div>
-              <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">
-                Verification Failed
-              </h2>
-              <p className="text-muted-foreground">{message}</p>
-              <div className="space-y-2">
+            {status === "success" && (
+              <>
+                <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-xl font-semibold text-green-600 dark:text-green-400">
+                  Email Verified!
+                </h2>
+                <p className="text-muted-foreground">
+                  {email ? (
+                    <>Your email <strong>{email}</strong> has been verified successfully.</>
+                  ) : (
+                    "Your email has been verified successfully."
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You can now sign in to your account. An admin will review and approve your account shortly.
+                </p>
                 <Button onClick={() => navigate("/auth")} className="w-full">
                   Go to Sign In
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/not-verified")} className="w-full">
-                  Request New Verification Link
-                </Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              </>
+            )}
+
+            {status === "error" && (
+              <>
+                <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                  <XCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
+                </div>
+                <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">
+                  Verification Failed
+                </h2>
+                <p className="text-muted-foreground">{message}</p>
+                <div className="space-y-2">
+                  <Button onClick={() => navigate("/auth")} className="w-full">
+                    Go to Sign In
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/not-verified")} className="w-full">
+                    Request New Verification Link
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      <Footer minimal />
     </div>
   );
 };
