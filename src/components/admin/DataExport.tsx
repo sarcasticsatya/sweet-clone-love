@@ -11,7 +11,9 @@ export const DataExport = () => {
   const [exporting, setExporting] = useState<string | null>(null);
 
   const downloadCSV = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    // Add UTF-8 BOM for proper Excel display of Kannada/Unicode text
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + content], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = filename;

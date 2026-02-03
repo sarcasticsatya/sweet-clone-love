@@ -39,29 +39,33 @@ function safeParseJSON(content: string): any {
   }
 }
 
-// Detect language from content with subject-based priority
-function detectLanguage(content: string, nameKannada: string, subjectName: string): "kannada" | "hindi" | "english" {
-  // First priority: Check subject name for Hindi
-  // "ಹಿಂದಿ" is "Hindi" written in Kannada script
-  if (subjectName && (
-    subjectName.toLowerCase().includes('hindi') || 
-    subjectName === 'ಹಿಂದಿ'
-  )) {
-    console.log("Detected HINDI from subject name:", subjectName);
+// Detect language using subject medium as primary determinant
+function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
+  const normalizedSubject = subjectName.toLowerCase();
+  
+  console.log(`Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
+  
+  if (medium === "English") {
+    // English Medium subjects - output in English
+    // Except Hindi III which needs Hindi
+    if (normalizedSubject.includes("hindi")) {
+      console.log("Result: hindi (English medium Hindi subject)");
+      return "hindi";
+    }
+    console.log("Result: english (English medium)");
+    return "english";
+  }
+  
+  // Kannada Medium subjects
+  // Hindi subject (ಹಿಂದಿ) - output in Hindi
+  if (subjectName === "ಹಿಂದಿ" || normalizedSubject.includes("hindi")) {
+    console.log("Result: hindi (Kannada medium Hindi subject)");
     return "hindi";
   }
   
-  // Check for Hindi/Devanagari script in content (U+0900-U+097F)
-  if (/[\u0900-\u097F]/.test(content)) {
-    return "hindi";
-  }
-  
-  // Check for Kannada script (U+0C80-U+0CFF)
-  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
-    return "kannada";
-  }
-  
-  return "english";
+  // All other Kannada Medium subjects - output in Kannada
+  console.log("Result: kannada (Kannada medium)");
+  return "kannada";
 }
 
 async function generateQuizFromAI(chapter: any, language: "kannada" | "hindi" | "english", apiKey: string, retryCount = 0): Promise<any> {
@@ -71,53 +75,61 @@ async function generateQuizFromAI(chapter: any, language: "kannada" | "hindi" | 
   const questionTypes = ["conceptual", "factual", "application-based", "analytical", "comparative"];
   const selectedTypes = questionTypes.sort(() => Math.random() - 0.5).slice(0, 3).join(", ");
   
+  // Randomize example correct answers to avoid bias
+  const exampleCorrectAnswers = [0, 1, 2, 3];
+  const shuffledAnswers = exampleCorrectAnswers.sort(() => Math.random() - 0.5);
+  
   const systemPrompts = {
-    kannada: `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions in KANNADA (ಕನ್ನಡ).
+    kannada: `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions.
+
+LANGUAGE: STRICTLY KANNADA (ಕನ್ನಡ) ONLY
+- Questions MUST be in Kannada script ONLY
+- Options MUST be in Kannada script ONLY
+- NO English characters allowed (no "Mt", "a", "b", "Q1", etc.)
+- Use Kannada numerals if needed: ೧, ೨, ೩, ೪
+- All text must use Unicode range U+0C80-U+0CFF
+- Do NOT mix any English letters with Kannada text
 
 Random seed: ${randomSeed}
 Question types focus: ${selectedTypes}
 
-Rules:
-- Questions and options must be in Kannada script
-- Each question has exactly 4 options
-- correctAnswer is index 0-3
-- Make questions DIFFERENT from previous generations
-- Cover ALL aspects/topics from the content thoroughly
-- Include mix of easy, medium, and hard questions
+CRITICAL: Randomize correctAnswer across ALL questions (use 0, 1, 2, 3 evenly distributed).
+Do NOT always set correctAnswer to 0. Vary it: some 0, some 1, some 2, some 3.
 
 Return ONLY valid JSON:
-{"questions":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","options":["ಆ","ಬ","ಸ","ದ"],"correctAnswer":0}]}`,
-    hindi: `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions in HINDI (हिन्दी).
+{"questions":[{"question":"ಪ್ರಶ್ನೆ?","options":["ಆಯ್ಕೆ ೧","ಆಯ್ಕೆ ೨","ಆಯ್ಕೆ ೩","ಆಯ್ಕೆ ೪"],"correctAnswer":${shuffledAnswers[0]}}]}`,
+    hindi: `You are a quiz generator. Generate exactly 15 UNIQUE multiple-choice questions.
 
-Random seed: ${randomSeed}
-Question types focus: ${selectedTypes}
-
-Rules:
-- Questions and options must be in Hindi/Devanagari script (देवनागरी)
+LANGUAGE: STRICTLY HINDI (हिन्दी) ONLY
+- Questions MUST be in Hindi/Devanagari script ONLY
+- Options MUST be in Hindi/Devanagari script ONLY
+- NO English characters allowed
 - Use proper Hindi Unicode characters (U+0900-U+097F)
-- Each question has exactly 4 options
-- correctAnswer is index 0-3
-- Make questions DIFFERENT from previous generations
-- Cover ALL aspects/topics from the content thoroughly
-- Include mix of easy, medium, and hard questions
-- Act as a helpful Hindi teacher
-
-Return ONLY valid JSON:
-{"questions":[{"question":"हिंदी प्रश्न?","options":["अ","ब","स","द"],"correctAnswer":0}]}`,
-    english: `Generate exactly 15 UNIQUE multiple-choice questions in English.
+- Do NOT mix any English letters with Hindi text
 
 Random seed: ${randomSeed}
 Question types focus: ${selectedTypes}
 
-Rules:
-- Each question has exactly 4 options
-- correctAnswer is index 0-3
-- Make questions DIFFERENT from previous generations
-- Cover ALL aspects/topics from the content thoroughly
-- Include mix of easy, medium, and hard questions
+CRITICAL: Randomize correctAnswer across ALL questions (use 0, 1, 2, 3 evenly distributed).
+Do NOT always set correctAnswer to 0. Vary it: some 0, some 1, some 2, some 3.
 
 Return ONLY valid JSON:
-{"questions":[{"question":"Question?","options":["A","B","C","D"],"correctAnswer":0}]}`
+{"questions":[{"question":"हिंदी प्रश्न?","options":["अ","ब","स","द"],"correctAnswer":${shuffledAnswers[1]}}]}`,
+    english: `Generate exactly 15 UNIQUE multiple-choice questions in ENGLISH ONLY.
+
+LANGUAGE: STRICTLY ENGLISH
+- Questions and all options must be in English
+- NO Kannada or Hindi text allowed
+- Use proper English grammar and terminology
+
+Random seed: ${randomSeed}
+Question types focus: ${selectedTypes}
+
+CRITICAL: Randomize correctAnswer across ALL questions (use 0, 1, 2, 3 evenly distributed).
+Do NOT always set correctAnswer to 0. Vary it: some 0, some 1, some 2, some 3.
+
+Return ONLY valid JSON:
+{"questions":[{"question":"Question?","options":["Option A","Option B","Option C","Option D"],"correctAnswer":${shuffledAnswers[2]}}]}`
   };
   
   const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -180,11 +192,42 @@ Return ONLY valid JSON:
     
     // Validate language-specific content
     const allText = validQuestions.map((q: any) => q.question + q.options.join(" ")).join(" ");
-    if (language === "kannada" && !/[\u0C80-\u0CFF]/.test(allText)) {
-      throw new Error("No Kannada text found");
+    
+    if (language === "kannada") {
+      // Must contain Kannada script
+      if (!/[\u0C80-\u0CFF]/.test(allText)) {
+        throw new Error("No Kannada text found");
+      }
+      // Must NOT contain English letters (strict validation)
+      if (/[a-zA-Z]/.test(allText)) {
+        console.log("REJECTING: English characters found in Kannada output");
+        throw new Error("Output contains English characters - regenerating");
+      }
     }
-    if (language === "hindi" && !/[\u0900-\u097F]/.test(allText)) {
-      throw new Error("No Hindi text found");
+    
+    if (language === "hindi") {
+      // Must contain Hindi script
+      if (!/[\u0900-\u097F]/.test(allText)) {
+        throw new Error("No Hindi text found");
+      }
+      // Must NOT contain English letters
+      if (/[a-zA-Z]/.test(allText)) {
+        console.log("REJECTING: English characters found in Hindi output");
+        throw new Error("Output contains English characters - regenerating");
+      }
+    }
+    
+    if (language === "english") {
+      // Must NOT contain Kannada script
+      if (/[\u0C80-\u0CFF]/.test(allText)) {
+        console.log("REJECTING: Kannada characters found in English output");
+        throw new Error("Output contains Kannada characters - regenerating");
+      }
+      // Must NOT contain Hindi script
+      if (/[\u0900-\u097F]/.test(allText)) {
+        console.log("REJECTING: Hindi characters found in English output");
+        throw new Error("Output contains Hindi characters - regenerating");
+      }
     }
     
     return { questions: validQuestions };
@@ -298,6 +341,7 @@ serve(async (req) => {
       await supabaseClient.from("quizzes").delete().eq("chapter_id", chapterId);
     }
 
+    // Get chapter content with subject info including medium
     const { data: chapter } = await supabaseClient
       .from("chapters")
       .select(`
@@ -306,7 +350,8 @@ serve(async (req) => {
         name_kannada,
         subjects!inner (
           name,
-          name_kannada
+          name_kannada,
+          medium
         )
       `)
       .eq("id", chapterId)
@@ -319,9 +364,11 @@ serve(async (req) => {
       );
     }
 
-    const subjectName = (chapter.subjects as any)?.name || (chapter.subjects as any)?.name_kannada || "";
-    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "", subjectName);
-    console.log("DETECTED LANGUAGE:", language);
+    // Use medium-based language detection
+    const medium = (chapter.subjects as any)?.medium || "English";
+    const subjectName = (chapter.subjects as any)?.name || "";
+    const language = detectLanguage(medium, subjectName);
+    console.log("DETECTED LANGUAGE:", language, "| Medium:", medium, "| Subject:", subjectName);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

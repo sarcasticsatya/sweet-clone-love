@@ -435,6 +435,8 @@ export const ViewReports = () => {
   };
 
   const exportToCSV = () => {
+    // Add UTF-8 BOM for proper Excel display of Kannada/Unicode text
+    const BOM = '\uFEFF';
     const csvContent = [
       ["Student", "Subject", "Chapter", "Score", "Percentage", "Duration", "Date & Time"].join(","),
       ...filteredAttempts.map(a => [
@@ -455,7 +457,7 @@ export const ViewReports = () => {
       ].join(","))
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `quiz_reports_${new Date().toISOString().split('T')[0]}.csv`;

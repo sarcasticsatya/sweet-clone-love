@@ -7,25 +7,33 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Detect language from content with subject-based priority
-function detectLanguage(content: string, nameKannada: string, subjectName: string): "kannada" | "hindi" | "english" {
-  if (subjectName && (
-    subjectName.toLowerCase().includes('hindi') || 
-    subjectName === 'ಹಿಂದಿ'
-  )) {
-    console.log("Detected HINDI from subject name:", subjectName);
+// Detect language using subject medium as primary determinant
+function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
+  const normalizedSubject = subjectName.toLowerCase();
+  
+  console.log(`Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
+  
+  if (medium === "English") {
+    // English Medium subjects - output in English
+    // Except Hindi III which needs Hindi
+    if (normalizedSubject.includes("hindi")) {
+      console.log("Result: hindi (English medium Hindi subject)");
+      return "hindi";
+    }
+    console.log("Result: english (English medium)");
+    return "english";
+  }
+  
+  // Kannada Medium subjects
+  // Hindi subject (ಹಿಂದಿ) - output in Hindi
+  if (subjectName === "ಹಿಂದಿ" || normalizedSubject.includes("hindi")) {
+    console.log("Result: hindi (Kannada medium Hindi subject)");
     return "hindi";
   }
   
-  if (/[\u0900-\u097F]/.test(content)) {
-    return "hindi";
-  }
-  
-  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
-    return "kannada";
-  }
-  
-  return "english";
+  // All other Kannada Medium subjects - output in Kannada
+  console.log("Result: kannada (Kannada medium)");
+  return "kannada";
 }
 
 // Extract key points only (fast operation) - NO IMAGE GENERATION
@@ -42,8 +50,12 @@ async function extractKeyPoints(
     const languagePrompts = {
       kannada: {
         system: `Extract 4-5 KEY POINTS from this educational content.
-CRITICAL: Return ALL points in KANNADA (ಕನ್ನಡ) language.
-If content is in English, translate to Kannada.
+
+LANGUAGE: STRICTLY KANNADA (ಕನ್ನಡ) ONLY
+- Return ALL points in Kannada script ONLY
+- NO English characters allowed (no "Mt", "a", "b", etc.)
+- If content is in English, translate to Kannada
+
 Format: Return ONLY a JSON object:
 {"points": ["ಮೊದಲ ಪ್ರಮುಖ ಅಂಶ", "ಎರಡನೆಯ ಪ್ರಮುಖ ಅಂಶ"], "title": "ವಿಭಾಗದ ಶೀರ್ಷಿಕೆ"}
 Each point should be 5-15 words in Kannada.`,
@@ -51,7 +63,12 @@ Each point should be 5-15 words in Kannada.`,
       },
       hindi: {
         system: `Extract 4-5 KEY POINTS from this educational content.
-CRITICAL: Return ALL points in HINDI (हिन्दी) language.
+
+LANGUAGE: STRICTLY HINDI (हिन्दी) ONLY
+- Return ALL points in Hindi/Devanagari script ONLY
+- NO English characters allowed
+- If content is in English, translate to Hindi
+
 Format: Return ONLY a JSON object:
 {"points": ["पहला प्रमुख बिंदु", "दूसरा प्रमुख बिंदु"], "title": "खंड शीर्षक"}
 Each point should be 5-15 words in Hindi.`,
@@ -59,6 +76,11 @@ Each point should be 5-15 words in Hindi.`,
       },
       english: {
         system: `Extract 4-5 KEY POINTS from this educational content.
+
+LANGUAGE: STRICTLY ENGLISH
+- Return ALL points in English ONLY
+- NO Kannada or Hindi text allowed
+
 Format: Return ONLY a JSON object:
 {"points": ["First key point", "Second key point"], "title": "Section Title"}
 Each point should be 5-15 words.`,
@@ -365,7 +387,7 @@ serve(async (req) => {
       }
     }
 
-    // Get chapter content with subject info
+    // Get chapter content with subject info including medium
     const { data: chapter } = await supabaseClient
       .from("chapters")
       .select(`
@@ -374,7 +396,8 @@ serve(async (req) => {
         name_kannada,
         subjects!inner (
           name,
-          name_kannada
+          name_kannada,
+          medium
         )
       `)
       .eq("id", chapterId)
@@ -388,9 +411,12 @@ serve(async (req) => {
     }
 
     const chapterName = chapter.name_kannada || chapter.name;
-    const subjectName = (chapter.subjects as any)?.name || (chapter.subjects as any)?.name_kannada || "";
-    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "", subjectName);
-    console.log("DETECTED LANGUAGE:", language);
+    
+    // Use medium-based language detection
+    const medium = (chapter.subjects as any)?.medium || "English";
+    const subjectName = (chapter.subjects as any)?.name || "";
+    const language = detectLanguage(medium, subjectName);
+    console.log("DETECTED LANGUAGE:", language, "| Medium:", medium, "| Subject:", subjectName);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

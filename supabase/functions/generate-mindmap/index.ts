@@ -7,29 +7,33 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Detect language from content with subject-based priority
-function detectLanguage(content: string, nameKannada: string, subjectName: string): "kannada" | "hindi" | "english" {
-  // First priority: Check subject name for Hindi
-  // "ಹಿಂದಿ" is "Hindi" written in Kannada script
-  if (subjectName && (
-    subjectName.toLowerCase().includes('hindi') || 
-    subjectName === 'ಹಿಂದಿ'
-  )) {
-    console.log("Detected HINDI from subject name:", subjectName);
+// Detect language using subject medium as primary determinant
+function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
+  const normalizedSubject = subjectName.toLowerCase();
+  
+  console.log(`Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
+  
+  if (medium === "English") {
+    // English Medium subjects - output in English
+    // Except Hindi III which needs Hindi
+    if (normalizedSubject.includes("hindi")) {
+      console.log("Result: hindi (English medium Hindi subject)");
+      return "hindi";
+    }
+    console.log("Result: english (English medium)");
+    return "english";
+  }
+  
+  // Kannada Medium subjects
+  // Hindi subject (ಹಿಂದಿ) - output in Hindi
+  if (subjectName === "ಹಿಂದಿ" || normalizedSubject.includes("hindi")) {
+    console.log("Result: hindi (Kannada medium Hindi subject)");
     return "hindi";
   }
   
-  // Check for Hindi/Devanagari script in content (U+0900-U+097F)
-  if (/[\u0900-\u097F]/.test(content)) {
-    return "hindi";
-  }
-  
-  // Check for Kannada script (U+0C80-U+0CFF)
-  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
-    return "kannada";
-  }
-  
-  return "english";
+  // All other Kannada Medium subjects - output in Kannada
+  console.log("Result: kannada (Kannada medium)");
+  return "kannada";
 }
 
 // Helper function to check subject access
@@ -142,7 +146,7 @@ serve(async (req) => {
       }
     }
 
-    // Get chapter content with subject info
+    // Get chapter content with subject info including medium
     const { data: chapter } = await supabaseClient
       .from("chapters")
       .select(`
@@ -151,7 +155,8 @@ serve(async (req) => {
         name_kannada,
         subjects!inner (
           name,
-          name_kannada
+          name_kannada,
+          medium
         )
       `)
       .eq("id", chapterId)
@@ -172,23 +177,29 @@ serve(async (req) => {
     }
 
     const chapterName = chapter.name_kannada || chapter.name;
-    const subjectName = (chapter.subjects as any)?.name || (chapter.subjects as any)?.name_kannada || "";
-    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "", subjectName);
-    console.log("DETECTED LANGUAGE:", language);
+    
+    // Use medium-based language detection
+    const medium = (chapter.subjects as any)?.medium || "English";
+    const subjectName = (chapter.subjects as any)?.name || "";
+    const language = detectLanguage(medium, subjectName);
+    console.log("DETECTED LANGUAGE:", language, "| Medium:", medium, "| Subject:", subjectName);
 
     // Build language-specific prompt
     const languagePrompts = {
       kannada: `Create a hierarchical mind map structure for an educational chapter.
 
-CRITICAL: ALL TEXT MUST BE IN KANNADA (ಕನ್ನಡ) LANGUAGE.
-If the content is in English, translate everything to Kannada.
+LANGUAGE: STRICTLY KANNADA (ಕನ್ನಡ) ONLY
+- ALL text MUST be in Kannada script ONLY
+- NO English characters allowed (no "Mt", "a", "b", etc.)
+- If the content is in English, translate everything to Kannada
+- Use proper Kannada Unicode script (ಕನ್ನಡ ಅಕ್ಷರಗಳು)
 
 Return a JSON object:
 {
-  "title": "ಮುಖ್ಯ ವಿಷಯ (Main topic in Kannada)",
+  "title": "ಮುಖ್ಯ ವಿಷಯ",
   "branches": [
     {
-      "name": "ಶಾಖೆ ೧ (Branch name in Kannada)",
+      "name": "ಶಾಖೆ ೧",
       "color": "#3b82f6",
       "subbranches": ["ಉಪಶಾಖೆ ೧", "ಉಪಶಾಖೆ ೨"]
     }
@@ -200,20 +211,21 @@ Rules:
 - Create 4-6 main branches with Kannada names
 - Each branch should have 2-4 subbranches in Kannada
 - Keep text concise (2-6 words in Kannada per item)
-- Assign different colors to each branch: #3b82f6 (blue), #10b981 (green), #f59e0b (orange), #8b5cf6 (purple), #ef4444 (red), #06b6d4 (teal)
-- Use proper Kannada Unicode script (ಕನ್ನಡ ಅಕ್ಷರಗಳು)`,
+- Assign different colors to each branch: #3b82f6 (blue), #10b981 (green), #f59e0b (orange), #8b5cf6 (purple), #ef4444 (red), #06b6d4 (teal)`,
       hindi: `Create a hierarchical mind map structure for an educational chapter.
 
-CRITICAL: ALL TEXT MUST BE IN HINDI (हिन्दी) LANGUAGE.
-If the content is in English, translate everything to Hindi.
-Use proper Devanagari script (देवनागरी लिपि).
+LANGUAGE: STRICTLY HINDI (हिन्दी) ONLY
+- ALL text MUST be in Hindi/Devanagari script ONLY
+- NO English characters allowed
+- If the content is in English, translate everything to Hindi
+- Use proper Devanagari script (देवनागरी लिपि)
 
 Return a JSON object:
 {
-  "title": "मुख्य विषय (Main topic in Hindi)",
+  "title": "मुख्य विषय",
   "branches": [
     {
-      "name": "शाखा १ (Branch name in Hindi)",
+      "name": "शाखा १",
       "color": "#3b82f6",
       "subbranches": ["उपशाखा १", "उपशाखा २"]
     }
@@ -226,9 +238,13 @@ Rules:
 - Each branch should have 2-4 subbranches in Hindi
 - Keep text concise (2-6 words in Hindi per item)
 - Assign different colors to each branch: #3b82f6 (blue), #10b981 (green), #f59e0b (orange), #8b5cf6 (purple), #ef4444 (red), #06b6d4 (teal)
-- Use proper Hindi Unicode script (U+0900-U+097F)
-- Act as a helpful Hindi teacher`,
+- Use proper Hindi Unicode script (U+0900-U+097F)`,
       english: `Create a hierarchical mind map structure for an educational chapter.
+
+LANGUAGE: STRICTLY ENGLISH
+- ALL text MUST be in English ONLY
+- NO Kannada or Hindi text allowed
+- Use proper English grammar and terminology
 
 Return a JSON object:
 {

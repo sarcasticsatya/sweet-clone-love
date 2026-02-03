@@ -35,57 +35,68 @@ function safeParseJSON(content: string): any {
   }
 }
 
-// Detect language from content with subject-based priority
-function detectLanguage(content: string, nameKannada: string, subjectName: string): "kannada" | "hindi" | "english" {
-  // First priority: Check subject name for Hindi
-  // "ಹಿಂದಿ" is "Hindi" written in Kannada script
-  if (subjectName && (
-    subjectName.toLowerCase().includes('hindi') || 
-    subjectName === 'ಹಿಂದಿ'
-  )) {
-    console.log("Detected HINDI from subject name:", subjectName);
+// Detect language using subject medium as primary determinant
+function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
+  const normalizedSubject = subjectName.toLowerCase();
+  
+  console.log(`Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
+  
+  if (medium === "English") {
+    // English Medium subjects - output in English
+    // Except Hindi III which needs Hindi
+    if (normalizedSubject.includes("hindi")) {
+      console.log("Result: hindi (English medium Hindi subject)");
+      return "hindi";
+    }
+    console.log("Result: english (English medium)");
+    return "english";
+  }
+  
+  // Kannada Medium subjects
+  // Hindi subject (ಹಿಂದಿ) - output in Hindi
+  if (subjectName === "ಹಿಂದಿ" || normalizedSubject.includes("hindi")) {
+    console.log("Result: hindi (Kannada medium Hindi subject)");
     return "hindi";
   }
   
-  // Check for Hindi/Devanagari script in content (U+0900-U+097F)
-  if (/[\u0900-\u097F]/.test(content)) {
-    return "hindi";
-  }
-  
-  // Check for Kannada script (U+0C80-U+0CFF)
-  if (nameKannada && /[\u0C80-\u0CFF]/.test(nameKannada)) {
-    return "kannada";
-  }
-  
-  return "english";
+  // All other Kannada Medium subjects - output in Kannada
+  console.log("Result: kannada (Kannada medium)");
+  return "kannada";
 }
 
 async function generateFlashcardsFromAI(chapter: any, language: "kannada" | "hindi" | "english", apiKey: string, retryCount = 0): Promise<any> {
   const maxRetries = 2;
   
   const systemPrompts = {
-    kannada: `Generate exactly 10 flashcards in KANNADA (ಕನ್ನಡ).
+    kannada: `Generate exactly 10 flashcards.
 
-Rules:
-- Questions and answers must be in Kannada script
+LANGUAGE: STRICTLY KANNADA (ಕನ್ನಡ) ONLY
+- Questions MUST be in Kannada script ONLY
+- Answers MUST be in Kannada script ONLY
+- NO English characters allowed (no "Mt", "a", "b", etc.)
 - Use Kannada Unicode characters (U+0C80-U+0CFF)
+- Do NOT mix any English letters with Kannada text
 - Cover key concepts from the chapter
 
 Return ONLY valid JSON:
 {"flashcards":[{"question":"ಕನ್ನಡ ಪ್ರಶ್ನೆ?","answer":"ಕನ್ನಡ ಉತ್ತರ"}]}`,
-    hindi: `Generate exactly 10 flashcards in HINDI (हिन्दी).
+    hindi: `Generate exactly 10 flashcards.
 
-Rules:
-- Questions and answers must be in Hindi/Devanagari script (देवनागरी)
+LANGUAGE: STRICTLY HINDI (हिन्दी) ONLY
+- Questions MUST be in Hindi/Devanagari script ONLY
+- Answers MUST be in Hindi/Devanagari script ONLY
+- NO English characters allowed
 - Use Hindi Unicode characters (U+0900-U+097F)
+- Do NOT mix any English letters with Hindi text
 - Cover key concepts from the chapter
-- Be a helpful Hindi teacher
 
 Return ONLY valid JSON:
 {"flashcards":[{"question":"हिंदी प्रश्न?","answer":"हिंदी उत्तर"}]}`,
-    english: `Generate exactly 10 flashcards in English.
+    english: `Generate exactly 10 flashcards in ENGLISH ONLY.
 
-Rules:
+LANGUAGE: STRICTLY ENGLISH
+- Questions and answers must be in English
+- NO Kannada or Hindi text allowed
 - Cover key concepts from the chapter
 - Questions should test understanding
 - Answers should be concise but complete
@@ -146,11 +157,42 @@ Return ONLY valid JSON:
     
     // Validate language-specific content
     const allText = validCards.map((fc: any) => fc.question + fc.answer).join(" ");
-    if (language === "kannada" && !/[\u0C80-\u0CFF]/.test(allText)) {
-      throw new Error("No Kannada text found");
+    
+    if (language === "kannada") {
+      // Must contain Kannada script
+      if (!/[\u0C80-\u0CFF]/.test(allText)) {
+        throw new Error("No Kannada text found");
+      }
+      // Must NOT contain English letters (strict validation)
+      if (/[a-zA-Z]/.test(allText)) {
+        console.log("REJECTING: English characters found in Kannada output");
+        throw new Error("Output contains English characters - regenerating");
+      }
     }
-    if (language === "hindi" && !/[\u0900-\u097F]/.test(allText)) {
-      throw new Error("No Hindi text found");
+    
+    if (language === "hindi") {
+      // Must contain Hindi script
+      if (!/[\u0900-\u097F]/.test(allText)) {
+        throw new Error("No Hindi text found");
+      }
+      // Must NOT contain English letters
+      if (/[a-zA-Z]/.test(allText)) {
+        console.log("REJECTING: English characters found in Hindi output");
+        throw new Error("Output contains English characters - regenerating");
+      }
+    }
+    
+    if (language === "english") {
+      // Must NOT contain Kannada script
+      if (/[\u0C80-\u0CFF]/.test(allText)) {
+        console.log("REJECTING: Kannada characters found in English output");
+        throw new Error("Output contains Kannada characters - regenerating");
+      }
+      // Must NOT contain Hindi script
+      if (/[\u0900-\u097F]/.test(allText)) {
+        console.log("REJECTING: Hindi characters found in English output");
+        throw new Error("Output contains Hindi characters - regenerating");
+      }
     }
     
     return { flashcards: validCards };
@@ -266,7 +308,7 @@ serve(async (req) => {
         .eq("chapter_id", chapterId);
     }
 
-    // Get chapter content with subject info
+    // Get chapter content with subject info including medium
     const { data: chapter } = await supabaseClient
       .from("chapters")
       .select(`
@@ -275,7 +317,8 @@ serve(async (req) => {
         name_kannada,
         subjects!inner (
           name,
-          name_kannada
+          name_kannada,
+          medium
         )
       `)
       .eq("id", chapterId)
@@ -288,9 +331,11 @@ serve(async (req) => {
       );
     }
 
-    const subjectName = (chapter.subjects as any)?.name || (chapter.subjects as any)?.name_kannada || "";
-    const language = detectLanguage(chapter.content_extracted, chapter.name_kannada || "", subjectName);
-    console.log("DETECTED LANGUAGE:", language);
+    // Use medium-based language detection
+    const medium = (chapter.subjects as any)?.medium || "English";
+    const subjectName = (chapter.subjects as any)?.name || "";
+    const language = detectLanguage(medium, subjectName);
+    console.log("DETECTED LANGUAGE:", language, "| Medium:", medium, "| Subject:", subjectName);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
