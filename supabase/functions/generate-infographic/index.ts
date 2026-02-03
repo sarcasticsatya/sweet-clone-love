@@ -179,7 +179,71 @@ Ultra high resolution educational diagram.`;
 }
 
 // Split chapter content into logical sections
-async function splitIntoSections(content: string, chapterName: string, apiKey: string): Promise<{ title: string; content: string }[]> {
+async function splitIntoSections(
+  content: string, 
+  chapterName: string, 
+  language: "kannada" | "hindi" | "english",
+  apiKey: string
+): Promise<{ title: string; content: string }[]> {
+  const partLength = Math.ceil(content.length / 2);
+  
+  // For Kannada/Hindi content, generate proper titles via AI instead of extracting from potentially corrupted text
+  if (language === "kannada" || language === "hindi") {
+    const fallbackTitles = language === "kannada" 
+      ? ["ಮುಖ್ಯ ಪರಿಕಲ್ಪನೆಗಳು", "ಸಾರಾಂಶ"]
+      : ["मुख्य अवधारणाएं", "सारांश"];
+    
+    try {
+      console.log(`Generating ${language} section titles for chapter: ${chapterName}`);
+      
+      const titlePrompt = language === "kannada"
+        ? `Based on the chapter name "${chapterName}", generate 2 meaningful section titles in KANNADA script.
+Return JSON: {"titles": ["ಮೊದಲ ಭಾಗ ಶೀರ್ಷಿಕೆ", "ಎರಡನೇ ಭಾಗ ಶೀರ್ಷಿಕೆ"]}
+Make titles relevant to the chapter content. Use proper Kannada script only.`
+        : `Based on the chapter name "${chapterName}", generate 2 meaningful section titles in HINDI/Devanagari script.
+Return JSON: {"titles": ["पहला भाग शीर्षक", "दूसरा भाग शीर्षक"]}
+Make titles relevant to the chapter content. Use proper Hindi script only.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: titlePrompt }
+          ],
+          response_format: { type: "json_object" }
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const result = JSON.parse(data.choices[0]?.message?.content || "{}");
+        const titles = result.titles || fallbackTitles;
+        
+        console.log(`Generated ${language} titles:`, titles);
+        
+        return [
+          { title: titles[0] || fallbackTitles[0], content: content.substring(0, partLength) },
+          { title: titles[1] || fallbackTitles[1], content: content.substring(partLength) }
+        ];
+      }
+    } catch (error) {
+      console.error(`Error generating ${language} titles:`, error);
+    }
+    
+    // Fallback to default titles
+    console.log(`Using fallback ${language} titles`);
+    return [
+      { title: fallbackTitles[0], content: content.substring(0, partLength) },
+      { title: fallbackTitles[1], content: content.substring(partLength) }
+    ];
+  }
+
+  // English content - use existing AI-based section splitting
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -217,7 +281,6 @@ Rules:
     const result = JSON.parse(data.choices[0]?.message?.content || "{}");
     
     if (!result.sections || result.sections.length === 0) {
-      const partLength = Math.ceil(content.length / 2);
       return [
         { title: "Key Concepts", content: content.substring(0, partLength) },
         { title: "Summary", content: content.substring(partLength) }
@@ -238,18 +301,16 @@ Rules:
       if (startIdx !== -1 && endIdx > startIdx) {
         sections.push({ title: section.title, content: content.substring(startIdx, endIdx) });
       } else {
-        const partLength = Math.ceil(content.length / result.sections.length);
         sections.push({ title: section.title, content: content.substring(i * partLength, (i + 1) * partLength) });
       }
     }
 
     return sections.length > 0 ? sections : [
-      { title: "Key Concepts", content: content.substring(0, Math.ceil(content.length / 2)) },
-      { title: "Summary", content: content.substring(Math.ceil(content.length / 2)) }
+      { title: "Key Concepts", content: content.substring(0, partLength) },
+      { title: "Summary", content: content.substring(partLength) }
     ];
   } catch (error) {
     console.error("Error splitting sections:", error);
-    const partLength = Math.ceil(content.length / 2);
     return [
       { title: "Key Concepts", content: content.substring(0, partLength) },
       { title: "Summary", content: content.substring(partLength) }
@@ -426,10 +487,11 @@ serve(async (req) => {
 
     // PHASE 1: Quick mode - extract key points only (returns in ~2-3 seconds)
     console.log("Splitting chapter into sections...");
-    const sections = await splitIntoSections(chapter.content_extracted, chapterName, LOVABLE_API_KEY);
-    console.log(`Created ${sections.length} sections`);
+    const sections = await splitIntoSections(chapter.content_extracted, chapterName, language, LOVABLE_API_KEY);
+    console.log(`Created ${sections.length} sections with titles:`, sections.map(s => s.title));
 
     // Extract key points for all sections in parallel (fast)
+    // Use the AI-generated section titles (not corrupted PDF content)
     const keyPointsPromises = sections.slice(0, 2).map((section, idx) =>
       extractKeyPoints(section.content, section.title, idx + 1, language, LOVABLE_API_KEY)
     );
