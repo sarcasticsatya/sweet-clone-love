@@ -12,21 +12,7 @@ const RefundPolicy = () => {
         <ol className="list-decimal list-outside ml-6 space-y-4">
           <li>
             Cancellations will only be considered if the request is made within <strong>7 days</strong> of placing the
-            order. However, cancellation requests may not be entertained if the orders have been communicated to such
-            sellers / merchant(s) listed on the Platform and they have initiated the process of shipping them, or the
-            product is out for delivery. In such an event, you may choose to reject the product at the doorstep.
-          </li>
-
-          <li>
-            NythicAI does not accept cancellation requests for perishable items like flowers, eatables, etc. However,
-            the refund / replacement can be made if the user establishes that the quality of the product delivered is
-            not good.
-          </li>
-
-          <li>
-            In case of receipt of damaged or defective items, please report to our customer service team. The request
-            would be entertained once the seller/ merchant listed on the Platform, has checked and determined the same
-            at its own end. This should be reported within <strong>7 days</strong> of receipt of products.
+            order.
           </li>
 
           <li>
