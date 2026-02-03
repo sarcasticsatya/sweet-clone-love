@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -6,9 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Image, RefreshCw, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isKannadaUIRequired, infographicText } from "@/lib/languageUtils";
 
 interface InfographicViewProps {
   chapterId: string;
+  subjectId: string | null;
 }
 
 interface KannadaPage {
@@ -24,7 +26,7 @@ interface Infographic {
   images_pending?: boolean;
 }
 
-export const InfographicView = ({ chapterId }: InfographicViewProps) => {
+export const InfographicView = ({ chapterId, subjectId }: InfographicViewProps) => {
   const [infographic, setInfographic] = useState<Infographic | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -32,6 +34,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [imagesPending, setImagesPending] = useState(false);
   const [imagesReady, setImagesReady] = useState(0);
+  const [useKannadaUI, setUseKannadaUI] = useState(false);
 
   useEffect(() => {
     setInfographic(null);
@@ -39,10 +42,31 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
     setInitialLoad(true);
     setImagesPending(false);
     setImagesReady(0);
+    fetchSubjectInfo();
     if (chapterId) {
       loadInfographic();
     }
-  }, [chapterId]);
+  }, [chapterId, subjectId]);
+
+  const fetchSubjectInfo = async () => {
+    if (!subjectId) return;
+    
+    try {
+      const { data: subject } = await supabase
+        .from("subjects")
+        .select("name, medium")
+        .eq("id", subjectId)
+        .single();
+      
+      if (subject) {
+        setUseKannadaUI(isKannadaUIRequired(subject.name, subject.medium));
+      }
+    } catch (error) {
+      console.error("Error fetching subject info:", error);
+    }
+  };
+
+  const t = useKannadaUI ? infographicText.kn : infographicText.en;
 
   // Poll for image updates when images are pending
   useEffect(() => {
@@ -73,7 +97,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
           // Stop polling when all images are ready
           if (!infographicData.images_pending) {
             setImagesPending(false);
-            toast.success("ಚಿತ್ರಗಳು ಸಿದ್ಧವಾಗಿವೆ! / Images ready!");
+            toast.success(t.imagesReady);
           }
         }
       } catch (error) {
@@ -82,7 +106,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
     }, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [imagesPending, chapterId]);
+  }, [imagesPending, chapterId, t.imagesReady]);
 
   const loadInfographic = async () => {
     if (!chapterId) return;
@@ -155,7 +179,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
         });
         setLoading(false);
         setImagesPending(true);
-        toast.success("ಪ್ರಮುಖ ಅಂಶಗಳು ಸಿದ್ಧ! / Key points ready!");
+        toast.success(t.keyPointsReady);
 
         // Now trigger full generation in background
         supabase.functions.invoke("generate-infographic", {
@@ -168,7 +192,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
               images_pending: false
             });
             setImagesPending(false);
-            toast.success("ಇನ್ಫೋಗ್ರಾಫಿಕ್ ಸಂಪೂರ್ಣ! / Infographic complete!");
+            toast.success(t.complete);
           }
         }).catch(console.error);
       }
@@ -201,7 +225,9 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
     return (
       <div className="flex flex-col items-center justify-center h-full py-8 gap-2">
         <Loader2 className="w-5 h-5 animate-spin text-primary" />
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <p className="text-xs text-muted-foreground">
+          {useKannadaUI ? "ಲೋಡ್ ಆಗುತ್ತಿದೆ..." : "Loading..."}
+        </p>
       </div>
     );
   }
@@ -214,7 +240,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-xs flex items-center gap-2">
             <Image className="w-3.5 h-3.5" />
-            ಇನ್ಫೋಗ್ರಾಫಿಕ್
+            {t.title}
           </h3>
           {infographic && (
             <Button 
@@ -223,19 +249,19 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
               onClick={() => generateInfographic(true)}
               disabled={loading}
               className="h-6 w-6 p-0"
-              title="Regenerate"
+              title={useKannadaUI ? "ಪುನಃ ರಚಿಸಿ" : "Regenerate"}
             >
               <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           )}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          ಅಧ್ಯಾಯದ ದೃಶ್ಯ ಸಾರಾಂಶ
+          {t.subtitle}
         </p>
         {imagesPending && (
           <div className="mt-2 flex items-center gap-2 text-[10px] text-primary">
             <Loader2 className="w-3 h-3 animate-spin" />
-            <span>ಚಿತ್ರಗಳನ್ನು ರಚಿಸಲಾಗುತ್ತಿದೆ... ({imagesReady}/{totalPages})</span>
+            <span>{t.generatingImages(imagesReady, totalPages)}</span>
           </div>
         )}
       </div>
@@ -251,7 +277,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-xs font-medium text-foreground">ಪ್ರಮುಖ ಅಂಶಗಳನ್ನು ಹೊರತೆಗೆಯಲಾಗುತ್ತಿದೆ...</p>
+                <p className="text-xs font-medium text-foreground">{t.generating}</p>
               </div>
             </div>
           ) : kannadaPages.length > 0 ? (
@@ -269,7 +295,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    ಪುಟ {currentPage + 1} / {totalPages}
+                    {t.page(currentPage + 1, totalPages)}
                   </span>
                   <Button
                     variant="outline"
@@ -310,7 +336,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                   <Skeleton className="w-full h-48 rounded-lg" />
                   <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>ಚಿತ್ರ ರಚಿಸಲಾಗುತ್ತಿದೆ / Generating image...</span>
+                    <span>{t.generatingImage}</span>
                   </div>
                 </div>
               ) : null}
@@ -319,7 +345,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
               {currentKannadaPage?.keyPoints && currentKannadaPage.keyPoints.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">
-                    ಪ್ರಮುಖ ಅಂಶಗಳು:
+                    {t.keyPoints}
                   </p>
                   <div className="space-y-2">
                     {currentKannadaPage.keyPoints.map((point, idx) => (
@@ -376,10 +402,10 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  ಇನ್ಫೋಗ್ರಾಫಿಕ್
+                  {t.title}
                 </p>
                 <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">
-                  ಅಧ್ಯಾಯದ ದೃಶ್ಯ ಸಾರಾಂಶವನ್ನು ರಚಿಸಿ
+                  {t.createDesc}
                 </p>
               </div>
               <Button 
@@ -388,7 +414,7 @@ export const InfographicView = ({ chapterId }: InfographicViewProps) => {
                 disabled={loading}
                 className="text-xs"
               >
-                ಇನ್ಫೋಗ್ರಾಫಿಕ್ ರಚಿಸಿ
+                {t.create}
               </Button>
             </div>
           )}

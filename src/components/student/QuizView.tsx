@@ -8,9 +8,11 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, Eye, RotateCcw, Loader2, History, Trophy, Brain, Sparkles } from "lucide-react";
+import { isKannadaUIRequired, quizText } from "@/lib/languageUtils";
 
 interface QuizViewProps {
   chapterId: string;
+  subjectId: string | null;
 }
 
 interface QuizAttempt {
@@ -21,44 +23,48 @@ interface QuizAttempt {
 }
 
 // Educational loading animation component
-const QuizLoadingAnimation = () => (
-  <div className="flex flex-col items-center justify-center p-6 md:p-8 gap-4">
-    <div className="relative">
-      {/* Animated brain icon */}
-      <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
-        <Brain className="w-8 h-8 md:w-10 md:h-10 text-primary animate-bounce" />
+const QuizLoadingAnimation = ({ useKannadaUI }: { useKannadaUI: boolean }) => {
+  const t = useKannadaUI ? quizText.kn : quizText.en;
+  
+  return (
+    <div className="flex flex-col items-center justify-center p-6 md:p-8 gap-4">
+      <div className="relative">
+        {/* Animated brain icon */}
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
+          <Brain className="w-8 h-8 md:w-10 md:h-10 text-primary animate-bounce" />
+        </div>
+        {/* Orbiting sparkles */}
+        <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+          <Sparkles className="w-4 h-4 text-yellow-500 absolute -top-1 left-1/2 -translate-x-1/2" />
+        </div>
+        <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '1s' }}>
+          <Sparkles className="w-3 h-3 text-blue-500 absolute -right-1 top-1/2 -translate-y-1/2" />
+        </div>
+        <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '2s' }}>
+          <Sparkles className="w-3 h-3 text-green-500 absolute -left-1 top-1/2 -translate-y-1/2" />
+        </div>
       </div>
-      {/* Orbiting sparkles */}
-      <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
-        <Sparkles className="w-4 h-4 text-yellow-500 absolute -top-1 left-1/2 -translate-x-1/2" />
+      <div className="text-center space-y-2">
+        <p className="text-sm md:text-base font-medium text-foreground">{t.generatingQuiz}</p>
+        <p className="text-xs md:text-sm text-muted-foreground animate-pulse">
+          {t.creatingQuestions}
+        </p>
       </div>
-      <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '1s' }}>
-        <Sparkles className="w-3 h-3 text-blue-500 absolute -right-1 top-1/2 -translate-y-1/2" />
-      </div>
-      <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '2s' }}>
-        <Sparkles className="w-3 h-3 text-green-500 absolute -left-1 top-1/2 -translate-y-1/2" />
+      {/* Progress dots */}
+      <div className="flex gap-1.5">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="w-2 h-2 rounded-full bg-primary animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
       </div>
     </div>
-    <div className="text-center space-y-2">
-      <p className="text-sm md:text-base font-medium text-foreground">Generating Quiz</p>
-      <p className="text-xs md:text-sm text-muted-foreground animate-pulse">
-        Creating questions...
-      </p>
-    </div>
-    {/* Progress dots */}
-    <div className="flex gap-1.5">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className="w-2 h-2 rounded-full bg-primary animate-bounce"
-          style={{ animationDelay: `${i * 0.15}s` }}
-        />
-      ))}
-    </div>
-  </div>
-);
+  );
+};
 
-export const QuizView = ({ chapterId }: QuizViewProps) => {
+export const QuizView = ({ chapterId, subjectId }: QuizViewProps) => {
   const [quiz, setQuiz] = useState<any>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -68,10 +74,32 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
   const [loading, setLoading] = useState(false);
   const [pastAttempts, setPastAttempts] = useState<QuizAttempt[]>([]);
   const [quizStartTime, setQuizStartTime] = useState<string | null>(null);
+  const [useKannadaUI, setUseKannadaUI] = useState(false);
 
   useEffect(() => {
+    fetchSubjectInfo();
     loadPastAttempts();
-  }, [chapterId]);
+  }, [chapterId, subjectId]);
+
+  const fetchSubjectInfo = async () => {
+    if (!subjectId) return;
+    
+    try {
+      const { data: subject } = await supabase
+        .from("subjects")
+        .select("name, medium")
+        .eq("id", subjectId)
+        .single();
+      
+      if (subject) {
+        setUseKannadaUI(isKannadaUIRequired(subject.name, subject.medium));
+      }
+    } catch (error) {
+      console.error("Error fetching subject info:", error);
+    }
+  };
+
+  const t = useKannadaUI ? quizText.kn : quizText.en;
 
   const loadPastAttempts = async () => {
     try {
@@ -146,7 +174,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
     }
 
     if (Object.keys(answers).length !== quiz.questions.length) {
-      toast.error("Please answer all questions");
+      toast.error(useKannadaUI ? "ದಯವಿಟ್ಟು ಎಲ್ಲಾ ಪ್ರಶ್ನೆಗಳಿಗೆ ಉತ್ತರಿಸಿ" : "Please answer all questions");
       return;
     }
 
@@ -184,7 +212,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
       setResult(data);
       setSubmitted(true);
-      toast.success(`Quiz completed! Score: ${data.percentage}%`);
+      toast.success(`${useKannadaUI ? "ಕ್ವಿಜ್ ಪೂರ್ಣಗೊಂಡಿದೆ! ಅಂಕ" : "Quiz completed! Score"}: ${data.percentage}%`);
       loadPastAttempts();
     } catch (error: any) {
       console.error("Submit quiz catch:", error);
@@ -200,7 +228,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
 
   // Loading state with educational animation
   if (loading && !quiz) {
-    return <QuizLoadingAnimation />;
+    return <QuizLoadingAnimation useKannadaUI={useKannadaUI} />;
   }
 
   // Initial state - no quiz loaded
@@ -216,17 +244,17 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
           {bestScore !== null && (
             <div className="flex items-center justify-center gap-2 p-3 md:p-4 bg-primary/10 rounded-lg">
               <Trophy className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-              <span className="text-xs md:text-sm font-medium">Best Score: {bestScore}%</span>
+              <span className="text-xs md:text-sm font-medium">{t.bestScore}: {bestScore}%</span>
             </div>
           )}
 
           <div className="text-center space-y-3">
             <p className="text-xs md:text-sm text-muted-foreground">
-              Test your knowledge with a quiz
+              {t.testKnowledge}
             </p>
             <Button size="default" onClick={loadQuiz} disabled={loading} className="w-full">
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Start New Quiz
+              {t.startNewQuiz}
             </Button>
           </div>
 
@@ -235,7 +263,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs md:text-sm font-medium text-muted-foreground">
                 <History className="w-3 h-3 md:w-4 md:h-4" />
-                Recent Attempts
+                {t.recentAttempts}
               </div>
               <div className="space-y-2">
                 {pastAttempts.slice(0, 5).map((attempt) => {
@@ -273,9 +301,9 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
       <ScrollArea className="h-full">
         <div className="p-3 md:p-4 space-y-3 md:space-y-4">
           <div className="flex items-center justify-between sticky top-0 bg-card py-2 z-10">
-            <h3 className="font-semibold text-sm md:text-base">Solutions</h3>
+            <h3 className="font-semibold text-sm md:text-base">{t.solutions}</h3>
             <Button variant="outline" size="sm" onClick={() => setShowSolutions(false)}>
-              Back
+              {t.back}
             </Button>
           </div>
           
@@ -324,7 +352,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
           
           <Button onClick={loadQuiz} className="w-full">
             <RotateCcw className="w-4 h-4 mr-2" />
-            Take New Quiz
+            {t.newQuiz}
           </Button>
         </div>
       </ScrollArea>
@@ -347,13 +375,13 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
                   {percentage}%
                 </div>
                 <div className="text-sm md:text-base text-muted-foreground">
-                  {result.score} of {result.totalQuestions} correct
+                  {result.score} / {result.totalQuestions} {t.correct}
                 </div>
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between text-xs md:text-sm text-muted-foreground">
-                  <span>Score</span>
+                  <span>{t.score}</span>
                   <span>{percentage}%</span>
                 </div>
                 <div className="h-3 bg-muted rounded-full overflow-hidden">
@@ -366,11 +394,11 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
               
               <div className="mt-4 p-3 rounded bg-muted/50 text-center">
                 {percentage >= 70 ? (
-                  <p className="text-sm md:text-base text-green-600 font-medium">🎉 Excellent!</p>
+                  <p className="text-sm md:text-base text-green-600 font-medium">{t.excellent}</p>
                 ) : percentage >= 50 ? (
-                  <p className="text-sm md:text-base text-yellow-600 font-medium">👍 Good effort!</p>
+                  <p className="text-sm md:text-base text-yellow-600 font-medium">{t.goodEffort}</p>
                 ) : (
-                  <p className="text-sm md:text-base text-red-600 font-medium">📚 Keep practicing!</p>
+                  <p className="text-sm md:text-base text-red-600 font-medium">{t.keepPracticing}</p>
                 )}
               </div>
             </CardContent>
@@ -379,11 +407,11 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={() => setShowSolutions(true)}>
               <Eye className="w-4 h-4 mr-2" />
-              Solutions
+              {t.solutions}
             </Button>
             <Button onClick={loadQuiz}>
               <RotateCcw className="w-4 h-4 mr-2" />
-              New Quiz
+              {t.newQuiz}
             </Button>
           </div>
         </div>
@@ -401,14 +429,14 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
         {/* Progress */}
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs md:text-sm text-muted-foreground">
-            <span>Progress</span>
+            <span>{t.progress}</span>
             <span>{Object.keys(answers).length}/{questions.length}</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
         
         <div className="text-xs md:text-sm text-muted-foreground">
-          Q{currentQuestionIndex + 1} of {questions.length}
+          Q{currentQuestionIndex + 1} / {questions.length}
         </div>
 
         <Card>
@@ -446,7 +474,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
             disabled={currentQuestionIndex === 0}
             className="flex-1"
           >
-            Previous
+            {t.previous}
           </Button>
           
           {currentQuestionIndex === questions.length - 1 ? (
@@ -457,7 +485,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
               className="flex-1"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Submit
+              {t.submit}
             </Button>
           ) : (
             <Button
@@ -465,7 +493,7 @@ export const QuizView = ({ chapterId }: QuizViewProps) => {
               onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))}
               className="flex-1"
             >
-              Next
+              {t.next}
             </Button>
           )}
         </div>
