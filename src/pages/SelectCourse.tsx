@@ -12,6 +12,7 @@ import { Check, CreditCard, Calendar, BookOpen, Loader2 } from "lucide-react";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 import { toast as sonnerToast } from "sonner";
+import { Footer } from "@/components/Footer";
 
 interface CoursBundle {
   id: string;
@@ -221,14 +222,14 @@ const SelectCourse = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
         remainingSeconds={remainingSeconds}
         onStayLoggedIn={dismissWarning}
       />
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Choose Your Course</h1>
           <p className="text-muted-foreground">
@@ -380,6 +381,8 @@ const SelectCourse = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Footer minimal />
     </div>
   );
 };
