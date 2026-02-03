@@ -17,11 +17,11 @@ const RefundPolicy = () => {
             product is out for delivery. In such an event, you may choose to reject the product at the doorstep.
           </li>
 
-          {/* <li>
-            NythicAI does not accept cancellation requests for perishable items like flowers, eatables, etc.
-            However, the refund / replacement can be made if the user establishes that the quality of the
-            product delivered is not good.
-          </li> */}
+          <li>
+            NythicAI does not accept cancellation requests for perishable items like flowers, eatables, etc. However,
+            the refund / replacement can be made if the user establishes that the quality of the product delivered is
+            not good.
+          </li>
 
           <li>
             In case of receipt of damaged or defective items, please report to our customer service team. The request
@@ -42,7 +42,7 @@ const RefundPolicy = () => {
 
           <li>
             In case of any refunds approved by NythicAI, it will take <strong>4 days</strong> for the refund to be
-            processed to you.
+            processed to you and will be credited in your original payment option.
           </li>
         </ol>
 
