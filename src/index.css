@@ -64,13 +64,3 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
-
-@layer utilities {
-  .animate-gradient {
-    background-size: 200% 200%;
-  }
-  
-  .glow-primary {
-    box-shadow: 0 0 40px hsl(var(--primary) / 0.3);
-  }
-}
