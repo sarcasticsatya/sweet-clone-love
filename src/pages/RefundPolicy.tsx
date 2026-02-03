@@ -9,24 +9,12 @@ const RefundPolicy = () => {
 
         <ol className="list-decimal list-outside ml-6 space-y-4">
           <li>
-            Cancellations will only be considered if the request is made within <strong>3 days</strong> of placing the order. However,
-            cancellation requests may not be entertained if the orders have been communicated to such sellers /
-            merchant(s) listed on the Platform and they have initiated the process of shipping them, or the
-            product is out for delivery. In such an event, you may choose to reject the product at the doorstep.
-          </li>
-
-          <li>
-        </li>
-
-          <li>
-            In case of receipt of damaged or defective items, please report to our customer service team. The
-            request would be entertained once the seller/ merchant listed on the Platform, has checked and
-            determined the same at its own end. This should be reported within <strong>7 days</strong> of receipt of products.
+            Cancellations will only be considered if the request is made within <strong>7 days</strong> of placing the order.
           </li>
 
           <li>
             In case you feel that the product received is not as shown on the site or as per your expectations,
-            you must bring it to the notice of our customer service within <strong>7 days</strong> of receiving the product. The
+            you must bring it to the notice of our customer service within <strong>4 days</strong> of receiving the product. The
             customer service team after looking into your complaint will take an appropriate decision.
           </li>
 
@@ -37,7 +25,7 @@ const RefundPolicy = () => {
 
           <li>
             In case of any refunds approved by NythicAI, it will take <strong>4 days</strong> for the refund to be processed to
-            you.
+            you, the amount will be credited to your original payment mode.
           </li>
         </ol>
 
