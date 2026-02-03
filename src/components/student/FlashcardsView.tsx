@@ -3,23 +3,47 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, RotateCcw, Loader2, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
+import { isKannadaUIRequired, flashcardsText } from "@/lib/languageUtils";
 
 interface FlashcardsViewProps {
   chapterId: string;
+  subjectId: string | null;
 }
 
-export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
+export const FlashcardsView = ({ chapterId, subjectId }: FlashcardsViewProps) => {
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isCached, setIsCached] = useState(false);
+  const [useKannadaUI, setUseKannadaUI] = useState(false);
 
   useEffect(() => {
+    fetchSubjectInfo();
     fetchFlashcards();
-  }, [chapterId]);
+  }, [chapterId, subjectId]);
+
+  const fetchSubjectInfo = async () => {
+    if (!subjectId) return;
+    
+    try {
+      const { data: subject } = await supabase
+        .from("subjects")
+        .select("name, medium")
+        .eq("id", subjectId)
+        .single();
+      
+      if (subject) {
+        setUseKannadaUI(isKannadaUIRequired(subject.name, subject.medium));
+      }
+    } catch (error) {
+      console.error("Error fetching subject info:", error);
+    }
+  };
+
+  const t = useKannadaUI ? flashcardsText.kn : flashcardsText.en;
 
   // First try to fetch from database, then generate if not found
   const fetchFlashcards = async () => {
@@ -79,7 +103,7 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
       setIsCached(data.cached || false);
       
       if (regenerate) {
-        toast.success("Flashcards regenerated successfully!");
+        toast.success(useKannadaUI ? "ಫ್ಲಾಶ್‌ಕಾರ್ಡ್‌ಗಳನ್ನು ಪುನಃ ರಚಿಸಲಾಗಿದೆ!" : "Flashcards regenerated successfully!");
       }
     } catch (error: any) {
       toast.error("Failed to generate flashcards: " + error.message);
@@ -107,7 +131,7 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
       <div className="flex flex-col items-center justify-center p-6 gap-2">
         <Loader2 className="w-5 h-5 animate-spin text-primary" />
         <p className="text-xs text-muted-foreground">
-          {initialLoading ? "Loading flashcards..." : "Generating flashcards..."}
+          {initialLoading ? t.loading : t.generating}
         </p>
       </div>
     );
@@ -117,10 +141,10 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
     return (
       <div className="p-3 text-center">
         <p className="text-xs text-muted-foreground mb-3">
-          No flashcards available yet
+          {t.noCards}
         </p>
         <Button size="sm" onClick={() => generateFlashcards(false)} className="text-xs">
-          Generate Flashcards
+          {t.generate}
         </Button>
       </div>
     );
@@ -132,18 +156,18 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
     <div className="p-3 space-y-3">
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>
-          Card {currentIndex + 1} of {flashcards.length}
-          {isCached && <span className="ml-1 text-green-600">(cached)</span>}
+          {t.cardOf(currentIndex + 1, flashcards.length)}
+          {isCached && <span className="ml-1 text-green-600">{t.cached}</span>}
         </span>
         <Button 
           size="sm" 
           variant="ghost" 
           onClick={handleRegenerate} 
           className="h-6 px-2 gap-1"
-          title="Regenerate flashcards"
+          title={useKannadaUI ? "ಪುನಃ ರಚಿಸಿ" : "Regenerate flashcards"}
         >
           <RefreshCw className="w-3 h-3" />
-          <span className="text-[10px]">New</span>
+          <span className="text-[10px]">{t.new}</span>
         </Button>
       </div>
 
@@ -154,14 +178,14 @@ export const FlashcardsView = ({ chapterId }: FlashcardsViewProps) => {
         <CardContent className="p-4 text-center w-full flex flex-col h-full">
           <div className="flex-1 flex flex-col justify-center">
             <p className="text-xs font-medium mb-2 text-muted-foreground">
-              {showAnswer ? "Answer" : "Question"}
+              {showAnswer ? t.answer : t.question}
             </p>
             <p className="text-sm leading-relaxed">
               {showAnswer ? currentCard.answer : currentCard.question}
             </p>
             {!showAnswer && (
               <p className="text-xs text-muted-foreground mt-3">
-                Tap to reveal
+                {t.tapToReveal}
               </p>
             )}
           </div>

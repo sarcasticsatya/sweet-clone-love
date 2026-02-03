@@ -35,31 +35,32 @@ function safeParseJSON(content: string): any {
   }
 }
 
-// Detect language using subject medium as primary determinant
+// Detect language - SUBJECT NAME takes priority over medium
 function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
   const normalizedSubject = subjectName.toLowerCase();
   
   console.log(`Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
   
-  if (medium === "English") {
-    // English Medium subjects - output in English
-    // Except Hindi III which needs Hindi
-    if (normalizedSubject.includes("hindi")) {
-      console.log("Result: hindi (English medium Hindi subject)");
-      return "hindi";
-    }
-    console.log("Result: english (English medium)");
-    return "english";
+  // PRIORITY 1: Subject-specific language (applies regardless of medium)
+  // Kannada subject in ANY medium → Kannada
+  if (normalizedSubject.includes("kannada") || subjectName.includes("ಕನ್ನಡ")) {
+    console.log("Result: kannada (Kannada subject - subject name takes priority)");
+    return "kannada";
   }
   
-  // Kannada Medium subjects
-  // Hindi subject (ಹಿಂದಿ) - output in Hindi
-  if (subjectName === "ಹಿಂದಿ" || normalizedSubject.includes("hindi")) {
-    console.log("Result: hindi (Kannada medium Hindi subject)");
+  // Hindi subject in ANY medium → Hindi
+  if (normalizedSubject.includes("hindi") || subjectName.includes("ಹಿಂದಿ")) {
+    console.log("Result: hindi (Hindi subject - subject name takes priority)");
     return "hindi";
   }
   
-  // All other Kannada Medium subjects - output in Kannada
+  // PRIORITY 2: Medium-based default for other subjects
+  if (medium === "English") {
+    console.log("Result: english (English medium, non-language subject)");
+    return "english";
+  }
+  
+  // Kannada Medium (for subjects like ಗಣಿತ, ವಿಜ್ಞಾನ, ಸಮಾಜ ವಿಜ್ಞಾನ, ಇಂಗ್ಲೀಷ)
   console.log("Result: kannada (Kannada medium)");
   return "kannada";
 }

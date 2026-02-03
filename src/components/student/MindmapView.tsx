@@ -4,9 +4,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Network, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isKannadaUIRequired, mindmapText } from "@/lib/languageUtils";
 
 interface MindmapViewProps {
   chapterId: string;
+  subjectId: string | null;
 }
 
 interface Branch {
@@ -26,18 +28,40 @@ interface MindmapData {
   imageUrl?: string;
 }
 
-export const MindmapView = ({ chapterId }: MindmapViewProps) => {
+export const MindmapView = ({ chapterId, subjectId }: MindmapViewProps) => {
   const [mindmapData, setMindmapData] = useState<MindmapData | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [useKannadaUI, setUseKannadaUI] = useState(false);
 
   useEffect(() => {
     setMindmapData(null);
     setInitialLoad(true);
+    fetchSubjectInfo();
     if (chapterId) {
       loadMindmap();
     }
-  }, [chapterId]);
+  }, [chapterId, subjectId]);
+
+  const fetchSubjectInfo = async () => {
+    if (!subjectId) return;
+    
+    try {
+      const { data: subject } = await supabase
+        .from("subjects")
+        .select("name, medium")
+        .eq("id", subjectId)
+        .single();
+      
+      if (subject) {
+        setUseKannadaUI(isKannadaUIRequired(subject.name, subject.medium));
+      }
+    } catch (error) {
+      console.error("Error fetching subject info:", error);
+    }
+  };
+
+  const t = useKannadaUI ? mindmapText.kn : mindmapText.en;
 
   const loadMindmap = async () => {
     if (!chapterId) return;
@@ -75,7 +99,10 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
       if (error) throw error;
 
       setMindmapData(data.mindmap);
-      toast.success(regenerate ? "Mind map regenerated!" : "Mind map generated!");
+      toast.success(regenerate 
+        ? (useKannadaUI ? "ಮೈಂಡ್ ಮ್ಯಾಪ್ ಪುನಃ ರಚಿಸಲಾಗಿದೆ!" : "Mind map regenerated!")
+        : (useKannadaUI ? "ಮೈಂಡ್ ಮ್ಯಾಪ್ ರಚಿಸಲಾಗಿದೆ!" : "Mind map generated!")
+      );
     } catch (error) {
       console.error("Error generating mindmap:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate");
@@ -91,7 +118,9 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
     return (
       <div className="flex flex-col items-center justify-center h-full py-8 gap-2">
         <Loader2 className="w-5 h-5 animate-spin text-primary" />
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <p className="text-xs text-muted-foreground">
+          {useKannadaUI ? "ಲೋಡ್ ಆಗುತ್ತಿದೆ..." : "Loading..."}
+        </p>
       </div>
     );
   }
@@ -104,7 +133,7 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-xs flex items-center gap-2">
             <Network className="w-3.5 h-3.5" />
-            Mind Map
+            {t.title}
           </h3>
           {mindmapData && (
             <Button 
@@ -113,14 +142,14 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
               onClick={() => generateMindmap(true)}
               disabled={loading}
               className="h-6 w-6 p-0"
-              title="Regenerate"
+              title={useKannadaUI ? "ಪುನಃ ರಚಿಸಿ" : "Regenerate"}
             >
               <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           )}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          ಅಧ್ಯಾಯದ ಮೈಂಡ್ ಮ್ಯಾಪ್
+          {t.subtitle}
         </p>
       </div>
 
@@ -135,9 +164,9 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-xs font-medium text-foreground">ಮೈಂಡ್ ಮ್ಯಾಪ್ ರಚಿಸಲಾಗುತ್ತಿದೆ...</p>
+                <p className="text-xs font-medium text-foreground">{t.generating}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Generating Mind Map
+                  {t.generatingEn}
                 </p>
               </div>
             </div>
@@ -201,10 +230,10 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  ಮೈಂಡ್ ಮ್ಯಾಪ್
+                  {t.title}
                 </p>
                 <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">
-                  ಅಧ್ಯಾಯದ ಪರಿಕಲ್ಪನಾ ನಕ್ಷೆಯನ್ನು ರಚಿಸಿ
+                  {t.createMindmap}
                 </p>
               </div>
               <Button 
@@ -213,7 +242,7 @@ export const MindmapView = ({ chapterId }: MindmapViewProps) => {
                 disabled={loading}
                 className="text-xs"
               >
-                ಮೈಂಡ್ ಮ್ಯಾಪ್ ರಚಿಸಿ
+                {t.create}
               </Button>
             </div>
           )}

@@ -48,20 +48,20 @@ export const ToolsPanel = ({
 
           <TabsContent value="flashcards" className="flex-1 m-0 overflow-hidden">
             <ScrollArea className="h-full">
-              <FlashcardsView chapterId={selectedChapterId} />
+              <FlashcardsView chapterId={selectedChapterId} subjectId={selectedSubjectId} />
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="quiz" className="flex-1 m-0 overflow-hidden">
-            <QuizView chapterId={selectedChapterId} />
+            <QuizView chapterId={selectedChapterId} subjectId={selectedSubjectId} />
           </TabsContent>
 
           <TabsContent value="mindmap" className="flex-1 m-0 overflow-hidden">
-            <MindmapView chapterId={selectedChapterId} />
+            <MindmapView chapterId={selectedChapterId} subjectId={selectedSubjectId} />
           </TabsContent>
 
           <TabsContent value="infographic" className="flex-1 m-0 overflow-hidden">
-            <InfographicView chapterId={selectedChapterId} />
+            <InfographicView chapterId={selectedChapterId} subjectId={selectedSubjectId} />
           </TabsContent>
 
           <TabsContent value="videos" className="flex-1 m-0 overflow-hidden">
