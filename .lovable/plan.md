@@ -1,158 +1,106 @@
 
 
-## Plan: Optimize Mobile UX to Reduce Scrolling (5 scrolls to 2 scrolls)
+## Plan: Fix Mobile Footer Links & Features Carousel
 
-### Problem Analysis
-The current landing page takes 5+ scrolls on mobile due to:
-- Hero section using 90% viewport height
-- Features section: 5 full cards stacked vertically with large padding
-- Subjects section: 3 large cards with floating icons and tall icon containers
-- CTA section: Large padding
-- All sections have `py-20` (80px top + 80px bottom padding)
+### Problems Identified
 
-### Solution: Mobile-First Compact Layout
+1. **Footer Policy Links Too Big on Mobile**: The links "Terms & Conditions", "Privacy Policy", "Refund Policy" with icons are displayed in a single row with `gap-6` and `text-sm`, causing them to be too large and potentially wrapping awkwardly on mobile.
 
-**Goal:** Footer visible within 2 scrolls on mobile while maintaining desktop experience
+2. **Features Section Horizontal Scroll is Wasteful**: The current implementation uses native horizontal scroll (`overflow-x-auto`) which:
+   - Requires users to manually swipe/scroll
+   - Doesn't show navigation affordance (no arrows)
+   - Content is bleeding out of the container (`-mx-4 px-4`)
 
 ---
 
-### Changes Overview
+### Solution Overview
 
-| Section | Current Mobile Issue | Solution |
-|---------|---------------------|----------|
-| HeroSection | `min-h-[90vh]` too tall | Reduce to `min-h-[60vh]` on mobile |
-| FeaturesSection | 5 cards stacked, large padding | Horizontal scroll carousel on mobile, reduced padding |
-| SubjectsSection | 3 large cards with tall icon area | Compact inline layout, smaller icons |
-| CTASection | Large padding | Reduced padding on mobile |
-| Footer | Fine | Keep as-is |
+| Issue | Fix |
+|-------|-----|
+| Footer links too big | Make them smaller on mobile, stack vertically, remove icons on mobile |
+| Features horizontal scroll | Replace with Embla Carousel with left/right arrow buttons |
 
 ---
 
-### Detailed Changes
+### Part 1: Footer Mobile Optimization
 
-#### 1. HeroSection.tsx - Compact Hero on Mobile
+**File:** `src/components/Footer.tsx`
+
+**Changes:**
+- Hide icons on mobile (shown only on `md:` and above)
+- Reduce text size on mobile: `text-xs md:text-sm`
+- Reduce gap on mobile: `gap-3 md:gap-6`
+- Shorten link text on mobile (e.g., "Terms" instead of "Terms & Conditions")
 
 ```tsx
-// Change line 22
-// From: className="relative min-h-[90vh] flex items-center..."
-// To: className="relative min-h-[60vh] md:min-h-[90vh] flex items-center..."
-
-// Reduce logo size on mobile (line 35)
-// From: "w-24 h-24 md:w-32 md:h-32"
-// To: "w-20 h-20 md:w-32 md:h-32"
-
-// Reduce title size on mobile (line 42)
-// From: "text-5xl md:text-7xl"
-// To: "text-4xl md:text-7xl"
-
-// Reduce subtitle padding (line 54)
-// From: "text-lg md:text-xl"
-// To: "text-base md:text-xl"
-
-// Remove scroll indicator on mobile (hide or move to bottom of page)
+// Mobile-optimized footer links
+<div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm">
+  <Link to="/terms-and-conditions" className="...">
+    <FileText className="w-4 h-4 hidden md:block" />
+    <span className="md:hidden">Terms</span>
+    <span className="hidden md:inline">Terms & Conditions</span>
+  </Link>
+  <Link to="/privacy-policy" className="...">
+    <Shield className="w-4 h-4 hidden md:block" />
+    <span className="md:hidden">Privacy</span>
+    <span className="hidden md:inline">Privacy Policy</span>
+  </Link>
+  <Link to="/refund-policy" className="...">
+    <RefreshCw className="w-4 h-4 hidden md:block" />
+    <span className="md:hidden">Refund</span>
+    <span className="hidden md:inline">Refund Policy</span>
+  </Link>
+</div>
 ```
 
-#### 2. FeaturesSection.tsx - Horizontal Carousel on Mobile
+---
 
-Transform from vertical stack to horizontal scrolling on mobile:
+### Part 2: Features Section with Carousel & Arrows
+
+**File:** `src/components/landing/FeaturesSection.tsx`
+
+**Changes:**
+- Replace manual `overflow-x-auto` scroll with Embla Carousel component
+- Add left/right arrow buttons for navigation (visible on mobile)
+- Keep grid layout on desktop (no carousel needed)
+- Fix content bleeding by removing the `-mx-4 px-4` hack
+- Show 1 card at a time on mobile with proper carousel behavior
+
+**New Structure:**
 
 ```tsx
-// Mobile: Horizontal scroll with snap points
-// Desktop: Grid layout (unchanged)
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 
-<div className="flex md:grid overflow-x-auto md:overflow-visible gap-4 md:gap-6 
-               md:grid-cols-2 lg:grid-cols-3 snap-x snap-mandatory
-               pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+// Mobile: Carousel with arrows
+// Desktop: Grid layout
+
+{/* Mobile Carousel */}
+<div className="md:hidden">
+  <Carousel opts={{ align: "start", loop: true }} className="w-full">
+    <CarouselContent className="-ml-2">
+      {features.map((feature) => (
+        <CarouselItem key={feature.title} className="pl-2 basis-[85%]">
+          <Card>...</Card>
+        </CarouselItem>
+      ))}
+    </CarouselContent>
+    <CarouselPrevious className="left-0" />
+    <CarouselNext className="right-0" />
+  </Carousel>
+</div>
+
+{/* Desktop Grid - unchanged */}
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
   {features.map((feature) => (
-    <Card className="min-w-[280px] md:min-w-0 snap-center flex-shrink-0 md:flex-shrink">
-      // ... card content with reduced padding on mobile
-    </Card>
+    <Card>...</Card>
   ))}
 </div>
-
-// Reduce section padding on mobile
-// From: py-20
-// To: py-10 md:py-20
-
-// Reduce header margin
-// From: mb-16
-// To: mb-6 md:mb-16
 ```
 
-#### 3. SubjectsSection.tsx - Compact Subject Display
-
-```tsx
-// Mobile: Compact horizontal layout with smaller icons
-// Desktop: Keep current grid
-
-// Reduce section padding
-// From: py-20
-// To: py-10 md:py-20
-
-// Mobile: Single row with 3 compact subject cards
-<div className="flex md:grid justify-center gap-4 md:gap-8 md:grid-cols-3">
-  {subjects.map((subject) => (
-    <div className="w-[100px] md:w-auto group">
-      {/* Mobile: Single icon, no floating animation */}
-      <div className="relative h-16 md:h-32 mb-2 md:mb-6 flex justify-center">
-        {/* Only show first icon on mobile */}
-        <div className="md:absolute md:animate-float">
-          <Icon />
-        </div>
-      </div>
-      {/* Smaller text on mobile */}
-      <h3 className="text-sm md:text-2xl">{subject.name}</h3>
-    </div>
-  ))}
-</div>
-
-// Reduce or hide the "Additional info" text on mobile
-// From: mt-16
-// To: mt-6 md:mt-16
-```
-
-#### 4. CTASection.tsx - Compact CTA
-
-```tsx
-// Reduce padding
-// From: py-20
-// To: py-10 md:py-20
-
-// Reduce button padding
-// From: py-7
-// To: py-5 md:py-7
-
-// Make support section more compact
-// From: pt-8 mt-8
-// To: pt-4 mt-4 md:pt-8 md:mt-8
-```
-
----
-
-### Visual Comparison (Mobile)
-
-```text
-BEFORE (5 scrolls)          AFTER (2 scrolls)
-┌─────────────────┐         ┌─────────────────┐
-│                 │         │  Logo + Title   │
-│   HERO (90vh)   │ ────►   │  CTA buttons    │ 60vh
-│                 │         │                 │
-└─────────────────┘         ├─────────────────┤
-     [SCROLL 1]             │  Features ←→    │ horizontal
-┌─────────────────┐         │  [carousel]     │ scroll
-│  Feature 1      │         ├─────────────────┤
-│  Feature 2      │ ────►   │ Sci Math Social │ compact
-│  Feature 3      │         │   🧪   📐   🌍  │ row
-│  Feature 4      │         ├─────────────────┤
-│  Feature 5      │         │  Get Started    │
-└─────────────────┘         │  📞 Support     │
-  [SCROLL 2,3,4]            ├─────────────────┤
-┌─────────────────┐         │ Footer + AIWOS  │
-│  Subject cards  │ ────►   └─────────────────┘
-│  CTA + Footer   │              [SCROLL 2]
-└─────────────────┘
-   [SCROLL 5]
-```
+**Arrow Positioning:**
+- Position arrows inside the container (not outside with `-left-12`)
+- Use `left-2` and `right-2` for mobile-friendly placement
+- Semi-transparent background for visibility
 
 ---
 
@@ -160,24 +108,53 @@ BEFORE (5 scrolls)          AFTER (2 scrolls)
 
 | File | Changes |
 |------|---------|
-| `src/components/landing/HeroSection.tsx` | Reduce height, sizes, spacing on mobile |
-| `src/components/landing/FeaturesSection.tsx` | Horizontal carousel on mobile |
-| `src/components/landing/SubjectsSection.tsx` | Compact inline layout on mobile |
-| `src/components/landing/CTASection.tsx` | Reduce padding on mobile |
+| `src/components/Footer.tsx` | Smaller text, shorter labels, hide icons on mobile |
+| `src/components/landing/FeaturesSection.tsx` | Use Embla Carousel with arrow buttons on mobile |
 
 ---
 
-### Key Mobile Optimizations
+### Technical Details
 
-1. **Hero**: 60vh instead of 90vh, smaller logo/text
-2. **Features**: Horizontal swipeable carousel (saves ~2 scrolls)
-3. **Subjects**: Compact row layout (saves ~1 scroll)
-4. **CTA**: Reduced padding
-5. **All sections**: `py-10 md:py-20` pattern for mobile vs desktop
+#### Carousel Configuration
+```tsx
+opts={{
+  align: "start",    // Align cards to start
+  loop: true,        // Allow infinite scrolling
+}}
+```
 
-### Preserved Experience
-- Desktop layout remains unchanged
-- All animations still work
-- All content is still accessible
-- "Developed by AIWOS" footer remains visible
+#### Card Sizing
+- `basis-[85%]` on mobile: Shows most of current card with peek of next
+- Full width cards would feel cramped; this gives visual cue that more exist
+
+#### Arrow Button Styling
+```tsx
+<CarouselPrevious className="left-2 bg-background/80 hover:bg-background" />
+<CarouselNext className="right-2 bg-background/80 hover:bg-background" />
+```
+
+---
+
+### Expected Result
+
+**Footer (Mobile):**
+```
+Terms  •  Privacy  •  Refund
+© 2025 NythicAI
+Developed by AIWOS
+```
+
+**Features Section (Mobile):**
+```
+┌─────────────────────────────┐
+│  ←  [Feature Card]      →   │
+│      visible arrows         │
+│      at edges               │
+└─────────────────────────────┘
+```
+
+- Clean, non-bleeding layout
+- Intuitive left/right arrows
+- No content overflow issues
+- All content preserved
 
