@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, CheckCircle2, Mail } from "lucide-react";
 import { z } from "zod";
 import { Logo } from "@/components/Logo";
+import { Footer } from "@/components/Footer";
 
 // Zod validation schema for signup
 const signupSchema = z.object({
@@ -259,35 +260,42 @@ const Auth = () => {
 
   // Show verification message after signup
   if (showVerificationMessage) {
-    return <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-              <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
-            </div>
-            <h2 className="text-xl font-semibold">Check your email!</h2>
-            <p className="text-muted-foreground">
-              We've sent a verification link to <strong>{signupData.personalEmail}</strong>. 
-              Please click the link to verify your account.
-            </p>
-            <Button variant="outline" onClick={() => setShowVerificationMessage(false)} className="w-full">
-              Back to Sign In
-            </Button>
-          </CardContent>
-        </Card>
-      </div>;
+    return (
+      <div className="min-h-screen flex flex-col bg-muted/30">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-8 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h2 className="text-xl font-semibold">Check your email!</h2>
+              <p className="text-muted-foreground">
+                We've sent a verification link to <strong>{signupData.personalEmail}</strong>. 
+                Please click the link to verify your account.
+              </p>
+              <Button variant="outline" onClick={() => setShowVerificationMessage(false)} className="w-full">
+                Back to Sign In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer minimal />
+      </div>
+    );
   }
-  return <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-lg">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1">
-              <Logo size="md" />
+  return (
+    <div className="min-h-screen flex flex-col bg-muted/30">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1">
+                <Logo size="md" />
+              </div>
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">NythicAI</CardTitle>
-          <CardDescription>Your 24x7 Personal Teacher</CardDescription>
-        </CardHeader>
+            <CardTitle className="text-2xl font-bold">NythicAI</CardTitle>
+            <CardDescription>Your 24x7 Personal Teacher</CardDescription>
+          </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -425,6 +433,9 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+    <Footer minimal />
+  </div>
+  );
 };
 export default Auth;
