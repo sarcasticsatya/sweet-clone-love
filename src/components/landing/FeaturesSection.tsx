@@ -7,6 +7,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 
 const features = [
   {
@@ -57,7 +58,17 @@ export const FeaturesSection = () => {
 
         {/* Mobile Carousel */}
         <div className="md:hidden px-4">
-          <Carousel opts={{ align: "start", loop: true }} className="w-full">
+          <Carousel 
+            opts={{ align: "start", loop: true }} 
+            plugins={[
+              Autoplay({
+                delay: 4000,
+                stopOnInteraction: true,
+                stopOnMouseEnter: true,
+              })
+            ]}
+            className="w-full"
+          >
             <CarouselContent className="-ml-2">
               {features.map((feature, index) => (
                 <CarouselItem key={feature.title} className="pl-2 basis-[85%]">
