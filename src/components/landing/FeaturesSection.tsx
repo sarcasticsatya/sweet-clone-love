@@ -1,5 +1,12 @@
 import { Bot, Layers, Brain, Video, ClipboardList } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
 
 const features = [
   {
@@ -48,34 +55,56 @@ export const FeaturesSection = () => {
           </p>
         </div>
 
-        {/* Feature cards - horizontal scroll on mobile, grid on desktop */}
-        <div className="flex md:grid overflow-x-auto md:overflow-visible gap-3 md:gap-6 md:grid-cols-2 lg:grid-cols-3 snap-x snap-mandatory pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+        {/* Mobile Carousel */}
+        <div className="md:hidden px-4">
+          <Carousel opts={{ align: "start", loop: true }} className="w-full">
+            <CarouselContent className="-ml-2">
+              {features.map((feature, index) => (
+                <CarouselItem key={feature.title} className="pl-2 basis-[85%]">
+                  <Card 
+                    className="group relative overflow-hidden border-2 border-transparent hover:border-primary/20 transition-all duration-500"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${feature.color} flex items-center justify-center shadow-lg`}>
+                        <feature.icon className="w-5 h-5 text-white" />
+                      </div>
+                      <h3 className="text-base font-semibold text-foreground">
+                        {feature.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </CardContent>
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="left-0 bg-background/80 hover:bg-background border-border" />
+            <CarouselNext className="right-0 bg-background/80 hover:bg-background border-border" />
+          </Carousel>
+        </div>
+
+        {/* Desktop Grid */}
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
             <Card 
               key={feature.title}
-              className="group relative overflow-hidden border-2 border-transparent hover:border-primary/20 transition-all duration-500 hover:shadow-xl hover:-translate-y-1 min-w-[260px] md:min-w-0 snap-center flex-shrink-0 md:flex-shrink"
-              style={{ 
-                animationDelay: `${index * 0.1}s`,
-              }}
+              className="group relative overflow-hidden border-2 border-transparent hover:border-primary/20 transition-all duration-500 hover:shadow-xl hover:-translate-y-1"
+              style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4">
-                {/* Icon with gradient background */}
-                <div className={`w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                  <feature.icon className="w-5 h-5 md:w-7 md:h-7 text-white" />
+              <CardContent className="p-6 space-y-4">
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                  <feature.icon className="w-7 h-7 text-white" />
                 </div>
-
-                {/* Title */}
-                <h3 className="text-base md:text-xl font-semibold text-foreground">
+                <h3 className="text-xl font-semibold text-foreground">
                   {feature.title}
                 </h3>
-
-                {/* Description */}
-                <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                <p className="text-base text-muted-foreground leading-relaxed">
                   {feature.description}
                 </p>
               </CardContent>
-
-              {/* Hover gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             </Card>
           ))}
