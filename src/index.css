@@ -68,9 +68,19 @@ All colors MUST be HSL.
 @layer utilities {
   .animate-gradient {
     background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
   }
   
   .glow-primary {
     box-shadow: 0 0 40px hsl(var(--primary) / 0.3);
+  }
+  
+  /* Hide scrollbar for horizontal scroll carousel */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
