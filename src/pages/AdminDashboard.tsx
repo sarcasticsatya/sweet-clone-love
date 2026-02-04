@@ -64,7 +64,9 @@ const AdminDashboard = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
@@ -73,7 +75,7 @@ const AdminDashboard = () => {
       />
 
       {/* Header */}
-      <header className="border-b border-border px-6 py-4 flex items-center justify-between bg-card">
+      <header className="relative z-10 border-b border-border px-6 py-4 flex items-center justify-between bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center p-1">
             <Logo size="md" />
@@ -90,7 +92,7 @@ const AdminDashboard = () => {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto p-6">
+      <div className="relative z-10 container mx-auto p-6">
         <Tabs defaultValue="students" className="w-full">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto">
             <TabsTrigger value="students">

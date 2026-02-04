@@ -174,7 +174,7 @@ const UserProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-background animate-gradient">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -191,7 +191,9 @@ const UserProfile = () => {
   const isActive = daysRemaining > 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
@@ -200,7 +202,7 @@ const UserProfile = () => {
       />
 
       {/* Header */}
-      <header className="border-b border-border px-4 py-3 flex items-center justify-between bg-card">
+      <header className="relative z-10 border-b border-border px-4 py-3 flex items-center justify-between bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -215,7 +217,7 @@ const UserProfile = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <User className="w-6 h-6" />
           My Profile
