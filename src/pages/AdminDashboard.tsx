@@ -13,7 +13,6 @@ import { ViewReports } from "@/components/admin/ViewReports";
 import { DataExport } from "@/components/admin/DataExport";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
-import { Footer } from "@/components/Footer";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -65,7 +64,7 @@ const AdminDashboard = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30">
+    <div className="min-h-screen bg-muted/30">
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
@@ -91,7 +90,7 @@ const AdminDashboard = () => {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 container mx-auto p-6">
+      <div className="container mx-auto p-6">
         <Tabs defaultValue="students" className="w-full">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto">
             <TabsTrigger value="students">
@@ -137,8 +136,6 @@ const AdminDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      <Footer minimal />
     </div>
   );
 };

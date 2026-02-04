@@ -3,8 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { CheckCircle2, XCircle, Loader2, BookOpen } from "lucide-react";
 import { Footer } from "@/components/Footer";
 
 const VerifyEmail = () => {
@@ -58,8 +57,8 @@ const VerifyEmail = () => {
           <CardContent className="p-8 text-center space-y-6">
             {/* Logo */}
             <div className="flex justify-center">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1">
-                <Logo size="md" />
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-primary-foreground" />
               </div>
             </div>
 
