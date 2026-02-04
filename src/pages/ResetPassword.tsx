@@ -44,9 +44,10 @@ const ResetPassword = () => {
 
   if (emailSent) {
     return (
-      <div className="min-h-screen flex flex-col bg-muted/30">
-        <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+        <div className="relative z-10 flex-1 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-lg">
             <CardContent className="p-8 text-center space-y-4">
               <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
                 <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
@@ -81,9 +82,10 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30">
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      <div className="relative z-10 flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
               <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1">

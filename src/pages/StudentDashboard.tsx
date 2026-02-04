@@ -120,8 +120,10 @@ const StudentDashboard = () => {
 
   // Show waiting for admin state if no subject access
   if (hasSubjectAccess === false) {
-    return <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
-        <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
+    return <div className="min-h-screen h-[100dvh] flex flex-col bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+        <header className="relative z-10 border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card/80 backdrop-blur-sm shadow-sm">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center p-0.5">
               <Logo size="sm" />
@@ -137,7 +139,7 @@ const StudentDashboard = () => {
           </Button>
         </header>
 
-        <div className="flex-1 flex items-center justify-center p-6">
+        <div className="relative z-10 flex-1 flex items-center justify-center p-6">
           <div className="max-w-md text-center space-y-6">
             <div className="w-20 h-20 mx-auto bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
               <Clock className="w-10 h-10 text-amber-600 dark:text-amber-400" />
@@ -148,7 +150,7 @@ const StudentDashboard = () => {
                 Your account is set up, but you haven't been assigned to any subjects yet.
               </p>
             </div>
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <div className="bg-card/80 backdrop-blur-sm rounded-lg p-4 space-y-3 shadow-lg">
               <p className="text-sm font-medium">What to do next:</p>
               <div className="flex items-start gap-3 text-left">
                 <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
@@ -167,7 +169,10 @@ const StudentDashboard = () => {
         </div>
       </div>;
   }
-  return <div className="min-h-screen h-[100dvh] flex flex-col bg-background">
+  return <div className="min-h-screen h-[100dvh] flex flex-col bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      
       {/* Session Expired Dialog */}
       <SessionExpiredDialog open={sessionInvalid} onSignIn={handleSessionExpiredSignIn} />
       
@@ -175,7 +180,7 @@ const StudentDashboard = () => {
       <InactivityWarningDialog open={showInactivityWarning} remainingSeconds={remainingSeconds} onStayLoggedIn={dismissWarning} />
 
       {/* NotebookLM-style Header */}
-      <header className="border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card shadow-sm">
+      <header className="relative z-10 border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card/80 backdrop-blur-sm shadow-sm">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center p-0.5">
             <Logo size="sm" />
@@ -224,25 +229,25 @@ const StudentDashboard = () => {
       </header>
 
       {/* Desktop: Three-panel layout */}
-      {!isMobile && <div className="flex-1 flex overflow-hidden bg-muted/10" style={{
+      {!isMobile && <div className="relative z-10 flex-1 flex overflow-hidden" style={{
       height: 'calc(100dvh - 56px)'
     }}>
-          <div className="w-80 border-r border-border bg-card shadow-sm overflow-hidden">
+          <div className="w-80 border-r border-border bg-card/90 backdrop-blur-sm shadow-sm overflow-hidden">
             <SourcesPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} onSelectChapter={setSelectedChapterId} onSelectSubject={setSelectedSubjectId} />
           </div>
 
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background/50 backdrop-blur-sm">
             <ChatPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} />
           </div>
 
-          <div className="w-80 border-l border-border bg-card shadow-sm overflow-hidden">
+          <div className="w-80 border-l border-border bg-card/90 backdrop-blur-sm shadow-sm overflow-hidden">
             <ToolsPanel selectedChapterId={selectedChapterId} selectedSubjectId={selectedSubjectId} />
           </div>
         </div>}
 
       {/* Mobile: Full-screen chat with bottom navigation */}
       {isMobile && <>
-          <div className="flex-1 flex flex-col overflow-hidden" style={{
+          <div className="relative z-10 flex-1 flex flex-col overflow-hidden bg-background/50 backdrop-blur-sm" style={{
         height: 'calc(100dvh - 56px)',
         paddingBottom: '72px'
       }}>
