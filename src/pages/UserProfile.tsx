@@ -27,6 +27,7 @@ import {
   Copy
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { Footer } from "@/components/Footer";
 import { format, differenceInDays } from "date-fns";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
@@ -191,7 +192,7 @@ const UserProfile = () => {
   const isActive = daysRemaining > 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
@@ -215,7 +216,7 @@ const UserProfile = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <User className="w-6 h-6" />
           My Profile
@@ -428,6 +429,8 @@ const UserProfile = () => {
           </Card>
         </div>
       </div>
+
+      <Footer minimal />
 
       {/* Change Password Dialog */}
       <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
