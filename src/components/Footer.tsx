@@ -22,27 +22,30 @@ export const Footer = ({ minimal = false }: FooterProps) => {
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">© 2025 NythicAI.</p>
-          <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm">
             <Link 
               to="/terms-and-conditions" 
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
             >
-              <FileText className="w-4 h-4" />
-              Terms & Conditions
+              <FileText className="w-4 h-4 hidden md:block" />
+              <span className="md:hidden">Terms</span>
+              <span className="hidden md:inline">Terms & Conditions</span>
             </Link>
             <Link 
               to="/privacy-policy" 
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Shield className="w-4 h-4" />
-              Privacy Policy
+              <Shield className="w-4 h-4 hidden md:block" />
+              <span className="md:hidden">Privacy</span>
+              <span className="hidden md:inline">Privacy Policy</span>
             </Link>
             <Link 
               to="/refund-policy" 
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
-              Refund Policy
+              <RefreshCw className="w-4 h-4 hidden md:block" />
+              <span className="md:hidden">Refund</span>
+              <span className="hidden md:inline">Refund Policy</span>
             </Link>
           </div>
         </div>
