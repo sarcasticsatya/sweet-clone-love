@@ -1,41 +1,55 @@
 
-
-## Fix: Deploy Missing Email Verification Edge Functions
+## Fix: Deploy create-phonepe-payment Edge Function
 
 ### Problem Identified
 
-The email verification is failing with a **404 Not Found** error because the two critical edge functions have never been deployed:
-- `send-verification-email` - Sends the verification email via Resend
-- `verify-email-token` - Validates the token when user clicks the link
+The payment is failing with **"Failed to send a request to the Edge Function"** because:
 
-The functions exist in code and are configured in `config.toml`, but they were never deployed to the backend.
+1. **The `create-phonepe-payment` Edge Function has never been deployed** - there are no logs for it, meaning the endpoint returns 404
+2. The function also needs the `phonepe-webhook` function deployed to handle payment callbacks
+
+### Root Cause
+
+When checking the edge function logs, there were "No logs found" for `create-phonepe-payment`. The console error shows "Failed to fetch" which is what happens when trying to call a non-existent endpoint.
 
 ### Solution
 
-Deploy both edge functions immediately.
+Deploy both payment-related Edge Functions immediately:
+- `create-phonepe-payment` - Initiates the PhonePe payment
+- `phonepe-webhook` - Handles payment completion callbacks
 
 ### Steps
 
-1. **Deploy the edge functions** using the deploy tool:
-   - `send-verification-email`
-   - `verify-email-token`
+1. **Update the import version** to pin `@supabase/supabase-js@2.49.1` in both files to prevent bundling timeout issues
 
-2. **Verify deployment** by testing the edge function endpoint
+2. **Deploy both functions**:
+   - `create-phonepe-payment`
+   - `phonepe-webhook`
 
-3. **Test the flow** by clicking "Resend Verification Email" on the /not-verified page
+3. **Test the payment flow** on the /select-course page
 
-### Files Involved
+### Files to Modify
 
-| File | Status |
+| File | Change |
 |------|--------|
-| `supabase/functions/send-verification-email/index.ts` | Exists, needs deployment |
-| `supabase/functions/verify-email-token/index.ts` | Exists, needs deployment |
-| `supabase/config.toml` | Already configured correctly |
+| `supabase/functions/create-phonepe-payment/index.ts` | Pin supabase-js version to `@2.49.1` |
+| `supabase/functions/phonepe-webhook/index.ts` | Pin supabase-js version to `@2.49.1` |
 
-### Post-Deployment Verification
+### Technical Details
+
+The current import:
+```typescript
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+```
+
+Should be changed to:
+```typescript
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+```
+
+### Expected Outcome
 
 After deployment:
-1. The "Resend Verification Email" button should work
-2. Emails will be sent via Resend to the user's email
-3. Clicking the verification link will validate the token and mark email as verified
-
+1. The "Buy Now" button on /select-course will work
+2. Users will be redirected to PhonePe payment page
+3. After payment, webhook will update purchase status
