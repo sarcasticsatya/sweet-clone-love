@@ -1,8 +1,17 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Atom, Calculator, Brain, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import { FloatingIcon } from "@/components/landing/FloatingIcon";
+
+const floatingIcons = [
+  { icon: <Atom className="w-full h-full" />, x: 5, y: 20, delay: 0, size: "md" as const },
+  { icon: <Calculator className="w-full h-full" />, x: 92, y: 35, delay: 1, size: "sm" as const },
+  { icon: <Brain className="w-full h-full" />, x: 88, y: 75, delay: 2, size: "md" as const },
+  { icon: <BookOpen className="w-full h-full" />, x: 8, y: 80, delay: 1.5, size: "sm" as const },
+];
+
 interface PolicyLayoutProps {
   title: string;
   children: ReactNode;
@@ -11,12 +20,23 @@ export const PolicyLayout = ({
   title,
   children
 }: PolicyLayoutProps) => {
-  return <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Floating icons - hidden on mobile */}
+      <div className="hidden md:block">
+        {floatingIcons.map((iconProps, index) => (
+          <FloatingIcon key={index} {...iconProps} />
+        ))}
+      </div>
+
+      {/* Header with glass effect */}
+      <header className="relative z-10 border-b border-border bg-card/80 backdrop-blur-sm shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center p-1.5">
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center p-1.5 glow-primary">
               <Logo size="md" />
             </div>
             <div>
@@ -28,7 +48,7 @@ export const PolicyLayout = ({
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div className="mb-6">
           <Link to="/">
             <Button variant="ghost" size="sm" className="gap-2">
@@ -38,7 +58,7 @@ export const PolicyLayout = ({
           </Link>
         </div>
 
-        <div className="bg-card rounded-lg border border-border p-6 md:p-8">
+        <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border/50 p-6 md:p-8 shadow-lg">
           <h1 className="text-2xl md:text-3xl font-bold mb-2">{title}</h1>
           <p className="text-sm text-muted-foreground mb-8">Last Updated: January 2025</p>
           
@@ -48,8 +68,8 @@ export const PolicyLayout = ({
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-card mt-12">
+      {/* Footer with glass effect */}
+      <footer className="relative z-10 border-t border-border bg-card/80 backdrop-blur-sm mt-12">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">© 2025 NythicAI.</p>
@@ -72,6 +92,7 @@ export const PolicyLayout = ({
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
 export default PolicyLayout;

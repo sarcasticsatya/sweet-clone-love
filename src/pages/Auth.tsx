@@ -12,9 +12,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2, Mail } from "lucide-react";
+import { Atom, Calculator, Brain, BookOpen } from "lucide-react";
 import { z } from "zod";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/Footer";
+import { FloatingIcon } from "@/components/landing/FloatingIcon";
+
+const floatingIcons = [
+  { icon: <Atom className="w-full h-full" />, x: 5, y: 15, delay: 0, size: "md" as const },
+  { icon: <Calculator className="w-full h-full" />, x: 90, y: 20, delay: 0.5, size: "sm" as const },
+  { icon: <Brain className="w-full h-full" />, x: 92, y: 70, delay: 1, size: "md" as const },
+  { icon: <BookOpen className="w-full h-full" />, x: 8, y: 80, delay: 1.5, size: "sm" as const },
+];
 
 // Zod validation schema for signup
 const signupSchema = z.object({
@@ -277,11 +286,19 @@ const Auth = () => {
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+        
+        {/* Floating icons - hidden on mobile */}
+        <div className="hidden md:block">
+          {floatingIcons.map((iconProps, index) => (
+            <FloatingIcon key={index} {...iconProps} />
+          ))}
+        </div>
+        
         <div className="relative z-10 flex-1 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md shadow-lg">
             <CardContent className="p-8 text-center space-y-4">
-              <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+              <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center glow-primary">
+                <Mail className="w-8 h-8 text-primary" />
               </div>
               <h2 className="text-xl font-semibold">Check your email!</h2>
               <p className="text-muted-foreground">
@@ -302,11 +319,19 @@ const Auth = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Floating icons - hidden on mobile */}
+      <div className="hidden md:block">
+        {floatingIcons.map((iconProps, index) => (
+          <FloatingIcon key={index} {...iconProps} />
+        ))}
+      </div>
+      
       <div className="relative z-10 flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg shadow-lg">
+        <Card className="w-full max-w-lg shadow-lg hover:shadow-xl transition-shadow duration-500">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1 glow-primary">
                 <Logo size="md" />
               </div>
             </div>

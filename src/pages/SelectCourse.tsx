@@ -9,10 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Check, CreditCard, Calendar, BookOpen, Loader2 } from "lucide-react";
+import { Atom, Calculator, Brain } from "lucide-react";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 import { toast as sonnerToast } from "sonner";
 import { Footer } from "@/components/Footer";
+import { FloatingIcon } from "@/components/landing/FloatingIcon";
+
+const floatingIcons = [
+  { icon: <Atom className="w-full h-full" />, x: 5, y: 20, delay: 0, size: "md" as const },
+  { icon: <Calculator className="w-full h-full" />, x: 92, y: 30, delay: 0.8, size: "sm" as const },
+  { icon: <Brain className="w-full h-full" />, x: 88, y: 75, delay: 1.5, size: "md" as const },
+  { icon: <BookOpen className="w-full h-full" />, x: 8, y: 85, delay: 1, size: "sm" as const },
+];
 
 interface CoursBundle {
   id: string;
@@ -225,6 +234,14 @@ const SelectCourse = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Floating icons - hidden on mobile */}
+      <div className="hidden md:block">
+        {floatingIcons.map((iconProps, index) => (
+          <FloatingIcon key={index} {...iconProps} />
+        ))}
+      </div>
+      
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
@@ -243,8 +260,10 @@ const SelectCourse = () => {
           {bundles.map((bundle) => (
             <Card
               key={bundle.id}
-              className="relative overflow-hidden border-2 hover:border-primary/50 transition-colors"
+              className="group relative overflow-hidden border-2 border-transparent hover:border-primary/30 transition-all duration-500 hover:shadow-xl hover:-translate-y-1 shadow-lg"
             >
+              {/* Hover gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
                   <div>

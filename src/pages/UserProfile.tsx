@@ -26,10 +26,19 @@ import {
   MessageCircle,
   Copy
 } from "lucide-react";
+import { Atom, Calculator, Brain } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { format, differenceInDays } from "date-fns";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
+import { FloatingIcon } from "@/components/landing/FloatingIcon";
+
+const floatingIcons = [
+  { icon: <Atom className="w-full h-full" />, x: 5, y: 15, delay: 0, size: "md" as const },
+  { icon: <Calculator className="w-full h-full" />, x: 92, y: 25, delay: 0.5, size: "sm" as const },
+  { icon: <Brain className="w-full h-full" />, x: 90, y: 70, delay: 1, size: "md" as const },
+  { icon: <BookOpen className="w-full h-full" />, x: 8, y: 80, delay: 1.5, size: "sm" as const },
+];
 
 interface StudentProfile {
   first_name: string;
@@ -194,6 +203,14 @@ const UserProfile = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Floating icons - hidden on mobile */}
+      <div className="hidden md:block">
+        {floatingIcons.map((iconProps, index) => (
+          <FloatingIcon key={index} {...iconProps} />
+        ))}
+      </div>
+      
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
@@ -225,7 +242,7 @@ const UserProfile = () => {
 
         <div className="space-y-6">
           {/* Personal Information */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-500">
             <CardHeader>
               <CardTitle className="text-lg">Personal Information</CardTitle>
               <CardDescription>Your account details</CardDescription>
@@ -306,7 +323,7 @@ const UserProfile = () => {
           </Card>
 
           {/* Subscription Details */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-500">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
@@ -383,7 +400,7 @@ const UserProfile = () => {
           </Card>
 
           {/* Security */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-500">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Shield className="w-5 h-5" />
@@ -399,7 +416,7 @@ const UserProfile = () => {
           </Card>
 
           {/* Customer Support */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-500">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <MessageCircle className="w-5 h-5" />

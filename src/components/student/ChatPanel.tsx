@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { Logo } from "@/components/Logo";
+import { Sparkles } from "lucide-react";
+
 interface ChatPanelProps {
   selectedChapterId: string | null;
   selectedSubjectId: string | null;
@@ -220,8 +222,11 @@ export const ChatPanel = ({
       </div>;
   };
   return <div className="flex-1 flex flex-col bg-background h-full overflow-hidden">
-      <div className="px-6 py-3 border-b border-border bg-card/50 shrink-0">
-        <h2 className="font-medium text-sm text-foreground">Chat & Q&A</h2>
+      <div className="px-6 py-3 border-b border-border bg-gradient-to-r from-primary/5 to-transparent shrink-0">
+        <h2 className="font-medium text-sm text-foreground flex items-center gap-2">
+          Chat & Q&A
+          <Sparkles className="w-3.5 h-3.5 text-primary/60" />
+        </h2>
         {selectedChapterId ? <p className="text-[11px] text-muted-foreground mt-0.5">Ask questions about the selected chapter</p> : <p className="text-[11px] text-muted-foreground mt-0.5">Select a chapter from sources to start</p>}
       </div>
 
@@ -234,7 +239,9 @@ export const ChatPanel = ({
     }}>
         {!selectedChapterId ? <div className="flex items-center justify-center h-full text-center">
             <div className="space-y-3 max-w-sm">
-              <AlertCircle className="w-10 h-10 text-muted-foreground/60 mx-auto" />
+              <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-primary/60" />
+              </div>
               <p className="text-sm text-muted-foreground">
                 Select a chapter from the <strong>Sources</strong> panel to begin chatting
               </p>
@@ -248,7 +255,9 @@ export const ChatPanel = ({
             </div>
           </div> : messages.length === 0 ? <div className="flex items-center justify-center h-full text-center">
             <div className="space-y-3 max-w-md">
-              <div className="text-4xl mx-auto">💬</div>
+              <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
               <div>
                 <p className="text-sm font-medium text-foreground mb-1">
                   Ask anything about this chapter
