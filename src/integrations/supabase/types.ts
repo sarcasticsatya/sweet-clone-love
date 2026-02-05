@@ -696,7 +696,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      student_purchases_safe: {
+        Row: {
+          amount_paid: number | null
+          bundle_id: string | null
+          display_status: string | null
+          expires_at: string | null
+          id: string | null
+          payment_gateway: string | null
+          payment_method: string | null
+          payment_status: string | null
+          purchased_at: string | null
+          student_id: string | null
+        }
+        Insert: {
+          amount_paid?: number | null
+          bundle_id?: string | null
+          display_status?: never
+          expires_at?: string | null
+          id?: string | null
+          payment_gateway?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          purchased_at?: string | null
+          student_id?: string | null
+        }
+        Update: {
+          amount_paid?: number | null
+          bundle_id?: string | null
+          display_status?: never
+          expires_at?: string | null
+          id?: string | null
+          payment_gateway?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          purchased_at?: string | null
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_purchases_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "course_bundles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
