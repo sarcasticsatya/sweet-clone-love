@@ -112,31 +112,69 @@ serve(async (req) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + bundle.validity_days);
 
-    // Create pending purchase record
-    const { data: purchase, error: purchaseError } = await supabaseAdmin
+    // Check for existing pending or failed purchase for this user/bundle
+    const { data: existingPurchase } = await supabaseAdmin
       .from('student_purchases')
-      .insert({
-        student_id: user.id,
-        bundle_id: bundleId,
-        amount_paid: bundle.price_inr,
-        payment_status: 'pending',
-        payment_method: 'phonepe',
-        payment_gateway: 'phonepe',
-        phonepe_merchant_transaction_id: merchantTransactionId,
-        expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
+      .select('*')
+      .eq('student_id', user.id)
+      .eq('bundle_id', bundleId)
+      .in('payment_status', ['pending', 'failed'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (purchaseError) {
-      console.error('Purchase creation error:', purchaseError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create purchase record' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let purchase;
+
+    if (existingPurchase) {
+      // Reuse existing purchase - update with new transaction ID
+      console.log('Found existing purchase to reuse:', existingPurchase.id);
+      const { data: updated, error: updateError } = await supabaseAdmin
+        .from('student_purchases')
+        .update({
+          payment_status: 'pending',
+          phonepe_merchant_transaction_id: merchantTransactionId,
+          expires_at: expiresAt.toISOString(),
+        })
+        .eq('id', existingPurchase.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Purchase update error:', updateError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update purchase record' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      purchase = updated;
+      console.log('Reusing existing purchase:', purchase.id);
+    } else {
+      // Create new purchase record
+      const { data: newPurchase, error: purchaseError } = await supabaseAdmin
+        .from('student_purchases')
+        .insert({
+          student_id: user.id,
+          bundle_id: bundleId,
+          amount_paid: bundle.price_inr,
+          payment_status: 'pending',
+          payment_method: 'phonepe',
+          payment_gateway: 'phonepe',
+          phonepe_merchant_transaction_id: merchantTransactionId,
+          expires_at: expiresAt.toISOString(),
+        })
+        .select()
+        .single();
+
+      if (purchaseError) {
+        console.error('Purchase creation error:', purchaseError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create purchase record' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      purchase = newPurchase;
+      console.log('New purchase created:', purchase.id);
     }
-
-    console.log('Pending purchase created:', purchase.id);
 
     // PhonePe API credentials
     const clientId = Deno.env.get('PHONEPE_CLIENT_ID')!;
