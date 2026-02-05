@@ -1,100 +1,69 @@
 
-## Fix: PhonePe Payment Authorization & Duplicate Purchase Issues
+## Switch to PhonePe Production: Verification & Configuration
 
-### Problems Identified
+### Current Status
 
-Based on the edge function logs:
+Your Edge Functions are already pointing to **PhonePe Production URLs**:
+- Token: `https://api.phonepe.com/apis/identity-manager/v1/oauth/token`
+- Payment: `https://api.phonepe.com/apis/pg/checkout/v2/pay`
 
-1. **OAuth Token Not Being Used** (17:02:53 logs)
-   - The deployed version is NOT calling the OAuth token function
-   - Logs show: Bundle found → Pending purchase created → PhonePe payload (skipping token acquisition)
-   - Missing logs: "Requesting PhonePe access token..." and "Access token obtained successfully"
-   - This means the latest code with OAuth wasn't deployed properly
+### What You Need to Verify
 
-2. **Duplicate Purchase Constraint Error** (17:06:19 logs)
-   - Error: `duplicate key value violates unique constraint "student_purchases_student_id_bundle_id_key"`
-   - There's already a pending purchase for this user/bundle
-   - The code doesn't handle retrying after a failed payment
+#### 1. Production Credentials
+Ensure your stored secrets are **production credentials**, not sandbox:
 
-### Solution
+| Secret | Value Type |
+|--------|-----------|
+| `PHONEPE_CLIENT_ID` | Must be production Client ID from PhonePe Dashboard |
+| `PHONEPE_CLIENT_SECRET` | Must be production Client Secret from PhonePe Dashboard |
 
-#### Step 1: Fix Duplicate Purchase Handling
-Before creating a new purchase, check for existing pending/failed purchases and either:
-- Reuse an existing pending purchase
-- Update an existing failed purchase to pending
+If these are sandbox credentials, the production API will reject them.
 
-#### Step 2: Redeploy with OAuth Logic
-Ensure the OAuth token acquisition logic is properly deployed.
+#### 2. Configure Webhook URL in PhonePe Dashboard
 
-### Code Changes Required
+This is the most likely cause of "Something went wrong" errors. You must configure:
 
-**File: `supabase/functions/create-phonepe-payment/index.ts`**
-
-Replace the purchase creation logic (lines 115-137) to:
-1. First check for existing pending purchase for this user/bundle
-2. If found, reuse it (update the merchant transaction ID)
-3. If not found, check for failed purchase and reset it
-4. Only create new if neither exists
-
-```typescript
-// Check for existing pending or failed purchase for this user/bundle
-const { data: existingPurchase } = await supabaseAdmin
-  .from('student_purchases')
-  .select('*')
-  .eq('student_id', user.id)
-  .eq('bundle_id', bundleId)
-  .in('payment_status', ['pending', 'failed'])
-  .order('created_at', { ascending: false })
-  .limit(1)
-  .maybeSingle();
-
-let purchase;
-
-if (existingPurchase) {
-  // Reuse existing purchase - update with new transaction ID
-  const { data: updated, error: updateError } = await supabaseAdmin
-    .from('student_purchases')
-    .update({
-      payment_status: 'pending',
-      phonepe_merchant_transaction_id: merchantTransactionId,
-      expires_at: expiresAt.toISOString(),
-    })
-    .eq('id', existingPurchase.id)
-    .select()
-    .single();
-  
-  if (updateError) throw updateError;
-  purchase = updated;
-  console.log('Reusing existing purchase:', purchase.id);
-} else {
-  // Create new purchase
-  const { data: newPurchase, error: purchaseError } = await supabaseAdmin
-    .from('student_purchases')
-    .insert({...})
-    .select()
-    .single();
-    
-  if (purchaseError) throw purchaseError;
-  purchase = newPurchase;
-  console.log('New purchase created:', purchase.id);
-}
+**Webhook URL:**
+```
+https://lnoeofoucvyopmhcfwes.supabase.co/functions/v1/phonepe-webhook
 ```
 
-### Files to Modify
+**Authentication:** Basic Auth
+- Username: (value stored in `PHONEPE_WEBHOOK_USERNAME`)
+- Password: (value stored in `PHONEPE_WEBHOOK_PASSWORD`)
 
-| File | Change |
-|------|--------|
-| `supabase/functions/create-phonepe-payment/index.ts` | Handle existing pending/failed purchases before creating new ones |
+**Webhook Events to Subscribe:**
+- `checkout.order.completed`
+- `checkout.order.failed`
 
-### Deployment
+#### 3. PhonePe Dashboard Configuration Steps
 
-After code changes, redeploy the `create-phonepe-payment` function to ensure the latest OAuth and duplicate handling logic is active.
+1. Log in to PhonePe Merchant Dashboard
+2. Navigate to **Settings** → **Webhooks** or **Callback Configuration**
+3. Add a new webhook endpoint:
+   - **URL**: `https://lnoeofoucvyopmhcfwes.supabase.co/functions/v1/phonepe-webhook`
+   - **Authentication Type**: Basic Auth
+   - **Username**: Your `PHONEPE_WEBHOOK_USERNAME` value
+   - **Password**: Your `PHONEPE_WEBHOOK_PASSWORD` value
+4. Subscribe to events: `checkout.order.completed`, `checkout.order.failed`
+5. Save and test the webhook
 
-### Testing
+### If You Have Sandbox Credentials
+
+If your current `PHONEPE_CLIENT_ID` and `PHONEPE_CLIENT_SECRET` are sandbox credentials, you need to:
+
+1. Get production credentials from PhonePe Merchant Dashboard
+2. Update the secrets with the new production values
+
+### No Code Changes Required
+
+The Edge Functions are already correctly configured for production. The only actions needed are:
+1. Verify credentials are production (not sandbox)
+2. Configure the webhook URL in PhonePe Dashboard
+
+### Testing After Configuration
 
 1. Click "Buy Now" on `/select-course`
-2. Check logs for:
-   - "Requesting PhonePe access token..."
-   - "Access token obtained successfully"
-   - "Reusing existing purchase" OR "New purchase created"
-3. Verify redirect to PhonePe payment page
+2. Complete payment on PhonePe page
+3. Check Edge Function logs for `phonepe-webhook` to see incoming callbacks
+4. Verify `student_purchases` table is updated to `completed` status
