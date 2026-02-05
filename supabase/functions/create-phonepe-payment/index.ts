@@ -255,7 +255,12 @@ serve(async (req) => {
     console.log('PhonePe response status:', phonepeResponse.status);
     console.log('PhonePe response:', JSON.stringify(phonepeData));
 
-    if (!phonepeResponse.ok || phonepeData.code !== 'SUCCESS') {
+    // PhonePe v2 API returns state: "PENDING" with redirectUrl on success
+    // Check for valid response: either state is PENDING/CREATED with redirectUrl, or there's an error
+    const isValidResponse = phonepeResponse.ok && phonepeData.redirectUrl && 
+      (phonepeData.state === 'PENDING' || phonepeData.state === 'CREATED');
+    
+    if (!isValidResponse) {
       console.error('PhonePe API error:', phonepeData);
       
       // Update purchase as failed
@@ -267,11 +272,13 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Payment initiation failed', 
-          details: phonepeData.message || 'Unknown error' 
+          details: phonepeData.message || phonepeData.code || 'Unknown error' 
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('Payment initiated successfully, state:', phonepeData.state);
 
     // Update purchase with PhonePe transaction ID if provided
     if (phonepeData.orderId) {
