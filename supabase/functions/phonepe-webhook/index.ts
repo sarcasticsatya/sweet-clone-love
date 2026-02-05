@@ -17,40 +17,55 @@ serve(async (req) => {
     console.log('Method:', req.method);
     console.log('Headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
 
-    // Verify Basic Auth
+    // Verify SHA256 Authorization (PhonePe sends SHA256 hash of username:password)
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
-      console.error('Missing or invalid Authorization header');
+    if (!authHeader) {
+      console.error('Missing Authorization header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Decode Basic Auth credentials
-    const base64Credentials = authHeader.slice(6);
-    const credentials = atob(base64Credentials);
-    const [username, password] = credentials.split(':');
 
     const expectedUsername = Deno.env.get('PHONEPE_WEBHOOK_USERNAME');
     const expectedPassword = Deno.env.get('PHONEPE_WEBHOOK_PASSWORD');
 
-    if (username !== expectedUsername || password !== expectedPassword) {
-      console.error('Invalid credentials');
+    if (!expectedUsername || !expectedPassword) {
+      console.error('Webhook credentials not configured');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Generate expected SHA256 hash of username:password
+    const expectedHash = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(`${expectedUsername}:${expectedPassword}`)
+    );
+    const expectedHashHex = Array.from(new Uint8Array(expectedHash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    console.log('Expected hash:', expectedHashHex);
+    console.log('Received auth header:', authHeader);
+
+    if (authHeader !== expectedHashHex) {
+      console.error('Authorization hash mismatch');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Basic Auth verified');
+    console.log('SHA256 Authorization verified');
 
     // Parse webhook payload
     const payload = await req.json();
     console.log('Webhook payload:', JSON.stringify(payload));
 
     // Extract transaction details from PhonePe webhook
-    const { type, payload: eventPayload } = payload;
+    const { event, payload: eventPayload } = payload;
     
     if (!eventPayload) {
       console.error('Missing event payload');
@@ -64,7 +79,7 @@ serve(async (req) => {
     const state = eventPayload.state;
     const phonepeOrderId = eventPayload.orderId;
 
-    console.log('Event type:', type);
+    console.log('Event:', event);
     console.log('Merchant Order ID:', merchantOrderId);
     console.log('State:', state);
     console.log('PhonePe Order ID:', phonepeOrderId);
