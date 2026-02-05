@@ -22,32 +22,43 @@ serve(async (req) => {
       },
     });
 
-    const adminEmail = 'admin@nythicai.com';
-    const adminPassword = 'AdminNythicAI';
+    // Security: Only allow if no admin exists (first-time setup only)
+    const { data: existingAdmins, error: checkError } = await supabaseAdmin
+      .from('user_roles')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1);
 
-    // Check if admin user already exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingAdmin = existingUsers?.users?.find(u => u.email === adminEmail);
+    if (checkError) {
+      console.error('Error checking existing admins:', checkError);
+      throw checkError;
+    }
 
-    if (existingAdmin) {
-      // Update password if user exists
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        existingAdmin.id,
-        { password: adminPassword, email_confirm: true }
-      );
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Ensure admin role exists
-      await supabaseAdmin
-        .from('user_roles')
-        .upsert({ user_id: existingAdmin.id, role: 'admin' }, { onConflict: 'user_id,role' });
-
+    if (existingAdmins && existingAdmins.length > 0) {
+      console.log('Admin already exists, blocking function');
       return new Response(
-        JSON.stringify({ success: true, message: 'Admin user updated successfully' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Admin account already exists. Use password reset for existing admin.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get admin credentials from environment variables
+    const adminEmail = Deno.env.get('ADMIN_EMAIL');
+    const adminPassword = Deno.env.get('ADMIN_INITIAL_PASSWORD');
+
+    if (!adminEmail || !adminPassword) {
+      console.error('Admin credentials not configured in environment');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Admin credentials not configured. Please set ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD secrets.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate password strength
+    if (adminPassword.length < 12) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Admin password must be at least 12 characters long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -59,8 +70,11 @@ serve(async (req) => {
     });
 
     if (createError) {
+      console.error('Error creating admin user:', createError);
       throw createError;
     }
+
+    console.log('Admin user created:', newUser.user.id);
 
     // Assign admin role
     const { error: roleError } = await supabaseAdmin
@@ -68,6 +82,7 @@ serve(async (req) => {
       .insert({ user_id: newUser.user.id, role: 'admin' });
 
     if (roleError) {
+      console.error('Error assigning admin role:', roleError);
       throw roleError;
     }
 
@@ -78,8 +93,10 @@ serve(async (req) => {
       .eq('user_id', newUser.user.id)
       .eq('role', 'student');
 
+    console.log('Admin role assigned successfully');
+
     return new Response(
-      JSON.stringify({ success: true, message: 'Admin user created successfully' }),
+      JSON.stringify({ success: true, message: 'Admin user created successfully. Please change the password immediately after first login.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
