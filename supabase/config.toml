@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.create-admin-user]
 verify_jwt = false
+
+[functions.create-phonepe-payment]
+verify_jwt = false
+
+[functions.phonepe-webhook]
+verify_jwt = false
