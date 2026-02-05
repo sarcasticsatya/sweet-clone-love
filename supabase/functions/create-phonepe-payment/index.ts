@@ -6,6 +6,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Function to get PhonePe OAuth access token
+async function getPhonePeAccessToken(clientId: string, clientSecret: string): Promise<string> {
+  const tokenUrl = 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
+  
+  const params = new URLSearchParams();
+  params.append('client_id', clientId);
+  params.append('client_secret', clientSecret);
+  params.append('grant_type', 'client_credentials');
+
+  console.log('Requesting PhonePe access token...');
+
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  const data = await response.json();
+  console.log('Token response status:', response.status);
+
+  if (!response.ok || !data.access_token) {
+    console.error('Failed to get access token:', data);
+    throw new Error(data.message || 'Failed to get PhonePe access token');
+  }
+
+  console.log('Access token obtained successfully, expires_at:', data.expires_at);
+  return data.access_token;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -111,6 +142,36 @@ serve(async (req) => {
     const clientId = Deno.env.get('PHONEPE_CLIENT_ID')!;
     const clientSecret = Deno.env.get('PHONEPE_CLIENT_SECRET')!;
 
+    if (!clientId || !clientSecret) {
+      console.error('Missing PhonePe credentials');
+      return new Response(
+        JSON.stringify({ error: 'Payment gateway not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get OAuth access token first
+    let accessToken: string;
+    try {
+      accessToken = await getPhonePeAccessToken(clientId, clientSecret);
+    } catch (tokenError) {
+      console.error('Token error:', tokenError);
+      
+      // Update purchase as failed
+      await supabaseAdmin
+        .from('student_purchases')
+        .update({ payment_status: 'failed' })
+        .eq('id', purchase.id);
+
+      return new Response(
+        JSON.stringify({ 
+          error: 'Payment initiation failed', 
+          details: tokenError instanceof Error ? tokenError.message : 'Failed to authenticate with payment gateway'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Amount in paise (INR * 100)
     const amountInPaise = Math.round(bundle.price_inr * 100);
 
@@ -135,14 +196,14 @@ serve(async (req) => {
 
     console.log('PhonePe payload:', JSON.stringify(paymentPayload));
 
-    // Call PhonePe API
+    // Call PhonePe API with OAuth token
     const phonepeUrl = 'https://api.phonepe.com/apis/pg/checkout/v2/pay';
     
     const phonepeResponse = await fetch(phonepeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `O-Bearer ${clientId}:${clientSecret}`,
+        'Authorization': `O-Bearer ${accessToken}`,
       },
       body: JSON.stringify(paymentPayload),
     });
