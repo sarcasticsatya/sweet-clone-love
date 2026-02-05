@@ -10,6 +10,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import NotVerified from "./pages/NotVerified";
 import VerifyEmail from "./pages/VerifyEmail";
 import SelectCourse from "./pages/SelectCourse";
+import PaymentStatus from "./pages/PaymentStatus";
 import UserProfile from "./pages/UserProfile";
 import ResetPassword from "./pages/ResetPassword";
 import UpdatePassword from "./pages/UpdatePassword";
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/not-verified" element={<NotVerified />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/select-course" element={<SelectCourse />} />
+          <Route path="/payment-status" element={<PaymentStatus />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/update-password" element={<UpdatePassword />} />

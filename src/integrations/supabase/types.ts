@@ -514,8 +514,11 @@ export type Database = {
           bundle_id: string
           expires_at: string
           id: string
+          payment_gateway: string | null
           payment_method: string
           payment_status: string
+          phonepe_merchant_transaction_id: string | null
+          phonepe_transaction_id: string | null
           purchased_at: string
           stripe_payment_id: string | null
           stripe_session_id: string | null
@@ -526,8 +529,11 @@ export type Database = {
           bundle_id: string
           expires_at: string
           id?: string
+          payment_gateway?: string | null
           payment_method?: string
           payment_status?: string
+          phonepe_merchant_transaction_id?: string | null
+          phonepe_transaction_id?: string | null
           purchased_at?: string
           stripe_payment_id?: string | null
           stripe_session_id?: string | null
@@ -538,8 +544,11 @@ export type Database = {
           bundle_id?: string
           expires_at?: string
           id?: string
+          payment_gateway?: string | null
           payment_method?: string
           payment_status?: string
+          phonepe_merchant_transaction_id?: string | null
+          phonepe_transaction_id?: string | null
           purchased_at?: string
           stripe_payment_id?: string | null
           stripe_session_id?: string | null
