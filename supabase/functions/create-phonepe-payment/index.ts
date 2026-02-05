@@ -113,15 +113,20 @@ serve(async (req) => {
     expiresAt.setDate(expiresAt.getDate() + bundle.validity_days);
 
     // Check for existing pending or failed purchase for this user/bundle
-    const { data: existingPurchase } = await supabaseAdmin
+    const { data: existingPurchase, error: fetchError } = await supabaseAdmin
       .from('student_purchases')
       .select('*')
       .eq('student_id', user.id)
       .eq('bundle_id', bundleId)
       .in('payment_status', ['pending', 'failed'])
-      .order('created_at', { ascending: false })
+      .order('purchased_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error fetching existing purchase:', fetchError);
+    }
+    console.log('Existing purchase check result:', existingPurchase ? existingPurchase.id : 'none found');
 
     let purchase;
 
