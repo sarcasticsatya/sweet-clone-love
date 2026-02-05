@@ -24,7 +24,8 @@ import {
   CheckCircle,
   Clock,
   MessageCircle,
-  Copy
+  Copy,
+  Receipt
 } from "lucide-react";
 import { Atom, Calculator, Brain } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -58,6 +59,7 @@ interface Purchase {
   purchased_at: string;
   expires_at: string;
   payment_status: string;
+  payment_gateway?: string | null;
   bundle: {
     name: string;
     name_kannada: string | null;
@@ -69,6 +71,7 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [purchase, setPurchase] = useState<Purchase | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<Purchase[]>([]);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -112,7 +115,7 @@ const UserProfile = () => {
       .eq("payment_status", "completed")
       .order("purchased_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (purchaseData) {
       // Fetch bundle info separately
@@ -120,12 +123,43 @@ const UserProfile = () => {
         .from("course_bundles")
         .select("name, name_kannada")
         .eq("id", purchaseData.bundle_id)
-        .single();
+        .maybeSingle();
 
       setPurchase({
         ...purchaseData,
         bundle: bundleData
       });
+    }
+
+    // Load all payment history
+    const { data: historyData } = await supabase
+      .from("student_purchases")
+      .select(`
+        id,
+        amount_paid,
+        purchased_at,
+        expires_at,
+        payment_status,
+        payment_gateway,
+        bundle_id
+      `)
+      .eq("student_id", session.user.id)
+      .order("purchased_at", { ascending: false });
+
+    if (historyData) {
+      // Fetch bundle info for all purchases
+      const bundleIds = [...new Set(historyData.map(p => p.bundle_id))];
+      const { data: bundlesData } = await supabase
+        .from("course_bundles")
+        .select("id, name, name_kannada")
+        .in("id", bundleIds);
+
+      const bundleMap = new Map(bundlesData?.map(b => [b.id, { name: b.name, name_kannada: b.name_kannada }]) || []);
+
+      setPaymentHistory(historyData.map(p => ({
+        ...p,
+        bundle: bundleMap.get(p.bundle_id) || null
+      })));
     }
 
     setLoading(false);
@@ -412,6 +446,50 @@ const UserProfile = () => {
               <Button variant="outline" onClick={() => setChangePasswordOpen(true)}>
                 Change Password
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Payment History */}
+          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-500">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Receipt className="w-5 h-5" />
+                Payment History
+              </CardTitle>
+              <CardDescription>Your past transactions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {paymentHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {paymentHistory.map((transaction) => (
+                    <div 
+                      key={transaction.id} 
+                      className="flex flex-col md:flex-row md:items-center justify-between p-3 rounded-lg border bg-card/50 gap-2"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium">{transaction.bundle?.name || "Course Bundle"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(transaction.purchased_at), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">₹{transaction.amount_paid.toLocaleString("en-IN")}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          transaction.payment_status === "completed"
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : transaction.payment_status === "pending"
+                            ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
+                            : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                        }`}>
+                          {transaction.payment_status.charAt(0).toUpperCase() + transaction.payment_status.slice(1)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">No transactions yet</p>
+              )}
             </CardContent>
           </Card>
 
