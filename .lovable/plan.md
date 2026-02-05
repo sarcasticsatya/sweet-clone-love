@@ -1,97 +1,134 @@
 
 
-## PhonePe Payment Gateway Integration
+## Plan: Add Payment History & Update Logos
 
-### Credentials Summary
+### Overview
 
-| Secret Name | Value |
-|-------------|-------|
-| PHONEPE_CLIENT_ID | SU2602051653302312343687 |
-| PHONEPE_CLIENT_SECRET | 6760dd05-fe02-4271-a5d2-92625b54daf9 |
-| PHONEPE_WEBHOOK_USERNAME | nythicai_webhook |
-| PHONEPE_WEBHOOK_PASSWORD | NythicAI2025Webhook |
-
-### URL Configuration
-
-| Purpose | URL |
-|---------|-----|
-| Webhook | `https://lnoeofoucvyopmhcfwes.supabase.co/functions/v1/phonepe-webhook` |
-| Success Redirect | `https://nythicai.com/payment-status?status=success` |
-| Failure Redirect | `https://nythicai.com/payment-status?status=failed` |
+This plan covers two main tasks:
+1. **Add a Payment History section** to the User Profile page showing all past transactions
+2. **Update the logo/icon** everywhere in the application with the new brand assets
 
 ---
 
-### Implementation Steps
+### Part 1: Payment History Section
 
-#### Step 1: Store Secrets
-Store all 4 PhonePe credentials as Supabase secrets.
+#### Current State
+The UserProfile page currently shows only the **active/latest purchase** in the "Subscription Details" card. It fetches a single purchase with `limit(1)`.
 
-#### Step 2: Database Migration
-Add PhonePe transaction tracking columns:
-- `phonepe_transaction_id` - PhonePe's transaction ID
-- `phonepe_merchant_transaction_id` - Our unique transaction ID (with UNIQUE constraint)
-- `payment_gateway` - Default 'phonepe'
+#### Changes Required
 
-#### Step 3: Create `create-phonepe-payment` Edge Function
-- Authenticates user
-- Creates pending purchase record
-- Calls PhonePe API to initiate payment
-- Returns payment redirect URL
+**Modify `src/pages/UserProfile.tsx`:**
 
-#### Step 4: Create `phonepe-webhook` Edge Function
-- Verifies Basic Auth (username/password)
-- Verifies PhonePe signature
-- Updates purchase status
-- Grants course access on success
+1. Add new state for payment history:
+   ```typescript
+   const [paymentHistory, setPaymentHistory] = useState<Purchase[]>([]);
+   ```
 
-#### Step 5: Update `SelectCourse.tsx`
-- Remove dummy payment dialog
-- Call edge function on "Buy Now"
-- Redirect to PhonePe payment page
+2. Update `loadProfile()` to fetch ALL purchases (not just the latest):
+   - Fetch all purchases for the user ordered by date descending
+   - Include all payment statuses (completed, pending, failed)
 
-#### Step 6: Create `PaymentStatus.tsx`
-- Handle redirects from PhonePe
-- Show success/failure UI
-- Redirect to dashboard on success
+3. Add a new Card component "Payment History" after the existing "Subscription Details" card:
+   - Display a table/list showing:
+     - Date of transaction
+     - Course bundle name
+     - Amount paid
+     - Payment status (with color-coded badges)
+     - Payment gateway used
+   - Handle empty state when no transactions exist
+   - Add the `Receipt` icon from lucide-react for the card header
 
-#### Step 7: Update Routes
-Add `/payment-status` route in App.tsx
+4. Add new import for `Receipt` icon from lucide-react
+
+#### UI Design
+- Table format on desktop, card list on mobile
+- Status badges: Green for "Completed", Yellow for "Pending", Red for "Failed"
+- Most recent transactions first
 
 ---
 
-### Files to Create/Modify
+### Part 2: Update Logos Everywhere
 
-| File | Action |
-|------|--------|
-| `supabase/functions/create-phonepe-payment/index.ts` | Create |
-| `supabase/functions/phonepe-webhook/index.ts` | Create |
-| `src/pages/SelectCourse.tsx` | Modify |
-| `src/pages/PaymentStatus.tsx` | Create |
-| `src/App.tsx` | Modify |
-| `supabase/config.toml` | Modify |
+#### New Assets
+- **Icon.png** - The "N" book icon (for favicon and small logo uses)
+- **Logo.png** - Full logo with "Nythic AI" text (for larger branding)
+
+#### Files to Update
+
+| Location | Current | Change To |
+|----------|---------|-----------|
+| `src/assets/nythic-logo.png` | Old logo | Replace with new **Icon.png** |
+| `public/nythic-logo.png` | Old logo (favicon) | Replace with new **Icon.png** |
+| `src/components/Logo.tsx` | Uses old logo | No code change needed (uses same filename) |
+| `index.html` | References `/nythic-logo.png` | No code change needed |
+
+#### Asset Copy Operations
+1. Copy `user-uploads://Icon.png` → `src/assets/nythic-logo.png` (overwrites existing)
+2. Copy `user-uploads://Icon.png` → `public/nythic-logo.png` (overwrites existing for favicon)
+
+The Logo component and all its usages will automatically pick up the new logo since the import path remains the same.
+
+#### Where Logo is Currently Used
+- `src/components/Logo.tsx` - Main Logo component
+- `src/pages/UserProfile.tsx` - Header
+- `src/pages/StudentDashboard.tsx` - Header
+- `src/pages/AdminDashboard.tsx` - Header
+- `src/pages/Auth.tsx` - Login/Signup form
+- `src/pages/ResetPassword.tsx` - Reset password form
+- `src/components/landing/HeroSection.tsx` - Landing page hero
+- `src/components/student/ChatPanel.tsx` - AI chat avatar
+- `index.html` - Favicon and apple-touch-icon
+
+---
+
+### Files to Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/assets/nythic-logo.png` | Replace | New icon asset |
+| `public/nythic-logo.png` | Replace | New favicon |
+| `src/pages/UserProfile.tsx` | Modify | Add Payment History section |
 
 ---
 
 ### Technical Details
 
-**PhonePe API Flow:**
-1. Generate merchant transaction ID: `NYTHIC_{bundleId}_{timestamp}`
-2. Create base64 encoded payload with amount, callback URL, redirect URLs
-3. Generate X-VERIFY checksum: SHA256(base64Payload + endpoint + saltKey) + "###" + saltIndex
-4. POST to `https://api.phonepe.com/apis/hermes/pg/v1/pay`
-5. Return payment page URL to frontend
+**Payment History Query:**
+```typescript
+const { data: historyData } = await supabase
+  .from("student_purchases")
+  .select(`
+    id,
+    amount_paid,
+    purchased_at,
+    expires_at,
+    payment_status,
+    payment_gateway,
+    phonepe_merchant_transaction_id,
+    bundle_id
+  `)
+  .eq("student_id", session.user.id)
+  .order("purchased_at", { ascending: false });
+```
 
-**Webhook Verification:**
-1. Check Basic Auth header matches stored username/password
-2. Verify X-VERIFY signature from PhonePe
-3. Parse response and update database
-4. Grant course access via existing `auto_assign_subjects_on_purchase` trigger
+**Payment Status Badge Colors:**
+- `completed` → green (bg-green-100, text-green-700)
+- `pending` → yellow (bg-yellow-100, text-yellow-700)  
+- `failed` → red (bg-red-100, text-red-700)
 
-**User Flow:**
-1. Student clicks "Buy Now" → Loading state
-2. Edge function creates pending purchase → Returns PhonePe URL
-3. Student redirected to PhonePe → Completes payment
-4. PhonePe calls webhook → Backend grants access
-5. Student redirected to nythicai.com/payment-status → Success message
-6. Auto-redirect to /student dashboard
+---
+
+### User Experience
+
+After implementation:
+1. Users navigate to Profile → See their personal info
+2. Scroll to "Subscription Details" → See current active plan
+3. Scroll to new "Payment History" → See all past transactions with status
+
+The new logo will appear:
+- In all page headers
+- On the login/signup page
+- On the landing page hero
+- In the AI chat interface
+- As the browser tab icon
 
