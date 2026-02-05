@@ -1,55 +1,100 @@
 
-## Fix: Deploy create-phonepe-payment Edge Function
+## Fix: PhonePe Payment Authorization & Duplicate Purchase Issues
 
-### Problem Identified
+### Problems Identified
 
-The payment is failing with **"Failed to send a request to the Edge Function"** because:
+Based on the edge function logs:
 
-1. **The `create-phonepe-payment` Edge Function has never been deployed** - there are no logs for it, meaning the endpoint returns 404
-2. The function also needs the `phonepe-webhook` function deployed to handle payment callbacks
+1. **OAuth Token Not Being Used** (17:02:53 logs)
+   - The deployed version is NOT calling the OAuth token function
+   - Logs show: Bundle found → Pending purchase created → PhonePe payload (skipping token acquisition)
+   - Missing logs: "Requesting PhonePe access token..." and "Access token obtained successfully"
+   - This means the latest code with OAuth wasn't deployed properly
 
-### Root Cause
-
-When checking the edge function logs, there were "No logs found" for `create-phonepe-payment`. The console error shows "Failed to fetch" which is what happens when trying to call a non-existent endpoint.
+2. **Duplicate Purchase Constraint Error** (17:06:19 logs)
+   - Error: `duplicate key value violates unique constraint "student_purchases_student_id_bundle_id_key"`
+   - There's already a pending purchase for this user/bundle
+   - The code doesn't handle retrying after a failed payment
 
 ### Solution
 
-Deploy both payment-related Edge Functions immediately:
-- `create-phonepe-payment` - Initiates the PhonePe payment
-- `phonepe-webhook` - Handles payment completion callbacks
+#### Step 1: Fix Duplicate Purchase Handling
+Before creating a new purchase, check for existing pending/failed purchases and either:
+- Reuse an existing pending purchase
+- Update an existing failed purchase to pending
 
-### Steps
+#### Step 2: Redeploy with OAuth Logic
+Ensure the OAuth token acquisition logic is properly deployed.
 
-1. **Update the import version** to pin `@supabase/supabase-js@2.49.1` in both files to prevent bundling timeout issues
+### Code Changes Required
 
-2. **Deploy both functions**:
-   - `create-phonepe-payment`
-   - `phonepe-webhook`
+**File: `supabase/functions/create-phonepe-payment/index.ts`**
 
-3. **Test the payment flow** on the /select-course page
+Replace the purchase creation logic (lines 115-137) to:
+1. First check for existing pending purchase for this user/bundle
+2. If found, reuse it (update the merchant transaction ID)
+3. If not found, check for failed purchase and reset it
+4. Only create new if neither exists
+
+```typescript
+// Check for existing pending or failed purchase for this user/bundle
+const { data: existingPurchase } = await supabaseAdmin
+  .from('student_purchases')
+  .select('*')
+  .eq('student_id', user.id)
+  .eq('bundle_id', bundleId)
+  .in('payment_status', ['pending', 'failed'])
+  .order('created_at', { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+let purchase;
+
+if (existingPurchase) {
+  // Reuse existing purchase - update with new transaction ID
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from('student_purchases')
+    .update({
+      payment_status: 'pending',
+      phonepe_merchant_transaction_id: merchantTransactionId,
+      expires_at: expiresAt.toISOString(),
+    })
+    .eq('id', existingPurchase.id)
+    .select()
+    .single();
+  
+  if (updateError) throw updateError;
+  purchase = updated;
+  console.log('Reusing existing purchase:', purchase.id);
+} else {
+  // Create new purchase
+  const { data: newPurchase, error: purchaseError } = await supabaseAdmin
+    .from('student_purchases')
+    .insert({...})
+    .select()
+    .single();
+    
+  if (purchaseError) throw purchaseError;
+  purchase = newPurchase;
+  console.log('New purchase created:', purchase.id);
+}
+```
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/create-phonepe-payment/index.ts` | Pin supabase-js version to `@2.49.1` |
-| `supabase/functions/phonepe-webhook/index.ts` | Pin supabase-js version to `@2.49.1` |
+| `supabase/functions/create-phonepe-payment/index.ts` | Handle existing pending/failed purchases before creating new ones |
 
-### Technical Details
+### Deployment
 
-The current import:
-```typescript
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-```
+After code changes, redeploy the `create-phonepe-payment` function to ensure the latest OAuth and duplicate handling logic is active.
 
-Should be changed to:
-```typescript
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-```
+### Testing
 
-### Expected Outcome
-
-After deployment:
-1. The "Buy Now" button on /select-course will work
-2. Users will be redirected to PhonePe payment page
-3. After payment, webhook will update purchase status
+1. Click "Buy Now" on `/select-course`
+2. Check logs for:
+   - "Requesting PhonePe access token..."
+   - "Access token obtained successfully"
+   - "Reusing existing purchase" OR "New purchase created"
+3. Verify redirect to PhonePe payment page
