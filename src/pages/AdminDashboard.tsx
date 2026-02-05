@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LogOut, Users, Video, FileText, BarChart, Download } from "lucide-react";
+import { Atom, Calculator, Brain, Settings } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageStudents } from "@/components/admin/ManageStudents";
@@ -13,6 +14,14 @@ import { ViewReports } from "@/components/admin/ViewReports";
 import { DataExport } from "@/components/admin/DataExport";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
+import { FloatingIcon } from "@/components/landing/FloatingIcon";
+
+const floatingIcons = [
+  { icon: <Settings className="w-full h-full" />, x: 5, y: 20, delay: 0, size: "md" as const },
+  { icon: <Calculator className="w-full h-full" />, x: 92, y: 30, delay: 0.5, size: "sm" as const },
+  { icon: <Brain className="w-full h-full" />, x: 90, y: 75, delay: 1, size: "md" as const },
+  { icon: <Atom className="w-full h-full" />, x: 8, y: 85, delay: 1.5, size: "sm" as const },
+];
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -67,6 +76,14 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background animate-gradient relative overflow-hidden">
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Floating icons - hidden on mobile */}
+      <div className="hidden md:block">
+        {floatingIcons.map((iconProps, index) => (
+          <FloatingIcon key={index} {...iconProps} />
+        ))}
+      </div>
+      
       {/* Inactivity Warning Dialog */}
       <InactivityWarningDialog 
         open={showInactivityWarning} 
@@ -77,7 +94,7 @@ const AdminDashboard = () => {
       {/* Header */}
       <header className="relative z-10 border-b border-border px-6 py-4 flex items-center justify-between bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center p-1">
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center p-1 glow-primary">
             <Logo size="md" />
           </div>
           <div>

@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { naturalSortChapters } from "@/lib/naturalSort";
+import { Atom } from "lucide-react";
 
 interface SourcesPanelProps {
   selectedChapterId: string | null;
@@ -83,7 +84,7 @@ export const SourcesPanel = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-border flex-shrink-0">
+      <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-border flex-shrink-0 bg-gradient-to-r from-primary/5 to-transparent">
         <h2 className="font-medium text-xs md:text-sm text-foreground">Sources</h2>
         <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5">Select a chapter to begin</p>
       </div>
@@ -122,7 +123,7 @@ export const SourcesPanel = ({
                         className={cn(
                           "w-full text-left px-2.5 md:px-3 py-1.5 md:py-2 rounded text-[11px] md:text-[12px] transition-all",
                           selectedChapterId === chapter.id
-                            ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                            ? "bg-primary/10 text-primary font-medium border-l-2 border-primary shadow-sm"
                             : "hover:bg-accent/50 text-foreground border-l-2 border-transparent"
                         )}
                       >
