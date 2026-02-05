@@ -1,8 +1,6 @@
 import { PolicyLayout } from "@/components/PolicyLayout";
-
 const PrivacyPolicy = () => {
-  return (
-    <PolicyLayout title="Privacy Policy">
+  return <PolicyLayout title="Privacy Policy">
       <div className="space-y-8 text-muted-foreground">
         {/* Introduction */}
         <section>
@@ -161,17 +159,14 @@ const PrivacyPolicy = () => {
         <section className="bg-muted/50 p-6 rounded-lg">
           <h2 className="text-lg font-semibold text-foreground mb-4">Grievance Officer</h2>
           <div className="space-y-2">
-            <p>
-              <strong>Name:</strong> Ravindra Kadammnavar
+            <p>Name: Manjunath Krishna Mane<strong>Name:</strong> Ravindra Kadammnavar
             </p>
             <p>
               <strong>Designation:</strong> Grievance Officer
             </p>
-            <p>
-              <strong>Company:</strong> NythicAI
+            <p>Company: Ravi Industries<strong>Company:</strong> NythicAI
             </p>
-            <p>
-              <strong>Address:</strong> 17-18 2nd floor Maruti Complex Line bazar Dharwad 580001
+            <p>Address: SM1, Lakkamanhalli, Hubli Road, Dharwad Karnataka 580004<strong>Address:</strong> 17-18 2nd floor Maruti Complex Line bazar Dharwad 580001
             </p>
             <p>
               <strong>Phone:</strong> +91 82773 23208
@@ -182,8 +177,6 @@ const PrivacyPolicy = () => {
           </div>
         </section>
       </div>
-    </PolicyLayout>
-  );
+    </PolicyLayout>;
 };
-
 export default PrivacyPolicy;
