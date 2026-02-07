@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2, Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { Footer } from "@/components/Footer";
 
 const ResetPassword = () => {
@@ -88,11 +89,9 @@ const ResetPassword = () => {
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1">
-                <Logo size="md" />
-              </div>
+              <Logo size="lg" className="w-12 h-12" />
             </div>
-            <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
+            <CardTitle className="text-2xl"><BrandName size="xl" /></CardTitle>
             <CardDescription>
               Enter your email address and we'll send you a link to reset your password
             </CardDescription>

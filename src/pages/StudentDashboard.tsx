@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { LogOut, Clock, Mail, User, MessageCircle, Copy } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { SourcesPanel } from "@/components/student/SourcesPanel";
 import { ChatPanel } from "@/components/student/ChatPanel";
 import { ToolsPanel } from "@/components/student/ToolsPanel";
@@ -125,11 +126,9 @@ const StudentDashboard = () => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
         <header className="relative z-10 border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card/80 backdrop-blur-sm shadow-sm">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center p-0.5">
-              <Logo size="sm" />
-            </div>
+            <Logo size="sm" className="w-6 h-6 md:w-7 md:h-7" />
             <div>
-              <h1 className="text-sm md:text-base font-medium">NythicAI</h1>
+              <h1 className="text-sm md:text-base font-medium"><BrandName size="sm" /></h1>
               <p className="text-[9px] md:text-[10px] text-muted-foreground">Your 24 X 7 Personal Teacher</p>
             </div>
           </div>
@@ -182,11 +181,9 @@ const StudentDashboard = () => {
       {/* NotebookLM-style Header */}
       <header className="relative z-10 border-b border-border px-3 md:px-4 py-2.5 flex items-center justify-between bg-card/80 backdrop-blur-sm shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 md:w-7 md:h-7 bg-primary rounded flex items-center justify-center p-0.5">
-            <Logo size="sm" />
-          </div>
+          <Logo size="sm" className="w-6 h-6 md:w-7 md:h-7" />
           <div>
-            <h1 className="text-sm md:text-base font-medium">NythicAI</h1>
+            <h1 className="text-sm md:text-base font-medium"><BrandName size="sm" /></h1>
             <p className="text-[9px] md:text-[10px] text-muted-foreground">Your 24x7 Personal Teacher</p>
           </div>
         </div>

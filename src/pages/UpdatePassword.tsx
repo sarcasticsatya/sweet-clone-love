@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { BookOpen, Loader2, Lock, CheckCircle } from "lucide-react";
+import { Loader2, Lock, CheckCircle } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { Footer } from "@/components/Footer";
 
 const UpdatePassword = () => {
@@ -113,11 +115,9 @@ const UpdatePassword = () => {
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-primary-foreground" />
-              </div>
+              <Logo size="lg" className="w-12 h-12" />
             </div>
-            <CardTitle className="text-2xl font-bold">Set New Password</CardTitle>
+            <CardTitle className="text-2xl"><BrandName size="xl" /></CardTitle>
             <CardDescription>
               Enter your new password below
             </CardDescription>

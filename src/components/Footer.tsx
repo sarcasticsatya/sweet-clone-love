@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { FileText, Shield, RefreshCw } from "lucide-react";
+import { BrandName } from "@/components/BrandName";
 
 interface FooterProps {
   minimal?: boolean;
@@ -9,7 +10,7 @@ export const Footer = ({ minimal = false }: FooterProps) => {
   if (minimal) {
     return (
       <footer className="py-4 text-center border-t border-border bg-background/50 backdrop-blur-sm">
-        <p className="text-xs text-muted-foreground">© 2025 NythicAI.</p>
+        <p className="text-xs text-muted-foreground">© 2025 <BrandName size="xs" className="font-medium" />.</p>
         <p className="text-xs text-muted-foreground/70 mt-1">
           Developed by <span className="font-medium text-muted-foreground">AIWOS</span>
         </p>
@@ -21,7 +22,7 @@ export const Footer = ({ minimal = false }: FooterProps) => {
     <footer className="border-t border-border bg-card/50 backdrop-blur-sm">
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">© 2025 NythicAI.</p>
+          <p className="text-sm text-muted-foreground">© 2025 <BrandName size="sm" className="font-medium" />.</p>
           <div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm">
             <Link 
               to="/terms-and-conditions" 
