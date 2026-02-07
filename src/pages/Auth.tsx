@@ -67,6 +67,9 @@ const Auth = () => {
     personalEmail: "",
     password: ""
   });
+  // Track whether we're actively handling a sign-in (to prevent race with onAuthStateChange)
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
   useEffect(() => {
     // Check if user just signed out - skip initial auto-login check
     const justSignedOut = sessionStorage.getItem('just_signed_out');
@@ -91,12 +94,13 @@ const Auth = () => {
       }
     } = supabase.auth.onAuthStateChange((event, session) => {
       // Only redirect on actual sign-in events, not on initial load or sign-out
-      if (event === 'SIGNED_IN' && session) {
+      // IMPORTANT: Skip if we're actively handling sign-in (handleSignIn controls the flow)
+      if (event === 'SIGNED_IN' && session && !isSigningIn) {
         checkUserStatusAndRedirect(session.user.id);
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isSigningIn]);
   const checkUserStatusAndRedirect = async (userId: string) => {
     // Check user role - retry a few times for newly created users (trigger may take a moment)
     let roleData = null;
@@ -231,6 +235,8 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    // Prevent onAuthStateChange from navigating while we handle session setup
+    setIsSigningIn(true);
     try {
       const {
         error,
@@ -246,7 +252,7 @@ const Auth = () => {
         const newSessionId = crypto.randomUUID();
         localStorage.setItem('nythic_session_id', newSessionId);
 
-        // Update session in backend (for students only, handled by edge function)
+        // Update session in backend BEFORE navigating (for students only, handled by edge function)
         try {
           await supabase.functions.invoke('update-session', {
             body: {
@@ -257,10 +263,14 @@ const Auth = () => {
           console.error('Failed to update session:', sessionError);
           // Don't block login if session update fails
         }
+
+        // Now that session is updated, navigate manually
+        await checkUserStatusAndRedirect(data.user.id);
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred during sign in");
     } finally {
+      setIsSigningIn(false);
       setLoading(false);
     }
   };

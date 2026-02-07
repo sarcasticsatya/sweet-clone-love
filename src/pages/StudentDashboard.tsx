@@ -50,12 +50,18 @@ const StudentDashboard = () => {
     checkAuth();
   }, []);
 
-  // Session validation: check on mount and every 30 seconds
+  // Session validation: check after a grace period on mount, then every 30 seconds
+  // Grace period allows update-session to complete after login
   useEffect(() => {
     if (user) {
-      validateSession();
+      const initialDelay = setTimeout(() => {
+        validateSession();
+      }, 5000); // 5-second grace period on mount
       const interval = setInterval(validateSession, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        clearTimeout(initialDelay);
+        clearInterval(interval);
+      };
     }
   }, [user, validateSession]);
   const checkAuth = async () => {

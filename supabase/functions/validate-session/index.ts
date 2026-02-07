@@ -82,8 +82,16 @@ serve(async (req) => {
       );
     }
 
+    // If active_session_id is NULL, the student hasn't had session tracking set up yet - consider valid
+    if (!profileData?.active_session_id) {
+      return new Response(
+        JSON.stringify({ valid: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if session matches
-    const isValid = profileData?.active_session_id === sessionId;
+    const isValid = profileData.active_session_id === sessionId;
 
     return new Response(
       JSON.stringify({ 
