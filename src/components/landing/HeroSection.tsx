@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { FloatingIcon } from "./FloatingIcon";
 import { ArrowRight, Sparkles, Atom, Calculator, BookOpen, Globe, Microscope, PenTool, Brain, FlaskConical } from "lucide-react";
 
@@ -30,17 +31,15 @@ export const HeroSection = () => {
 
       {/* Main content */}
       <div className="relative z-10 text-center space-y-4 md:space-y-8 px-4 max-w-4xl mx-auto">
-        {/* Logo with glow effect */}
+        {/* Logo */}
         <div className="flex justify-center animate-fade-in-up">
-          <div className="w-16 h-16 md:w-32 md:h-32 bg-primary rounded-2xl md:rounded-3xl flex items-center justify-center p-2 md:p-3 glow-primary shadow-2xl">
-            <Logo size="lg" className="w-full h-full" />
-          </div>
+          <Logo size="lg" className="w-16 h-16 md:w-32 md:h-32" />
         </div>
 
         {/* Title with animation */}
         <div className="space-y-2 md:space-y-4 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-          <h1 className="text-4xl md:text-7xl font-bold tracking-tight text-foreground">
-            NythicAI
+          <h1 className="text-foreground">
+            <BrandName size="hero" />
           </h1>
           <div className="flex items-center justify-center gap-2 text-primary font-medium text-base md:text-xl">
             <Sparkles className="w-4 h-4 md:w-5 md:h-5" />

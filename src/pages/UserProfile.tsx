@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Atom, Calculator, Brain } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { format, differenceInDays } from "date-fns";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
@@ -261,10 +262,8 @@ const UserProfile = () => {
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded flex items-center justify-center p-0.5">
-            <Logo size="sm" />
-          </div>
-          <span className="font-medium">NythicAI</span>
+          <Logo size="sm" className="w-8 h-8" />
+          <BrandName size="md" />
         </div>
       </header>
 

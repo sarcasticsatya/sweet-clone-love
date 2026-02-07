@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { LogOut, Users, Video, FileText, BarChart, Download } from "lucide-react";
 import { Atom, Calculator, Brain, Settings } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageStudents } from "@/components/admin/ManageStudents";
 import { ManageContent } from "@/components/admin/ManageContent";
@@ -94,12 +95,10 @@ const AdminDashboard = () => {
       {/* Header */}
       <header className="relative z-10 border-b border-border px-6 py-4 flex items-center justify-between bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center p-1 glow-primary">
-            <Logo size="md" />
-          </div>
+          <Logo size="md" className="w-10 h-10" />
           <div>
             <h1 className="text-xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">NythicAI Edtech Platform</p>
+            <p className="text-sm text-muted-foreground"><BrandName size="sm" /> Edtech Platform</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={handleSignOut}>

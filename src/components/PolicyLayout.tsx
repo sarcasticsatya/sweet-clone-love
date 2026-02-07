@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Atom, Calculator, Brain, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { FloatingIcon } from "@/components/landing/FloatingIcon";
 
 const floatingIcons = [
@@ -36,11 +37,9 @@ export const PolicyLayout = ({
       <header className="relative z-10 border-b border-border bg-card/80 backdrop-blur-sm shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center p-1.5 glow-primary">
-              <Logo size="md" />
-            </div>
+            <Logo size="lg" className="w-12 h-12" />
             <div>
-              <h1 className="text-xl font-bold">NythicAI</h1>
+              <h1 className="text-xl"><BrandName size="lg" /></h1>
               <p className="text-xs text-primary font-medium">Your 24 X 7 Personal Teacher</p>
             </div>
           </div>
@@ -72,7 +71,7 @@ export const PolicyLayout = ({
       <footer className="relative z-10 border-t border-border bg-card/80 backdrop-blur-sm mt-12">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">© 2025 NythicAI.</p>
+            <p className="text-sm text-muted-foreground">© 2025 <BrandName size="sm" className="font-medium" />.</p>
             <div className="flex items-center gap-6 text-sm">
               <Link to="/terms-and-conditions" className="text-muted-foreground hover:text-foreground transition-colors">
                 Terms & Conditions

@@ -15,6 +15,7 @@ import { Loader2, CheckCircle2, Mail } from "lucide-react";
 import { Atom, Calculator, Brain, BookOpen } from "lucide-react";
 import { z } from "zod";
 import { Logo } from "@/components/Logo";
+import { BrandName } from "@/components/BrandName";
 import { Footer } from "@/components/Footer";
 import { FloatingIcon } from "@/components/landing/FloatingIcon";
 
@@ -331,11 +332,9 @@ const Auth = () => {
         <Card className="w-full max-w-lg shadow-lg hover:shadow-xl transition-shadow duration-500">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center p-1 glow-primary">
-                <Logo size="md" />
-              </div>
+              <Logo size="lg" className="w-12 h-12" />
             </div>
-            <CardTitle className="text-2xl font-bold">NythicAI</CardTitle>
+            <CardTitle className="text-2xl"><BrandName size="xl" /></CardTitle>
             <CardDescription>Your 24x7 Personal Teacher</CardDescription>
           </CardHeader>
         <CardContent>
