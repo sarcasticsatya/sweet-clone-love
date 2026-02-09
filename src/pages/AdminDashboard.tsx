@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Users, Video, FileText, BarChart, Download } from "lucide-react";
+import { LogOut, Users, Video, FileText, BarChart, Download, Package, IndianRupee, Ticket } from "lucide-react";
 import { Atom, Calculator, Brain, Settings } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { BrandName } from "@/components/BrandName";
@@ -13,6 +13,9 @@ import { ManageContent } from "@/components/admin/ManageContent";
 import { ManageVideos } from "@/components/admin/ManageVideos";
 import { ViewReports } from "@/components/admin/ViewReports";
 import { DataExport } from "@/components/admin/DataExport";
+import { ManageCourses } from "@/components/admin/ManageCourses";
+import { ManagePayments } from "@/components/admin/ManagePayments";
+import { ManageCoupons } from "@/components/admin/ManageCoupons";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 import { FloatingIcon } from "@/components/landing/FloatingIcon";
@@ -110,7 +113,7 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="relative z-10 container mx-auto p-6">
         <Tabs defaultValue="students" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+          <TabsList className="flex w-full overflow-x-auto lg:w-auto">
             <TabsTrigger value="students">
               <Users className="w-4 h-4 mr-2" />
               Students
@@ -122,6 +125,18 @@ const AdminDashboard = () => {
             <TabsTrigger value="videos">
               <Video className="w-4 h-4 mr-2" />
               Videos
+            </TabsTrigger>
+            <TabsTrigger value="courses">
+              <Package className="w-4 h-4 mr-2" />
+              Courses
+            </TabsTrigger>
+            <TabsTrigger value="payments">
+              <IndianRupee className="w-4 h-4 mr-2" />
+              Payments
+            </TabsTrigger>
+            <TabsTrigger value="coupons">
+              <Ticket className="w-4 h-4 mr-2" />
+              Coupons
             </TabsTrigger>
             <TabsTrigger value="reports">
               <BarChart className="w-4 h-4 mr-2" />
@@ -143,6 +158,18 @@ const AdminDashboard = () => {
 
           <TabsContent value="videos" className="mt-6">
             <ManageVideos />
+          </TabsContent>
+
+          <TabsContent value="courses" className="mt-6">
+            <ManageCourses />
+          </TabsContent>
+
+          <TabsContent value="payments" className="mt-6">
+            <ManagePayments />
+          </TabsContent>
+
+          <TabsContent value="coupons" className="mt-6">
+            <ManageCoupons />
           </TabsContent>
 
           <TabsContent value="reports" className="mt-6">

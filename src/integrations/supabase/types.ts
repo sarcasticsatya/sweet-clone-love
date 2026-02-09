@@ -129,6 +129,42 @@ export type Database = {
           },
         ]
       }
+      coupon_codes: {
+        Row: {
+          code: string
+          created_at: string
+          discount_percent: number
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          used_count: number
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_percent: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       course_bundles: {
         Row: {
           created_at: string
@@ -512,6 +548,8 @@ export type Database = {
         Row: {
           amount_paid: number
           bundle_id: string
+          coupon_code_applied: string | null
+          discount_amount: number | null
           expires_at: string
           id: string
           payment_gateway: string | null
@@ -527,6 +565,8 @@ export type Database = {
         Insert: {
           amount_paid: number
           bundle_id: string
+          coupon_code_applied?: string | null
+          discount_amount?: number | null
           expires_at: string
           id?: string
           payment_gateway?: string | null
@@ -542,6 +582,8 @@ export type Database = {
         Update: {
           amount_paid?: number
           bundle_id?: string
+          coupon_code_applied?: string | null
+          discount_amount?: number | null
           expires_at?: string
           id?: string
           payment_gateway?: string | null

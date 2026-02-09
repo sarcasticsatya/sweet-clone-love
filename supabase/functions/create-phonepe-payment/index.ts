@@ -75,7 +75,7 @@ serve(async (req) => {
     console.log('Authenticated user:', user.id);
 
     // Parse request body
-    const { bundleId } = await req.json();
+    const { bundleId, couponCode } = await req.json();
     if (!bundleId) {
       return new Response(
         JSON.stringify({ error: 'Bundle ID is required' }),
@@ -103,6 +103,55 @@ serve(async (req) => {
     }
 
     console.log('Bundle found:', bundle.name, 'Price:', bundle.price_inr);
+
+    // Validate coupon if provided
+    let discountAmount = 0;
+    let appliedCouponCode: string | null = null;
+
+    if (couponCode) {
+      const { data: coupon, error: couponError } = await supabaseAdmin
+        .from('coupon_codes')
+        .select('*')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (couponError || !coupon) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid coupon code' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check expiry
+      if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: 'Coupon has expired' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check usage limit
+      if (coupon.max_uses !== null && coupon.used_count >= coupon.max_uses) {
+        return new Response(
+          JSON.stringify({ error: 'Coupon usage limit reached' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      discountAmount = Math.round(bundle.price_inr * coupon.discount_percent / 100);
+      appliedCouponCode = coupon.code;
+
+      // Increment used_count
+      await supabaseAdmin
+        .from('coupon_codes')
+        .update({ used_count: coupon.used_count + 1 })
+        .eq('id', coupon.id);
+
+      console.log('Coupon applied:', coupon.code, 'Discount:', discountAmount);
+    }
+
+    const finalAmount = bundle.price_inr - discountAmount;
 
     // Generate unique merchant transaction ID
     const timestamp = Date.now();
@@ -139,6 +188,9 @@ serve(async (req) => {
           payment_status: 'pending',
           phonepe_merchant_transaction_id: merchantTransactionId,
           expires_at: expiresAt.toISOString(),
+          amount_paid: finalAmount,
+          coupon_code_applied: appliedCouponCode,
+          discount_amount: discountAmount,
         })
         .eq('id', existingPurchase.id)
         .select()
@@ -160,12 +212,14 @@ serve(async (req) => {
         .insert({
           student_id: user.id,
           bundle_id: bundleId,
-          amount_paid: bundle.price_inr,
+          amount_paid: finalAmount,
           payment_status: 'pending',
           payment_method: 'phonepe',
           payment_gateway: 'phonepe',
           phonepe_merchant_transaction_id: merchantTransactionId,
           expires_at: expiresAt.toISOString(),
+          coupon_code_applied: appliedCouponCode,
+          discount_amount: discountAmount,
         })
         .select()
         .single();
@@ -216,7 +270,7 @@ serve(async (req) => {
     }
 
     // Amount in paise (INR * 100)
-    const amountInPaise = Math.round(bundle.price_inr * 100);
+    const amountInPaise = Math.round(finalAmount * 100);
 
     // PhonePe Payment Request payload
     const paymentPayload = {

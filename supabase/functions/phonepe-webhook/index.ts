@@ -148,8 +148,48 @@ serve(async (req) => {
     // If payment completed, the auto_assign_subjects_on_purchase trigger will handle granting access
     // We just need to make sure the purchase is marked as completed
 
+    // Safety net: explicitly assign subjects if payment completed
     if (paymentStatus === 'completed') {
-      console.log('Payment completed! Subject access will be granted by database trigger.');
+      console.log('Payment completed! Running explicit subject assignment as safety net...');
+      
+      try {
+        // Get bundle medium from bundle name
+        const { data: bundleData } = await supabase
+          .from('course_bundles')
+          .select('name')
+          .eq('id', purchase.bundle_id)
+          .single();
+
+        if (bundleData) {
+          let medium: string | null = null;
+          if (bundleData.name.toLowerCase().includes('english')) medium = 'English';
+          else if (bundleData.name.toLowerCase().includes('kannada')) medium = 'Kannada';
+
+          if (medium) {
+            // Get all subjects of that medium
+            const { data: subjects } = await supabase
+              .from('subjects')
+              .select('id')
+              .eq('medium', medium);
+
+            if (subjects && subjects.length > 0) {
+              // Insert access for each subject (ON CONFLICT DO NOTHING handled by unique constraint)
+              for (const subject of subjects) {
+                await supabase
+                  .from('student_subject_access')
+                  .upsert(
+                    { student_id: purchase.student_id, subject_id: subject.id },
+                    { onConflict: 'student_id,subject_id', ignoreDuplicates: true }
+                  );
+              }
+              console.log(`Assigned ${subjects.length} subjects to student ${purchase.student_id}`);
+            }
+          }
+        }
+      } catch (assignError) {
+        console.error('Subject assignment safety net error:', assignError);
+        // Don't fail the webhook for this - trigger should also handle it
+      }
     }
 
     return new Response(

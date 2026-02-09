@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Check, CreditCard, Calendar, BookOpen, Loader2 } from "lucide-react";
+import { Check, CreditCard, Calendar, BookOpen, Loader2, Tag } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Atom, Calculator, Brain } from "lucide-react";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
@@ -35,7 +36,9 @@ const SelectCourse = () => {
   const [bundles, setBundles] = useState<CourseBundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingBundleId, setProcessingBundleId] = useState<string | null>(null);
-
+  const [couponCode, setCouponCode] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{ code: string; discount_percent: number } | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
   useEffect(() => {
     checkAuthAndLoadBundles();
   }, []);
@@ -71,12 +74,38 @@ const SelectCourse = () => {
     setLoading(false);
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setValidatingCoupon(true);
+    const { data, error } = await supabase
+      .from("coupon_codes")
+      .select("code, discount_percent, max_uses, used_count, valid_until, is_active")
+      .eq("code", couponCode.toUpperCase())
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (error || !data) {
+      toast({ title: "Invalid Coupon", description: "This coupon code is not valid.", variant: "destructive" });
+      setCouponApplied(null);
+    } else if (data.valid_until && new Date(data.valid_until) < new Date()) {
+      toast({ title: "Coupon Expired", description: "This coupon has expired.", variant: "destructive" });
+      setCouponApplied(null);
+    } else if (data.max_uses !== null && data.used_count >= data.max_uses) {
+      toast({ title: "Coupon Limit Reached", description: "This coupon has reached its usage limit.", variant: "destructive" });
+      setCouponApplied(null);
+    } else {
+      setCouponApplied({ code: data.code, discount_percent: data.discount_percent });
+      toast({ title: "Coupon Applied!", description: `${data.discount_percent}% discount applied.` });
+    }
+    setValidatingCoupon(false);
+  };
+
   const handleBuyNow = async (bundle: CourseBundle) => {
     setProcessingBundleId(bundle.id);
 
     try {
       const { data, error } = await supabase.functions.invoke('create-phonepe-payment', {
-        body: { bundleId: bundle.id }
+        body: { bundleId: bundle.id, couponCode: couponApplied?.code || undefined }
       });
 
       if (error) {
@@ -165,6 +194,34 @@ const SelectCourse = () => {
           </p>
         </div>
 
+        {/* Coupon Code Input */}
+        <div className="max-w-md mx-auto mb-8">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                className="pl-9 uppercase"
+                disabled={!!couponApplied}
+              />
+            </div>
+            {couponApplied ? (
+              <Button variant="outline" onClick={() => { setCouponApplied(null); setCouponCode(""); }}>
+                Remove
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={handleApplyCoupon} disabled={validatingCoupon || !couponCode.trim()}>
+                {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
+              </Button>
+            )}
+          </div>
+          {couponApplied && (
+            <p className="text-sm text-green-600 mt-1">✓ {couponApplied.discount_percent}% discount applied</p>
+          )}
+        </div>
+
         <div className="grid md:grid-cols-2 gap-6">
           {bundles.map((bundle) => (
             <Card
@@ -185,7 +242,7 @@ const SelectCourse = () => {
                   </div>
                   <Badge variant="secondary" className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    1 Year
+                    {bundle.validity_days} days
                   </Badge>
                 </div>
                 <CardDescription className="mt-2">
@@ -214,10 +271,21 @@ const SelectCourse = () => {
                   <div className="pt-4 border-t">
                     <div className="flex items-end justify-between mb-4">
                       <div>
-                        <span className="text-3xl font-bold text-foreground">
-                          ₹{bundle.price_inr.toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-muted-foreground text-sm">/year</span>
+                        {couponApplied ? (
+                          <>
+                            <span className="text-lg line-through text-muted-foreground">
+                              ₹{bundle.price_inr.toLocaleString("en-IN")}
+                            </span>
+                            <span className="text-3xl font-bold text-foreground ml-2">
+                              ₹{Math.round(bundle.price_inr * (1 - couponApplied.discount_percent / 100)).toLocaleString("en-IN")}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-3xl font-bold text-foreground">
+                            ₹{bundle.price_inr.toLocaleString("en-IN")}
+                          </span>
+                        )}
+                        <span className="text-muted-foreground text-sm">/{bundle.validity_days >= 365 ? "year" : `${bundle.validity_days} days`}</span>
                       </div>
                     </div>
                     <Button
