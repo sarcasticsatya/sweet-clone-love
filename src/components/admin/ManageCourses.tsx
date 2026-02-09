@@ -18,6 +18,7 @@ interface CourseBundle {
   price_inr: number;
   validity_days: number;
   is_active: boolean;
+  features: string[] | null;
   created_at: string;
 }
 
@@ -34,6 +35,7 @@ export const ManageCourses = () => {
     price_inr: "",
     validity_days: "",
     is_active: true,
+    features: ["", "", "", ""],
   });
 
   useEffect(() => {
@@ -49,19 +51,20 @@ export const ManageCourses = () => {
     if (error) {
       toast.error("Failed to load courses");
     } else {
-      setBundles(data || []);
+      setBundles((data || []).map((d: any) => ({ ...d, features: d.features as string[] | null })));
     }
     setLoading(false);
   };
 
   const openCreate = () => {
     setEditingBundle(null);
-    setForm({ name: "", name_kannada: "", description: "", price_inr: "", validity_days: "365", is_active: true });
+    setForm({ name: "", name_kannada: "", description: "", price_inr: "", validity_days: "365", is_active: true, features: ["", "", "", ""] });
     setDialogOpen(true);
   };
 
   const openEdit = (bundle: CourseBundle) => {
     setEditingBundle(bundle);
+    const f = bundle.features || [];
     setForm({
       name: bundle.name,
       name_kannada: bundle.name_kannada || "",
@@ -69,6 +72,7 @@ export const ManageCourses = () => {
       price_inr: String(bundle.price_inr),
       validity_days: String(bundle.validity_days),
       is_active: bundle.is_active,
+      features: [f[0] || "", f[1] || "", f[2] || "", f[3] || ""],
     });
     setDialogOpen(true);
   };
@@ -80,6 +84,7 @@ export const ManageCourses = () => {
     }
 
     setSaving(true);
+    const filteredFeatures = form.features.filter(f => f.trim() !== "");
     const payload = {
       name: form.name,
       name_kannada: form.name_kannada || null,
@@ -87,6 +92,7 @@ export const ManageCourses = () => {
       price_inr: Number(form.price_inr),
       validity_days: Number(form.validity_days),
       is_active: form.is_active,
+      features: filteredFeatures.length > 0 ? filteredFeatures : null,
     };
 
     if (editingBundle) {
@@ -140,6 +146,7 @@ export const ManageCourses = () => {
               <TableHead>Name</TableHead>
               <TableHead>Price (₹)</TableHead>
               <TableHead>Validity</TableHead>
+              <TableHead>Features</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -155,6 +162,7 @@ export const ManageCourses = () => {
                 </TableCell>
                 <TableCell>₹{b.price_inr.toLocaleString("en-IN")}</TableCell>
                 <TableCell>{b.validity_days} days</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{(b.features || []).length} features</TableCell>
                 <TableCell>
                   <Switch checked={b.is_active} onCheckedChange={() => toggleActive(b)} />
                 </TableCell>
@@ -167,7 +175,7 @@ export const ManageCourses = () => {
             ))}
             {bundles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   No course bundles yet
                 </TableCell>
               </TableRow>
@@ -203,6 +211,21 @@ export const ManageCourses = () => {
                 <Label>Validity (days)</Label>
                 <Input type="number" value={form.validity_days} onChange={(e) => setForm({ ...form, validity_days: e.target.value })} />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Features (up to 4 bullet points)</Label>
+              {[0, 1, 2, 3].map((i) => (
+                <Input
+                  key={i}
+                  placeholder={`Feature ${i + 1}`}
+                  value={form.features[i]}
+                  onChange={(e) => {
+                    const updated = [...form.features];
+                    updated[i] = e.target.value;
+                    setForm({ ...form, features: updated });
+                  }}
+                />
+              ))}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />

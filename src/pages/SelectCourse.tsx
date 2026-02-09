@@ -21,6 +21,13 @@ const floatingIcons = [
   { icon: <BookOpen className="w-full h-full" />, x: 8, y: 85, delay: 1, size: "sm" as const },
 ];
 
+const DEFAULT_FEATURES = [
+  "All subjects included",
+  "Video lessons & AI tutoring",
+  "Flashcards & quizzes",
+  "Mind maps for each chapter",
+];
+
 interface CourseBundle {
   id: string;
   name: string;
@@ -28,6 +35,7 @@ interface CourseBundle {
   description: string | null;
   price_inr: number;
   validity_days: number;
+  features: string[] | null;
 }
 
 const SelectCourse = () => {
@@ -70,7 +78,7 @@ const SelectCourse = () => {
       .select("*")
       .eq("is_active", true);
 
-    setBundles(bundlesData || []);
+    setBundles((bundlesData || []).map((d: any) => ({ ...d, features: d.features as string[] | null })));
     setLoading(false);
   };
 
@@ -251,22 +259,12 @@ const SelectCourse = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-primary" />
-                    <span>All subjects included</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-primary" />
-                    <span>Video lessons & AI tutoring</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-primary" />
-                    <span>Flashcards & quizzes</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-primary" />
-                    <span>Mind maps for each chapter</span>
-                  </div>
+                  {(bundle.features && bundle.features.length > 0 ? bundle.features : DEFAULT_FEATURES).map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Check className="w-4 h-4 text-primary" />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
 
                   <div className="pt-4 border-t">
                     <div className="flex items-end justify-between mb-4">
