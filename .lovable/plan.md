@@ -1,68 +1,36 @@
 
 
-## Fix: Auto-Verify Payment on Redirect (Webhook Fallback)
+## Update Favicon and Fix Movatif Font
 
-**Problem**: The PhonePe webhook is never reaching the backend (zero logs ever recorded). When a student completes payment and gets redirected back, the PaymentStatus page just polls the database -- but since only the webhook can update the status, it stays "pending" forever and the student never gets access.
-
-**Solution**: Create a new backend function that checks the payment status directly with PhonePe's API when the student is redirected back. This acts as the primary verification path (not just a fallback), ensuring instant access regardless of whether the webhook arrives.
+Two changes: switch the favicon to the new logo, and load the Movatif font from the online source you provided.
 
 ---
 
-### Changes
+### 1. Favicon Update
 
-**1. New Backend Function: `check-phonepe-status`**
+The favicon currently points to `/nythic-logo.png` (the old logo). Per project memory, the new icon asset is `Icon.png`. However, I don't see an `Icon.png` file uploaded to the project yet.
 
-A new function that:
-- Accepts a `merchantTransactionId` from the authenticated user
-- Calls PhonePe's Order Status API: `GET https://api.phonepe.com/apis/pg/checkout/v2/order/{merchantOrderId}/status`
-- Uses OAuth token (same `getPhonePeAccessToken` logic from the payment creation function)
-- If PhonePe says `COMPLETED`, updates the purchase record to `payment_status = 'completed'`
-- The existing database trigger (`on_purchase_complete`) then automatically assigns subjects
-- Returns the current status to the frontend
+**Option A (if you upload the new Icon.png):** I'll copy it to `public/` and update `index.html` to reference it.
 
-**2. Update PaymentStatus Page (`src/pages/PaymentStatus.tsx`)**
+**Option B (use the existing logo file):** If `nythic-logo.png` in `public/` has already been replaced with the new logo, I just need to confirm -- no code change needed.
 
-Instead of just reading the database in a loop, the page will:
-- On load, call the `check-phonepe-status` function with the `merchantTransactionId`
-- This function verifies with PhonePe, updates the DB if completed, and returns the result
-- If still pending, retry a few times with delays (in case PhonePe is still processing)
-- Show success/failure based on the verified result
+**Please upload the new favicon image** (the "N book icon") so I can set it as the favicon, or confirm that `public/nythic-logo.png` is already the correct new logo.
 
-**3. Config Update (`supabase/config.toml`)**
+### 2. Movatif Font -- Load from Online Source
 
-Add the new function with `verify_jwt = false` (auth is validated in-code).
+Currently the CSS in `src/index.css` tries to load Movatif from local files in `/fonts/` which don't exist. I'll fix this by:
 
-**4. Fix for ASHOK D (immediate)**
-
-Run a one-time SQL update to mark ASHOK D's payment as completed so he gets instant access now.
-
----
-
-### Flow After Fix
-
-```text
-Student completes payment on PhonePe
-         |
-         v
-Redirected to /payment-status?merchantTransactionId=NYTHIC_xxx
-         |
-         v
-PaymentStatus page calls check-phonepe-status function
-         |
-         v
-Function gets OAuth token, calls PhonePe Order Status API
-         |
-         v
-If COMPLETED --> updates student_purchases --> trigger assigns subjects
-         |
-         v
-Returns "completed" to frontend --> shows success, student has access
+**`index.html`** -- Add the stylesheet link in the head:
 ```
+<link href="https://db.onlinewebfonts.com/c/24cb75de3ea8b720dac8ebfac56aeae6?family=Movatif+W00+Regular" rel="stylesheet">
+```
+
+**`src/index.css`** -- Remove the broken local `@font-face` block for Movatif (lines 13-19) since the font will now be loaded via the external stylesheet.
+
+**`src/components/BrandName.tsx`** -- Update the font-family reference from `'Movatif'` to `'Movatif W00 Regular'` to match the external font's registered name.
 
 ### Files Modified
 
-- **New file**: `supabase/functions/check-phonepe-status/index.ts` -- server-side PhonePe status verification
-- **Edit**: `supabase/config.toml` -- add new function config
-- **Edit**: `src/pages/PaymentStatus.tsx` -- call the new function instead of just polling DB
-- **Database**: One-time SQL to fix ASHOK D's pending payment
-
+- `index.html` -- add Movatif font stylesheet link, potentially update favicon path
+- `src/index.css` -- remove broken local @font-face for Movatif
+- `src/components/BrandName.tsx` -- update font-family name to `"Movatif W00 Regular"`
