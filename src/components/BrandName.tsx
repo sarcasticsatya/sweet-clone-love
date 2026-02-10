@@ -18,7 +18,7 @@ export const BrandName = ({ size = "md", className }: BrandNameProps) => {
   return (
     <span className={cn("font-bold tracking-tight", sizeClasses[size], className)}>
       <span style={{ fontFamily: "'Poppins', sans-serif" }}>Nythic</span>
-      <span style={{ fontFamily: "'Movatif W00 Regular', 'Poppins', sans-serif" }} className="ml-0.5">AI</span>
+      <span style={{ fontFamily: "'Movatif W00 Regular', 'Poppins', sans-serif", letterSpacing: '0.05em' }} className="ml-1.5">AI</span>
     </span>
   );
 };
