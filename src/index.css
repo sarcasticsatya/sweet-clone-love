@@ -8,15 +8,7 @@
 All colors MUST be HSL.
 */
 
-/* Movatif font for "AI" in brand name */
-@font-face {
-  font-family: 'Movatif';
-  src: url('/fonts/MovatifW00-Regular.woff2') format('woff2'),
-       url('/fonts/MovatifW00-Regular.woff') format('woff');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
+/* Movatif font loaded via external stylesheet in index.html */
 
 @layer base {
   :root {
