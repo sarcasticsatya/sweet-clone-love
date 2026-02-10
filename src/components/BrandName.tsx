@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import nythicLogoFull from "@/assets/nythic-logo-full.png";
 
 interface BrandNameProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "hero";
@@ -7,21 +6,20 @@ interface BrandNameProps {
 }
 
 export const BrandName = ({ size = "md", className }: BrandNameProps) => {
-  const heightClasses = {
-    xs: "h-4",
-    sm: "h-5",
-    md: "h-6",
-    lg: "h-8",
-    xl: "h-10",
-    hero: "h-14 md:h-24",
+  const sizeClasses = {
+    xs: "text-xs",
+    sm: "text-sm",
+    md: "text-base",
+    lg: "text-xl",
+    xl: "text-2xl",
+    hero: "text-4xl md:text-7xl",
   };
 
   return (
-    <img
-      src={nythicLogoFull}
-      alt="Nythic AI"
-      className={cn("inline-block object-contain", heightClasses[size], className)}
-    />
+    <span className={cn("font-bold tracking-tight", sizeClasses[size], className)}>
+      <span style={{ fontFamily: "'Poppins', sans-serif" }}>Nythic</span>
+      <span style={{ fontFamily: "'Movatif W00 Regular', 'Poppins', sans-serif", letterSpacing: '0.05em' }} className="ml-1.5">AI</span>
+    </span>
   );
 };
 
