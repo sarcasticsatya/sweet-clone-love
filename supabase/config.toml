@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.phonepe-webhook]
 verify_jwt = false
+
+[functions.check-phonepe-status]
+verify_jwt = false

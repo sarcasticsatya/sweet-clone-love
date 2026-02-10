@@ -14,18 +14,10 @@ const PaymentStatus = () => {
   const [checkCount, setCheckCount] = useState(0);
 
   const merchantTransactionId = searchParams.get('merchantTransactionId');
-  const statusParam = searchParams.get('status');
 
   const checkPaymentStatus = useCallback(async () => {
     if (!merchantTransactionId) {
-      // If no transaction ID, check status param from redirect
-      if (statusParam === 'success') {
-        setStatus('success');
-      } else if (statusParam === 'failed') {
-        setStatus('failed');
-      } else {
-        setStatus('failed');
-      }
+      setStatus('failed');
       return;
     }
 
@@ -36,46 +28,44 @@ const PaymentStatus = () => {
         return;
       }
 
-      // Check purchase status in database
-      const { data: purchase, error } = await supabase
-        .from('student_purchases')
-        .select('*, course_bundles(name)')
-        .eq('phonepe_merchant_transaction_id', merchantTransactionId)
-        .eq('student_id', session.user.id)
-        .maybeSingle();
+      // Call the backend function to verify with PhonePe directly
+      const { data, error } = await supabase.functions.invoke('check-phonepe-status', {
+        body: { merchantTransactionId },
+      });
 
       if (error) {
-        console.error('Error fetching purchase:', error);
+        console.error('Error checking payment status:', error);
         setStatus('failed');
         return;
       }
 
-      if (!purchase) {
-        console.log('Purchase not found');
-        setStatus('failed');
-        return;
+      console.log('Payment status response:', data);
+
+      if (data.purchase) {
+        setPurchaseDetails(data.purchase);
       }
 
-      setPurchaseDetails(purchase);
-
-      if (purchase.payment_status === 'completed') {
+      if (data.status === 'completed') {
         setStatus('success');
-      } else if (purchase.payment_status === 'failed') {
+      } else if (data.status === 'failed') {
         setStatus('failed');
       } else {
         setStatus('pending');
-        // Keep checking if still pending (webhook might be delayed)
-        if (checkCount < 10) {
+        // Retry a few times with delays
+        if (checkCount < 6) {
           setTimeout(() => {
             setCheckCount(prev => prev + 1);
-          }, 3000);
+          }, 5000);
+        } else {
+          // After retries, show failed
+          setStatus('failed');
         }
       }
     } catch (error) {
       console.error('Error:', error);
       setStatus('failed');
     }
-  }, [merchantTransactionId, statusParam, navigate, checkCount]);
+  }, [merchantTransactionId, navigate, checkCount]);
 
   useEffect(() => {
     checkPaymentStatus();
@@ -101,7 +91,7 @@ const PaymentStatus = () => {
                 </div>
                 <CardTitle className="text-2xl">Verifying Payment</CardTitle>
                 <CardDescription>
-                  Please wait while we confirm your payment...
+                  Please wait while we confirm your payment with PhonePe...
                 </CardDescription>
               </>
             )}
