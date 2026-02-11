@@ -190,48 +190,15 @@ export const ManageStudents = () => {
     const userId = studentToDelete.user_id;
 
     try {
-      // Delete in order: chat_messages -> quiz_attempts -> student_subject_access -> student_profiles
-      
-      // 1. Delete chat messages
-      const { error: chatError } = await supabase
-        .from("chat_messages")
-        .delete()
-        .eq("student_id", userId);
-      
-      if (chatError) {
-        console.error("Error deleting chat messages:", chatError);
-        // Continue even if no chat messages exist
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
-      // 2. Delete quiz attempts
-      const { error: quizError } = await supabase
-        .from("quiz_attempts")
-        .delete()
-        .eq("student_id", userId);
-      
-      if (quizError) {
-        console.error("Error deleting quiz attempts:", quizError);
-        // Continue even if no quiz attempts exist
-      }
+      const response = await supabase.functions.invoke("delete-student", {
+        body: { userId },
+      });
 
-      // 3. Delete subject access
-      const { error: accessError } = await supabase
-        .from("student_subject_access")
-        .delete()
-        .eq("student_id", userId);
-      
-      if (accessError) {
-        console.error("Error deleting subject access:", accessError);
-        // Continue even if no access records exist
-      }
-
-      // 4. Delete student profile
-      const { error: profileError } = await supabase
-        .from("student_profiles")
-        .delete()
-        .eq("user_id", userId);
-
-      if (profileError) throw profileError;
+      if (response.error) throw response.error;
+      if (response.data?.error) throw new Error(response.data.error);
 
       toast.success(`Student "${studentToDelete.first_name} ${studentToDelete.surname}" has been deleted successfully`);
       setDeleteConfirmDialogOpen(false);
