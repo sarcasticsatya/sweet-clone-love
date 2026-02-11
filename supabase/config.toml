@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.check-phonepe-status]
 verify_jwt = false
+
+[functions.delete-student]
+verify_jwt = false
