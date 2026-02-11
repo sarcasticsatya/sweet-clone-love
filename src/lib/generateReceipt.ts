@@ -69,7 +69,7 @@ export const generateReceipt = (data: ReceiptData) => {
   const originalPrice = data.amountPaid + (data.discountAmount || 0);
 
   const tableBody: (string | number)[][] = [
-    ["Course", data.courseName, "1", `₹${originalPrice.toLocaleString("en-IN")}`],
+    ["Course", data.courseName, "1", `Rs. ${originalPrice.toLocaleString("en-IN")}`],
   ];
 
   autoTable(doc, {
@@ -105,13 +105,13 @@ export const generateReceipt = (data: ReceiptData) => {
   doc.setTextColor(80, 80, 80);
 
   doc.text("Subtotal:", totalsX - 60, y);
-  doc.text(`₹${originalPrice.toLocaleString("en-IN")}`, totalsX, y, { align: "right" });
+  doc.text(`Rs. ${originalPrice.toLocaleString("en-IN")}`, totalsX, y, { align: "right" });
   y += 8;
 
   if (data.discountAmount && data.discountAmount > 0) {
     doc.setTextColor(0, 150, 0);
     doc.text(`Discount${data.couponCode ? ` (${data.couponCode})` : ""}:`, totalsX - 60, y);
-    doc.text(`-₹${data.discountAmount.toLocaleString("en-IN")}`, totalsX, y, { align: "right" });
+    doc.text(`-Rs. ${data.discountAmount.toLocaleString("en-IN")}`, totalsX, y, { align: "right" });
     y += 8;
   }
 
@@ -123,7 +123,7 @@ export const generateReceipt = (data: ReceiptData) => {
   doc.setFont("helvetica", "bold");
   doc.setTextColor(50, 50, 50);
   doc.text("Total Paid:", totalsX - 60, y);
-  doc.text(`₹${data.amountPaid.toLocaleString("en-IN")}`, totalsX, y, { align: "right" });
+  doc.text(`Rs. ${data.amountPaid.toLocaleString("en-IN")}`, totalsX, y, { align: "right" });
   y += 14;
 
   // ---- PAYMENT INFO ----
