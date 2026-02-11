@@ -1,46 +1,40 @@
 
 
-## Fix: Fully Revoke Student Access on Delete
+## Plan: Clean Up All Orphaned Student Accounts
 
-### Problem
-When an admin deletes a student from the Students page, only their public data (profile, access, messages, quiz attempts) is removed. The student's authentication account remains active, allowing them to log back in.
+### What We'll Do
 
-### Solution
-Create a new backend function that uses admin privileges to delete the user from the authentication system. The admin page will call this function instead of manually deleting records one by one.
+Delete all 24 orphaned student accounts (those with no `student_profiles` record and role = `student`). This will:
+1. Remove their remaining data from `profiles`, `user_roles`, and any other tables
+2. Delete their authentication accounts so they can no longer log in
 
-### Changes
+The 2 admin accounts will be skipped.
 
-**New file: `supabase/functions/delete-student/index.ts`**
-- Accepts a `userId` in the request body
-- Validates the caller is an admin (checks `user_roles` table)
-- Deletes all related public data in order:
-  1. `chat_messages`
-  2. `quiz_attempts`
-  3. `student_activity_logs`
-  4. `student_subject_access`
-  5. `student_purchases`
-  6. `student_profiles`
-  7. `user_roles`
-  8. `profiles`
-- Finally deletes the user from the authentication system using `auth.admin.deleteUser(userId)`
-- This single call fully removes the student from the platform
+### How
 
-**Updated: `supabase/config.toml`**
-- Add `[functions.delete-student]` with `verify_jwt = false` (auth validated in code)
+**New backend function: `supabase/functions/cleanup-orphaned-students/index.ts`**
+- Verifies the caller is an admin
+- Queries all user IDs from `profiles` that have NO matching `student_profiles` entry and have a `student` role
+- For each orphaned user, deletes records from: `chat_messages`, `quiz_attempts`, `student_activity_logs`, `student_subject_access`, `student_purchases`, `user_roles`, `profiles`
+- Deletes each user from the authentication system using `auth.admin.deleteUser()`
+- Returns a count of deleted accounts
 
-**Updated: `src/components/admin/ManageStudents.tsx`**
-- Replace the manual table-by-table deletion logic in `handleDeleteStudent` with a single call to the `delete-student` backend function
-- The function handles everything server-side, ensuring complete removal
+**`supabase/config.toml`**
+- Register `cleanup-orphaned-students` with `verify_jwt = false`
 
-### Why This Works
-- The authentication system's admin API can only be called server-side with the service role key
-- Client-side code has no permission to delete auth users
-- By handling everything in one backend call, we guarantee the student cannot log in again after deletion
+**One-time execution**
+- After deploying, we call the function once from the admin dashboard to clean up all 24 accounts
+- The function can be reused in the future if orphans accumulate again
 
-### Technical Details
+### Files
 
-| Component | Change |
-|-----------|--------|
-| `supabase/functions/delete-student/index.ts` | **New** -- backend function to fully delete a student |
-| `src/components/admin/ManageStudents.tsx` | Call backend function instead of manual deletion |
+| File | Change |
+|------|--------|
+| `supabase/functions/cleanup-orphaned-students/index.ts` | New -- bulk cleanup function |
+| `supabase/config.toml` | Register new function |
+
+### Safety
+- Admin accounts are explicitly excluded (only `student` role users are affected)
+- Self-deletion is prevented
+- Full server-side admin verification before any deletions
 
