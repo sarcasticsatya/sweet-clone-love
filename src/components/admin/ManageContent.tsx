@@ -14,10 +14,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Progress } from "@/components/ui/progress";
 import { naturalSortChapters } from "@/lib/naturalSort";
 
-type Medium = "English" | "Kannada";
-
 export const ManageContent = () => {
-  const [selectedMedium, setSelectedMedium] = useState<Medium>("English");
+  const [selectedMedium, setSelectedMedium] = useState<string>("English");
+  const [availableMediums, setAvailableMediums] = useState<string[]>(["English", "Kannada"]);
+  const [addMediumDialogOpen, setAddMediumDialogOpen] = useState(false);
+  const [newMediumName, setNewMediumName] = useState("");
   const [subjects, setSubjects] = useState<any[]>([]);
   const [chapters, setChapters] = useState<Record<string, any[]>>({});
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
@@ -48,8 +49,42 @@ export const ManageContent = () => {
   const [editingChapter, setEditingChapter] = useState<any>(null);
 
   useEffect(() => {
+    loadMediums();
+  }, []);
+
+  useEffect(() => {
     loadSubjects();
   }, [selectedMedium]);
+
+  const loadMediums = async () => {
+    const { data } = await supabase
+      .from("subjects")
+      .select("medium");
+    if (data) {
+      const distinct = [...new Set(data.map(d => d.medium))].sort();
+      // Ensure English and Kannada are always present
+      const base = ["English", "Kannada"];
+      const merged = [...new Set([...base, ...distinct])];
+      setAvailableMediums(merged);
+    }
+  };
+
+  const handleAddMedium = () => {
+    const trimmed = newMediumName.trim();
+    if (!trimmed) {
+      toast.error("Please enter a medium name");
+      return;
+    }
+    if (availableMediums.some(m => m.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error("This medium already exists");
+      return;
+    }
+    setAvailableMediums(prev => [...prev, trimmed]);
+    setSelectedMedium(trimmed);
+    setNewMediumName("");
+    setAddMediumDialogOpen(false);
+    toast.success(`${trimmed} Medium added. Now add subjects under it.`);
+  };
 
   // Function to get signed URL for private PDFs
   const getSignedPdfUrl = async (storagePath: string): Promise<string | null> => {
@@ -437,11 +472,16 @@ export const ManageContent = () => {
           </div>
           
           {/* Medium Selection Tabs */}
-          <Tabs value={selectedMedium} onValueChange={(v) => setSelectedMedium(v as Medium)} className="w-full">
+          <Tabs value={selectedMedium} onValueChange={(v) => setSelectedMedium(v)} className="w-full">
             <div className="flex items-center justify-between gap-4">
-              <TabsList className="grid w-[300px] grid-cols-2">
-                <TabsTrigger value="English">English Medium</TabsTrigger>
-                <TabsTrigger value="Kannada">Kannada Medium</TabsTrigger>
+              <TabsList className="flex flex-wrap gap-1 h-auto p-1">
+                {availableMediums.map(medium => (
+                  <TabsTrigger key={medium} value={medium}>{medium} Medium</TabsTrigger>
+                ))}
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setAddMediumDialogOpen(true)}>
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add
+                </Button>
               </TabsList>
               
               <div className="flex gap-2">
@@ -793,6 +833,30 @@ export const ManageContent = () => {
           </DialogContent>
         </Dialog>
       </CardContent>
+      {/* Add Medium Dialog */}
+      <Dialog open={addMediumDialogOpen} onOpenChange={setAddMediumDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Medium</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Medium Name</Label>
+              <Input
+                value={newMediumName}
+                onChange={(e) => setNewMediumName(e.target.value)}
+                placeholder="e.g., Hindi"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              After adding the medium, create subjects under it. When creating a Course Bundle, include the medium name in the bundle name (e.g., "SSLC Hindi Medium") for auto-assignment to work.
+            </p>
+            <Button onClick={handleAddMedium} className="w-full">
+              Add Medium
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

@@ -25,12 +25,14 @@ import {
   Clock,
   MessageCircle,
   Copy,
-  Receipt
+  Receipt,
+  Download
 } from "lucide-react";
 import { Atom, Calculator, Brain } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { BrandName } from "@/components/BrandName";
 import { format, differenceInDays } from "date-fns";
+import { generateReceipt } from "@/lib/generateReceipt";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 import { FloatingIcon } from "@/components/landing/FloatingIcon";
@@ -164,6 +166,18 @@ const UserProfile = () => {
     }
 
     setLoading(false);
+  };
+
+  const handleDownloadReceipt = (transaction: Purchase) => {
+    generateReceipt({
+      transactionId: transaction.id,
+      date: format(new Date(transaction.purchased_at), "MMM d, yyyy"),
+      studentName: profile ? `${profile.first_name} ${profile.surname}` : "Student",
+      courseName: transaction.bundle?.name || "Course Bundle",
+      amountPaid: transaction.amount_paid,
+      paymentGateway: transaction.payment_gateway || "PhonePe",
+      expiresAt: format(new Date(transaction.expires_at), "MMM d, yyyy"),
+    });
   };
 
   const handleChangePassword = async () => {
@@ -482,6 +496,16 @@ const UserProfile = () => {
                         }`}>
                           {transaction.payment_status.charAt(0).toUpperCase() + transaction.payment_status.slice(1)}
                         </span>
+                        {transaction.payment_status === "completed" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadReceipt(transaction)}
+                          >
+                            <Download className="w-3.5 h-3.5 mr-1" />
+                            Receipt
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

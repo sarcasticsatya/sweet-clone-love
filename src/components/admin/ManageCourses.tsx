@@ -193,6 +193,7 @@ export const ManageCourses = () => {
             <div className="space-y-2">
               <Label>Name</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. SSLC English Medium - 6 Months" />
+              <p className="text-xs text-muted-foreground">💡 Include the medium name (English, Kannada, Hindi, etc.) in the course name for auto-assignment of subjects to work.</p>
             </div>
             <div className="space-y-2">
               <Label>Name (Kannada)</Label>
