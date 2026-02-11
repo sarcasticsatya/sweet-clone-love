@@ -44,6 +44,36 @@ const signupSchema = z.object({
   personalEmail: z.string().trim().min(1, "Your email is required").email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters")
 });
+const MediumSelect = ({ value, onChange, hasError }: { value: string; onChange: (v: string) => void; hasError: boolean }) => {
+  const [mediums, setMediums] = useState<string[]>(["Kannada", "English"]);
+  
+  useEffect(() => {
+    const loadMediums = async () => {
+      const { data } = await supabase.from("subjects").select("medium");
+      if (data) {
+        const distinct = [...new Set(data.map(d => d.medium))].sort();
+        const base = ["Kannada", "English"];
+        const merged = [...new Set([...base, ...distinct])];
+        setMediums(merged);
+      }
+    };
+    loadMediums();
+  }, []);
+
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={hasError ? "border-destructive" : ""}>
+        <SelectValue placeholder="Select medium" />
+      </SelectTrigger>
+      <SelectContent>
+        {mediums.map(m => (
+          <SelectItem key={m} value={m}>{m}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -427,16 +457,7 @@ const Auth = () => {
                   <Label className="text-sm">
                     Medium of Instruction <span className="text-destructive">*</span>
                   </Label>
-                  <Select value={signupData.medium} onValueChange={v => updateSignupField("medium", v)}>
-                    <SelectTrigger className={validationErrors.medium ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Select medium" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Kannada">Kannada</SelectItem>
-                      <SelectItem value="English">English</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <MediumSelect value={signupData.medium} onChange={v => updateSignupField("medium", v)} hasError={!!validationErrors.medium} />
                   {validationErrors.medium && <p className="text-xs text-destructive">{validationErrors.medium}</p>}
                 </div>
 

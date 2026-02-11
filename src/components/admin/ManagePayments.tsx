@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, IndianRupee, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, IndianRupee, Search, Download } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
+import { generateReceipt } from "@/lib/generateReceipt";
 
 interface PaymentRecord {
   id: string;
@@ -138,6 +140,7 @@ export const ManagePayments = () => {
                 <TableHead>Duration</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Days Left</TableHead>
+                <TableHead>Receipt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -168,12 +171,34 @@ export const ManagePayments = () => {
                         </span>
                       ) : "—"}
                     </TableCell>
+                    <TableCell>
+                      {p.payment_status === "completed" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => generateReceipt({
+                            transactionId: p.id,
+                            date: format(new Date(p.purchased_at), "MMM d, yyyy"),
+                            studentName: p.student_name,
+                            courseName: p.bundle_name,
+                            amountPaid: p.amount_paid,
+                            discountAmount: p.discount_amount,
+                            couponCode: p.coupon_code_applied,
+                            paymentGateway: "PhonePe",
+                            validityDays: p.validity_days,
+                            expiresAt: format(new Date(p.expires_at), "MMM d, yyyy"),
+                          })}
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </Button>
+                      ) : "—"}
+                    </TableCell>
                   </TableRow>
                 );
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     No payments found
                   </TableCell>
                 </TableRow>
