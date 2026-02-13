@@ -1,40 +1,60 @@
 
 
-## Plan: Clean Up All Orphaned Student Accounts
+## 1. Add Google Analytics (gtag)
 
-### What We'll Do
+Insert the provided Google Analytics tracking snippet into `index.html` inside the `<head>` tag. This includes:
+- The async gtag.js script loader
+- The dataLayer initialization and `gtag('config', 'G-6CKSHE9QKE')` call
 
-Delete all 24 orphaned student accounts (those with no `student_profiles` record and role = `student`). This will:
-1. Remove their remaining data from `profiles`, `user_roles`, and any other tables
-2. Delete their authentication accounts so they can no longer log in
+**File:** `index.html`
 
-The 2 admin accounts will be skipped.
+---
 
-### How
+## 2. Expand Subjects Section to All 6 Subjects
 
-**New backend function: `supabase/functions/cleanup-orphaned-students/index.ts`**
-- Verifies the caller is an admin
-- Queries all user IDs from `profiles` that have NO matching `student_profiles` entry and have a `student` role
-- For each orphaned user, deletes records from: `chat_messages`, `quiz_attempts`, `student_activity_logs`, `student_subject_access`, `student_purchases`, `user_roles`, `profiles`
-- Deletes each user from the authentication system using `auth.admin.deleteUser()`
-- Returns a count of deleted accounts
+Currently the landing page only shows Science, Mathematics, and Social Science. We'll expand it to include all 6 SSLC subjects with unique colors, icons, and animations.
 
-**`supabase/config.toml`**
-- Register `cleanup-orphaned-students` with `verify_jwt = false`
+### New subjects list:
 
-**One-time execution**
-- After deploying, we call the function once from the admin dashboard to clean up all 24 accounts
-- The function can be reused in the future if orphans accumulate again
+| Subject | Kannada | Color Gradient | Icon |
+|---------|---------|---------------|------|
+| Science | ವಿಜ್ಞಾನ | blue to cyan | Atom |
+| Mathematics | ಗಣಿತ | purple to pink | Calculator |
+| Social Science | ಸಮಾಜ ವಿಜ್ಞಾನ | green to emerald | Globe |
+| Kannada | ಕನ್ನಡ | orange to amber | BookOpen |
+| English | ಇಂಗ್ಲೀಷ | rose to red | Languages |
+| Hindi | ಹಿಂದಿ | teal to cyan | Type |
 
-### Files
+### Layout changes:
+- **Desktop**: 3x2 grid (3 columns, 2 rows) with staggered fade-in-up animations
+- **Mobile**: 3x2 compact grid (3 per row) instead of the current 3-in-a-row layout, keeping the compact card style
+- Update section subtitle from "All three core subjects" to "All six SSLC subjects"
+- Each card gets a staggered animation delay for a wave-like entrance effect
 
-| File | Change |
-|------|--------|
-| `supabase/functions/cleanup-orphaned-students/index.ts` | New -- bulk cleanup function |
-| `supabase/config.toml` | Register new function |
+### Animations:
+- Each card uses `animate-fade-in-up` with incremental delays (0s, 0.1s, 0.2s, 0.3s, 0.4s, 0.5s)
+- Floating icons on desktop preserved for all 6 subjects
+- Hover effects (scale, glow, gradient overlay) maintained
 
-### Safety
-- Admin accounts are explicitly excluded (only `student` role users are affected)
-- Self-deletion is prevented
-- Full server-side admin verification before any deletions
+**File:** `src/components/landing/SubjectsSection.tsx`
 
+---
+
+### Technical Details
+
+**`index.html`** -- Add gtag snippet in `<head>` before `<title>`:
+```html
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6CKSHE9QKE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-6CKSHE9QKE');
+</script>
+```
+
+**`src/components/landing/SubjectsSection.tsx`**:
+- Add 3 new subject entries (Kannada, English, Hindi) with distinct colors and icons
+- Change grid from `md:grid-cols-3` to keep `md:grid-cols-3` but now with 2 rows
+- On mobile, switch from `flex` to `grid grid-cols-3` for a neat 3x2 layout
+- Each subject card uses a single representative icon (no triple floating icons needed for the language subjects -- keeps it clean)
