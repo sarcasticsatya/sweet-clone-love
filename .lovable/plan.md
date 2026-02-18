@@ -1,60 +1,82 @@
 
+## Root Cause Analysis
 
-## 1. Add Google Analytics (gtag)
+After examining the database and the edge function code, two clear bugs are found in `generate-quiz/index.ts` and `generate-flashcards/index.ts`:
 
-Insert the provided Google Analytics tracking snippet into `index.html` inside the `<head>` tag. This includes:
-- The async gtag.js script loader
-- The dataLayer initialization and `gtag('config', 'G-6CKSHE9QKE')` call
+### Bug 1: "ಇಂಗ್ಲೀಷ" (English subject in Kannada medium) generates Kannada
 
-**File:** `index.html`
+The `detectLanguage` function checks:
+1. Does subject contain "kannada" or "ಕನ್ನಡ"? → return kannada  
+2. Does subject contain "hindi" or "ಹಿಂದಿ"? → return hindi  
+3. Is medium English? → return english  
+4. Otherwise → return **kannada** ← BUG: "ಇಂಗ್ಲೀಷ" falls here
 
----
+The subject name "ಇಂಗ್ಲೀಷ" (the Kannada word for "English") is never matched — it falls through all checks and lands at the default "Kannada medium = kannada". This caused quizzes for "DR B R AMBEDKAR" and "QUALITY OF MERCY" (English subject, Kannada medium) to generate in Kannada instead of English.
 
-## 2. Expand Subjects Section to All 6 Subjects
+**Fix:** Add a check for "ಇಂಗ್ಲೀಷ" and "english" in the subject name → return `english` (same priority as Hindi/Kannada subject detection, before the medium fallback).
 
-Currently the landing page only shows Science, Mathematics, and Social Science. We'll expand it to include all 6 SSLC subjects with unique colors, icons, and animations.
+### Bug 2: Same exact bug exists in `generate-flashcards/index.ts`
 
-### New subjects list:
-
-| Subject | Kannada | Color Gradient | Icon |
-|---------|---------|---------------|------|
-| Science | ವಿಜ್ಞಾನ | blue to cyan | Atom |
-| Mathematics | ಗಣಿತ | purple to pink | Calculator |
-| Social Science | ಸಮಾಜ ವಿಜ್ಞಾನ | green to emerald | Globe |
-| Kannada | ಕನ್ನಡ | orange to amber | BookOpen |
-| English | ಇಂಗ್ಲೀಷ | rose to red | Languages |
-| Hindi | ಹಿಂದಿ | teal to cyan | Type |
-
-### Layout changes:
-- **Desktop**: 3x2 grid (3 columns, 2 rows) with staggered fade-in-up animations
-- **Mobile**: 3x2 compact grid (3 per row) instead of the current 3-in-a-row layout, keeping the compact card style
-- Update section subtitle from "All three core subjects" to "All six SSLC subjects"
-- Each card gets a staggered animation delay for a wave-like entrance effect
-
-### Animations:
-- Each card uses `animate-fade-in-up` with incremental delays (0s, 0.1s, 0.2s, 0.3s, 0.4s, 0.5s)
-- Floating icons on desktop preserved for all 6 subjects
-- Hover effects (scale, glow, gradient overlay) maintained
-
-**File:** `src/components/landing/SubjectsSection.tsx`
+The same `detectLanguage` function exists there with the identical missing "ಇಂಗ್ಲೀಷ" check.
 
 ---
 
-### Technical Details
+## What Is Correct vs Wrong
 
-**`index.html`** -- Add gtag snippet in `<head>` before `<title>`:
-```html
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-6CKSHE9QKE"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-6CKSHE9QKE');
-</script>
+Looking at the actual quiz data from the database:
+
+| Subject | Medium | Current Output | Correct Output |
+|---------|--------|---------------|----------------|
+| ಕನ್ನಡ | Kannada | Kannada | Kannada (correct) |
+| ವಿಜ್ಞಾನ | Kannada | Kannada | Kannada (correct) |
+| ಇಂಗ್ಲೀಷ | Kannada | **Kannada (WRONG)** | English |
+| ಹಿಂದಿ | Kannada | Hindi (correct) |
+| KANNADA II LAUNGAUGE | English | Kannada (correct) |
+| ENGLISH (FIRST LAUNGAUGE) | English | English (correct) |
+| HINDI III LAUNGAUGE | English | Hindi (correct) |
+| SCIENCE / MATHS / SOCIAL SCIENCE | English | English (correct) |
+
+---
+
+## Files to Change
+
+### `supabase/functions/generate-quiz/index.ts`
+
+Add a new priority check between the Hindi check and the medium fallback:
+
+```
+// English subject in ANY medium → English
+if (normalizedSubject.includes("english") || subjectName.includes("ಇಂಗ್ಲೀಷ")) {
+  return "english";
+}
 ```
 
-**`src/components/landing/SubjectsSection.tsx`**:
-- Add 3 new subject entries (Kannada, English, Hindi) with distinct colors and icons
-- Change grid from `md:grid-cols-3` to keep `md:grid-cols-3` but now with 2 rows
-- On mobile, switch from `flex` to `grid grid-cols-3` for a neat 3x2 layout
-- Each subject card uses a single representative icon (no triple floating icons needed for the language subjects -- keeps it clean)
+This mirrors the same pattern already used for Hindi and Kannada subjects.
+
+### `supabase/functions/generate-flashcards/index.ts`
+
+Apply the exact same fix to the `detectLanguage` function in this file.
+
+---
+
+## Technical Details
+
+**Current broken flow for "ಇಂಗ್ಲೀಷ" subject:**
+```
+detectLanguage("Kannada", "ಇಂಗ್ಲೀಷ")
+  → normalizedSubject = "ಇಂಗ್ಲೀಷ"
+  → Does not include "kannada" → skip
+  → Does not include "hindi" → skip
+  → medium is "Kannada" (not "English") → skip
+  → falls to default → returns "kannada"  ← WRONG
+```
+
+**Fixed flow:**
+```
+detectLanguage("Kannada", "ಇಂಗ್ಲೀಷ")
+  → Does not include "kannada" → skip
+  → Does not include "hindi" → skip
+  → includes "ಇಂಗ್ಲೀಷ" → returns "english"  ← CORRECT
+```
+
+Both edge functions will be deployed after the fix. Cached quizzes for "ಇಂಗ್ಲೀಷ" chapters will need to be regenerated by clicking "New Quiz" — they won't auto-fix since the old wrong ones are cached.
