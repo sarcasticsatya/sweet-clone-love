@@ -1,63 +1,91 @@
 
-## Root Cause: Platform Strips the Entire `<head>` on Deployment
+## Fix Quiz Generation: Language Issues and Regeneration
 
-The live page source at `nythicai.com` shows the entire `<head>` section is missing — the platform replaces it with its own injected head that includes the Lovable favicon. No matter what is put in `index.html`'s `<head>`, it gets overridden at the CDN level after publishing.
+### Problems Found
 
-The only reliable fix is to **force-set the favicon via JavaScript** inside the React app itself. This runs after the DOM is loaded and after any platform injection, giving it the last word.
+1. **"New Quiz" never actually creates a new quiz** — The `loadQuiz()` function in `QuizView.tsx` never passes `regenerate: true`. The edge function returns cached results every time, so students see the same quiz forever and wrong-language cached quizzes are never replaced.
+
+2. **8 cached quizzes for English subject (Kannada Medium) are in wrong language** — They were generated in Kannada before the language detection fix. Since regeneration never happens, students keep seeing Kannada quizzes for what should be an English subject.
+
+3. **Maths (Kannada Medium) has zero quizzes** — The extracted PDF text for all Maths chapters is corrupted (garbled encoding), so the AI cannot generate meaningful questions from it.
+
+4. **English language validation is too strict** — The edge function rejects English quiz output if it contains any Kannada characters. But English subject chapters in Kannada Medium naturally contain some Kannada text, causing generation to fail after retries.
 
 ---
 
-## Fix: JavaScript Favicon Override in `src/main.tsx`
+### Fix 1: Make "New Quiz" actually regenerate (QuizView.tsx)
 
-Add a small self-executing snippet at the top of `src/main.tsx` that:
+- Change `loadQuiz()` to accept a `regenerate` parameter
+- "Start New Quiz" button (first load): calls `loadQuiz(true)` so it always generates a fresh quiz (per the "dynamic content regeneration" requirement)
+- "New Quiz" button (after results): calls `loadQuiz(true)` so students get a different quiz each time
+- This also fixes wrong-language cached quizzes — next time a student loads quiz for any subject, it regenerates with correct language detection
 
-1. Removes all existing `<link rel="icon">` and `<link rel="shortcut icon">` elements from the DOM
-2. Creates and appends fresh `<link>` elements pointing to `/nythic-logo.png` with a high cache-buster version
+### Fix 2: Fix language validation in edge function (generate-quiz/index.ts)
+
+- Relax the English language validator to allow minor Kannada characters (since English subject PDFs in Kannada Medium contain Kannada annotations)
+- Instead of rejecting any Kannada character, only reject if majority of text is Kannada (e.g., more than 30% non-ASCII)
+- Keep strict validation for Kannada and Hindi outputs (must contain respective scripts, must not contain English)
+
+### Fix 3: Delete wrong-language cached quizzes
+
+- The 8 cached quizzes for subject "ಇಂಗ್ಲೀಷ" that are in Kannada need to be deleted so fresh English quizzes get generated
+- This will be done via a database migration or manual cleanup
+
+### Fix 4: Add better logging in the edge function
+
+- Add more detailed console.log statements for language detection, content length, and generation attempts
+- This helps debug future failures
+
+---
+
+### Technical Details
+
+**File: `src/components/student/QuizView.tsx`**
+
+Change the `loadQuiz` function to accept and pass `regenerate`:
 
 ```typescript
-// Force favicon override — runs after any platform head injection
-const setFavicon = () => {
-  // Remove all existing favicon links
-  document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
-
-  // Set Nythic favicon
-  const icon = document.createElement("link");
-  icon.rel = "icon";
-  icon.type = "image/png";
-  icon.href = "/nythic-logo.png?v=3";
-  document.head.appendChild(icon);
-
-  const shortcut = document.createElement("link");
-  shortcut.rel = "shortcut icon";
-  shortcut.type = "image/png";
-  shortcut.href = "/nythic-logo.png?v=3";
-  document.head.appendChild(shortcut);
-
-  const apple = document.createElement("link");
-  apple.rel = "apple-touch-icon";
-  apple.href = "/nythic-logo.png?v=3";
-  document.head.appendChild(apple);
+const loadQuiz = async (regenerate = true) => {
+  // ... existing reset code ...
+  const { data, error } = await supabase.functions.invoke("generate-quiz", {
+    body: { chapterId, regenerate },
+    headers: { Authorization: `Bearer ${session.access_token}` }
+  });
+  // ... rest unchanged ...
 };
-
-setFavicon();
 ```
 
-This code runs synchronously before React renders, ensuring it fires as early as possible in the JS execution cycle — after the platform's HTML injection but before the user sees anything.
+Both "Start New Quiz" and "New Quiz" buttons already call `loadQuiz()` which will now default to `regenerate: true`.
+
+**File: `supabase/functions/generate-quiz/index.ts`**
+
+Relax the English language validation:
+
+```typescript
+if (language === "english") {
+  // Allow minor non-English chars (Kannada Medium English subject PDFs have annotations)
+  const nonAsciiRatio = (allText.match(/[^\x00-\x7F]/g) || []).length / allText.length;
+  if (nonAsciiRatio > 0.3) {
+    console.log("REJECTING: Too much non-English text:", nonAsciiRatio);
+    throw new Error("Output mostly non-English - regenerating");
+  }
+}
+```
+
+**Database cleanup: Delete wrong-language cached quizzes for ಇಂಗ್ಲೀಷ subject**
+
+A SQL migration to delete the 8 quizzes cached for ಇಂಗ್ಲೀಷ subject chapters that contain Kannada text instead of English.
 
 ---
 
-## Files to Change
+### What This Does NOT Fix
 
-- **`src/main.tsx`**: Add the `setFavicon()` call at the very top, before the `ReactDOM.createRoot` call.
-- **`index.html`**: Bump the cache-buster from `?v=2` to `?v=3` to also bust cached favicons in browsers that did parse the head correctly.
+- **Corrupted PDF text for ಗಣಿತ chapters** — The extracted content shows garbled encoding. This is a PDF extraction issue that requires re-extracting the PDFs with proper encoding support. Quiz generation for ಗಣಿತ will likely remain unreliable until the source content is fixed. The same corruption exists in other Kannada Medium subjects (ವಿಜ್ಞಾನ, ಸಮಾಜ ವಿಜ್ಞಾನ) though the AI managed to work around it for those subjects.
 
----
+### Summary of Changes
 
-## Why This Works
-
-| Method | Status |
-|--------|--------|
-| `index.html` `<link rel="icon">` | Gets stripped by platform CDN |
-| JS override in `main.tsx` | Runs after platform injection, wins |
-
-The JavaScript approach is the standard workaround for hosted platforms that inject their own head content. It is used widely for exactly this scenario.
+| File | Change |
+|------|--------|
+| `src/components/student/QuizView.tsx` | `loadQuiz` passes `regenerate: true` by default |
+| `supabase/functions/generate-quiz/index.ts` | Relax English language validation; improve logging |
+| Database | Delete 8 wrong-language cached quizzes for ಇಂಗ್ಲೀಷ |
