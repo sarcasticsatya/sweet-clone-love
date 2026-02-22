@@ -128,7 +128,7 @@ export const QuizView = ({ chapterId, subjectId }: QuizViewProps) => {
     }
   };
 
-  const loadQuiz = async () => {
+  const loadQuiz = async (regenerate = true) => {
     setLoading(true);
     setSubmitted(false);
     setShowSolutions(false);
@@ -142,7 +142,7 @@ export const QuizView = ({ chapterId, subjectId }: QuizViewProps) => {
       if (!session) return;
 
       const { data, error } = await supabase.functions.invoke("generate-quiz", {
-        body: { chapterId },
+        body: { chapterId, regenerate },
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
@@ -252,7 +252,7 @@ export const QuizView = ({ chapterId, subjectId }: QuizViewProps) => {
             <p className="text-xs md:text-sm text-muted-foreground">
               {t.testKnowledge}
             </p>
-            <Button size="default" onClick={loadQuiz} disabled={loading} className="w-full">
+            <Button size="default" onClick={() => loadQuiz(true)} disabled={loading} className="w-full">
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {t.startNewQuiz}
             </Button>
@@ -350,7 +350,7 @@ export const QuizView = ({ chapterId, subjectId }: QuizViewProps) => {
             );
           })}
           
-          <Button onClick={loadQuiz} className="w-full">
+          <Button onClick={() => loadQuiz(true)} className="w-full">
             <RotateCcw className="w-4 h-4 mr-2" />
             {t.newQuiz}
           </Button>
@@ -409,7 +409,7 @@ export const QuizView = ({ chapterId, subjectId }: QuizViewProps) => {
               <Eye className="w-4 h-4 mr-2" />
               {t.solutions}
             </Button>
-            <Button onClick={loadQuiz}>
+            <Button onClick={() => loadQuiz(true)}>
               <RotateCcw className="w-4 h-4 mr-2" />
               {t.newQuiz}
             </Button>
