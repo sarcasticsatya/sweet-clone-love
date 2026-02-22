@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getDocument } from "https://esm.sh/pdfjs-serverless@0.3.2";
+import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,7 +28,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Authentication check
     const token = authHeader?.replace("Bearer ", "");
     const { data: { user } } = await supabaseClient.auth.getUser(token || "");
 
@@ -39,7 +38,7 @@ serve(async (req) => {
       );
     }
 
-    // Admin authorization check - only admins can extract PDF text
+    // Admin authorization check
     const { data: roleData } = await supabaseClient
       .from("user_roles")
       .select("role")
@@ -82,45 +81,27 @@ serve(async (req) => {
     console.log("Starting PDF text extraction for chapter:", chapterId);
     
     try {
-      // Use pdfjs-serverless to extract text
       const arrayBuffer = await pdfData.arrayBuffer();
       const typedArray = new Uint8Array(arrayBuffer);
       console.log("PDF size:", typedArray.length, "bytes");
 
-      console.log("Loading PDF with pdfjs-serverless...");
-      const doc = await getDocument(typedArray).promise;
-      const numPages = doc.numPages;
-      console.log("Number of pages:", numPages);
+      // Use unpdf for better font/encoding handling
+      console.log("Loading PDF with unpdf...");
+      const pdf = await getDocumentProxy(typedArray);
+      const { totalPages, text } = await extractText(pdf, { mergePages: true });
+      console.log("Pages:", totalPages, "Text length:", (text as string).length);
 
-      // Extract text from all pages
-      let extractedText = "";
-      for (let i = 1; i <= numPages; i++) {
-        console.log(`Extracting text from page ${i}/${numPages}...`);
-        const page = await doc.getPage(i);
-        const textContent = await page.getTextContent();
-        
-        const pageText = textContent.items
-          .filter((item: any) => item.str != null)
-          .map((item: any) => item.str as string)
-          .join(" ")
-          .replace(/\s+/g, " ");
-        
-        extractedText += pageText + "\n\n";
-      }
-
-      extractedText = extractedText.trim();
+      const extractedText = (text as string).trim();
 
       if (!extractedText || extractedText.length === 0) {
-        console.error("No text extracted from PDF - may be scanned/image-based");
+        console.error("No text extracted from PDF");
         return new Response(
           JSON.stringify({ 
-            error: "No embedded text found in PDF. The PDF may contain only images or scanned content. Please contact admin to enable OCR support." 
+            error: "No embedded text found in PDF. The PDF may contain only images or scanned content." 
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
-      console.log("Extracted text length:", extractedText.length);
 
       // Update chapter with extracted text
       const { error: updateError } = await supabaseClient
@@ -137,11 +118,7 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          textLength: extractedText.length,
-          pages: numPages 
-        }),
+        JSON.stringify({ success: true, textLength: extractedText.length, pages: totalPages }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
 
