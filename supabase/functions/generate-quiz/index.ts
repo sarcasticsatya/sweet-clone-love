@@ -225,15 +225,13 @@ Return ONLY valid JSON:
     }
     
     if (language === "english") {
-      // Must NOT contain Kannada script
-      if (/[\u0C80-\u0CFF]/.test(allText)) {
-        console.log("REJECTING: Kannada characters found in English output");
-        throw new Error("Output contains Kannada characters - regenerating");
-      }
-      // Must NOT contain Hindi script
-      if (/[\u0900-\u097F]/.test(allText)) {
-        console.log("REJECTING: Hindi characters found in English output");
-        throw new Error("Output contains Hindi characters - regenerating");
+      // Allow minor non-English chars (Kannada Medium English subject PDFs have annotations)
+      const nonAsciiChars = (allText.match(/[^\x00-\x7F]/g) || []).length;
+      const nonAsciiRatio = nonAsciiChars / allText.length;
+      console.log(`English validation: ${nonAsciiChars} non-ASCII chars, ratio: ${nonAsciiRatio.toFixed(3)}`);
+      if (nonAsciiRatio > 0.3) {
+        console.log("REJECTING: Too much non-English text:", nonAsciiRatio);
+        throw new Error("Output mostly non-English - regenerating");
       }
     }
     
