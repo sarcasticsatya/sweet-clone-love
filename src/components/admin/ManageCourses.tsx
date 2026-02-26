@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Pencil, Loader2, Package } from "lucide-react";
+import { Plus, Pencil, Loader2, Package, Clock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 interface CourseBundle {
   id: string;
@@ -16,11 +17,23 @@ interface CourseBundle {
   name_kannada: string | null;
   description: string | null;
   price_inr: number;
+  discount_price_inr: number | null;
+  discount_expires_at: string | null;
   validity_days: number;
   is_active: boolean;
   features: string[] | null;
   created_at: string;
 }
+
+const isDiscountActive = (b: CourseBundle) =>
+  b.discount_price_inr != null && b.discount_expires_at && new Date(b.discount_expires_at) > new Date();
+
+const getRemainingDays = (expiresAt: string) => {
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return "Expired";
+  const days = Math.ceil(diff / 86400000);
+  return `${days}d left`;
+};
 
 export const ManageCourses = () => {
   const [bundles, setBundles] = useState<CourseBundle[]>([]);
@@ -33,14 +46,14 @@ export const ManageCourses = () => {
     name_kannada: "",
     description: "",
     price_inr: "",
+    discount_price_inr: "",
+    discount_duration_days: "",
     validity_days: "",
     is_active: true,
     features: ["", "", "", ""],
   });
 
-  useEffect(() => {
-    loadBundles();
-  }, []);
+  useEffect(() => { loadBundles(); }, []);
 
   const loadBundles = async () => {
     const { data, error } = await supabase
@@ -58,18 +71,26 @@ export const ManageCourses = () => {
 
   const openCreate = () => {
     setEditingBundle(null);
-    setForm({ name: "", name_kannada: "", description: "", price_inr: "", validity_days: "365", is_active: true, features: ["", "", "", ""] });
+    setForm({ name: "", name_kannada: "", description: "", price_inr: "", discount_price_inr: "", discount_duration_days: "", validity_days: "365", is_active: true, features: ["", "", "", ""] });
     setDialogOpen(true);
   };
 
   const openEdit = (bundle: CourseBundle) => {
     setEditingBundle(bundle);
     const f = bundle.features || [];
+    // Calculate remaining days for discount if active
+    let durationDays = "";
+    if (isDiscountActive(bundle) && bundle.discount_expires_at) {
+      const remaining = Math.ceil((new Date(bundle.discount_expires_at).getTime() - Date.now()) / 86400000);
+      durationDays = String(remaining > 0 ? remaining : "");
+    }
     setForm({
       name: bundle.name,
       name_kannada: bundle.name_kannada || "",
       description: bundle.description || "",
       price_inr: String(bundle.price_inr),
+      discount_price_inr: bundle.discount_price_inr != null ? String(bundle.discount_price_inr) : "",
+      discount_duration_days: durationDays,
       validity_days: String(bundle.validity_days),
       is_active: bundle.is_active,
       features: [f[0] || "", f[1] || "", f[2] || "", f[3] || ""],
@@ -83,13 +104,34 @@ export const ManageCourses = () => {
       return;
     }
 
+    // Validate discount fields
+    const hasDiscount = form.discount_price_inr.trim() !== "";
+    if (hasDiscount && !form.discount_duration_days.trim()) {
+      toast.error("Please set a discount duration in days");
+      return;
+    }
+    if (hasDiscount && Number(form.discount_price_inr) >= Number(form.price_inr)) {
+      toast.error("Discounted price must be less than the original price");
+      return;
+    }
+
     setSaving(true);
     const filteredFeatures = form.features.filter(f => f.trim() !== "");
-    const payload = {
+
+    let discountExpiresAt: string | null = null;
+    if (hasDiscount && form.discount_duration_days.trim()) {
+      const expires = new Date();
+      expires.setDate(expires.getDate() + Number(form.discount_duration_days));
+      discountExpiresAt = expires.toISOString();
+    }
+
+    const payload: any = {
       name: form.name,
       name_kannada: form.name_kannada || null,
       description: form.description || null,
       price_inr: Number(form.price_inr),
+      discount_price_inr: hasDiscount ? Number(form.discount_price_inr) : null,
+      discount_expires_at: hasDiscount ? discountExpiresAt : null,
       validity_days: Number(form.validity_days),
       is_active: form.is_active,
       features: filteredFeatures.length > 0 ? filteredFeatures : null,
@@ -145,6 +187,7 @@ export const ManageCourses = () => {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Price (₹)</TableHead>
+              <TableHead>Discount</TableHead>
               <TableHead>Validity</TableHead>
               <TableHead>Features</TableHead>
               <TableHead>Status</TableHead>
@@ -161,6 +204,21 @@ export const ManageCourses = () => {
                   </div>
                 </TableCell>
                 <TableCell>₹{b.price_inr.toLocaleString("en-IN")}</TableCell>
+                <TableCell>
+                  {isDiscountActive(b) ? (
+                    <div className="space-y-1">
+                      <Badge variant="destructive" className="text-xs">
+                        ₹{b.discount_price_inr!.toLocaleString("en-IN")}
+                      </Badge>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        {getRemainingDays(b.discount_expires_at!)}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">—</span>
+                  )}
+                </TableCell>
                 <TableCell>{b.validity_days} days</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{(b.features || []).length} features</TableCell>
                 <TableCell>
@@ -175,7 +233,7 @@ export const ManageCourses = () => {
             ))}
             {bundles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   No course bundles yet
                 </TableCell>
               </TableRow>
@@ -185,7 +243,7 @@ export const ManageCourses = () => {
       </CardContent>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingBundle ? "Edit Course" : "Add New Course"}</DialogTitle>
           </DialogHeader>
@@ -205,7 +263,7 @@ export const ManageCourses = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Price (₹)</Label>
+                <Label>Original Price / MRP (₹)</Label>
                 <Input type="number" value={form.price_inr} onChange={(e) => setForm({ ...form, price_inr: e.target.value })} />
               </div>
               <div className="space-y-2">
@@ -213,6 +271,38 @@ export const ManageCourses = () => {
                 <Input type="number" value={form.validity_days} onChange={(e) => setForm({ ...form, validity_days: e.target.value })} />
               </div>
             </div>
+
+            {/* Discount Section */}
+            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                Flash Sale / Discount (optional)
+              </Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Discounted Price (₹)</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 2999"
+                    value={form.discount_price_inr}
+                    onChange={(e) => setForm({ ...form, discount_price_inr: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Duration (days)</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 7"
+                    value={form.discount_duration_days}
+                    onChange={(e) => setForm({ ...form, discount_duration_days: e.target.value })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Leave empty to remove discount. When set, students see a countdown timer on the purchase page.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label>Features (up to 4 bullet points)</Label>
               {[0, 1, 2, 3].map((i) => (

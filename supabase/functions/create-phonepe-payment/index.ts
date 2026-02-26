@@ -104,6 +104,13 @@ serve(async (req) => {
 
     console.log('Bundle found:', bundle.name, 'Price:', bundle.price_inr);
 
+    // Determine base price: use discount_price_inr if discount is active
+    let basePrice = bundle.price_inr;
+    if (bundle.discount_price_inr != null && bundle.discount_expires_at && new Date(bundle.discount_expires_at) > new Date()) {
+      basePrice = bundle.discount_price_inr;
+      console.log('Active discount applied, using discount price:', basePrice);
+    }
+
     // Validate coupon if provided
     let discountAmount = 0;
     let appliedCouponCode: string | null = null;
@@ -139,7 +146,7 @@ serve(async (req) => {
         );
       }
 
-      discountAmount = Math.round(bundle.price_inr * coupon.discount_percent / 100);
+      discountAmount = Math.round(basePrice * coupon.discount_percent / 100);
       appliedCouponCode = coupon.code;
 
       // Increment used_count
@@ -151,7 +158,7 @@ serve(async (req) => {
       console.log('Coupon applied:', coupon.code, 'Discount:', discountAmount);
     }
 
-    const finalAmount = bundle.price_inr - discountAmount;
+    const finalAmount = basePrice - discountAmount;
 
     // Generate unique merchant transaction ID
     const timestamp = Date.now();
