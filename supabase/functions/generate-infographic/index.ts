@@ -7,27 +7,29 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Detect language - SUBJECT NAME takes priority over medium (v2 - 2026-02-26)
+// Detect language - SUBJECT NAME takes priority over medium (v3 - Unicode normalized)
 function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
   const normalizedSubject = subjectName.toLowerCase();
   
-  console.log(`Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
+  console.log(`[v3] Language detection - Medium: "${medium}", Subject: "${subjectName}", Codepoints: ${Array.from(subjectName).map(c => c.codePointAt(0)).join(',')}`);
   
-  // PRIORITY 1: Subject-specific language (applies regardless of medium)
-  // Kannada subject in ANY medium → Kannada
-  if (normalizedSubject.includes("kannada") || subjectName.includes("ಕನ್ನಡ")) {
+  const codepoints = Array.from(subjectName).map(c => c.codePointAt(0) || 0);
+  
+  // Kannada subject: ಕ(0C95) ನ(0CA8) = start of ಕನ್ನಡ
+  if (normalizedSubject.includes("kannada") || (codepoints[0] === 0x0C95 && codepoints[1] === 0x0CA8)) {
     console.log("Result: kannada (Kannada subject - subject name takes priority)");
     return "kannada";
   }
   
-  // Hindi subject in ANY medium → Hindi
-  if (normalizedSubject.includes("hindi") || subjectName.includes("ಹಿಂದಿ")) {
+  // Hindi subject: ಹ(0CB9) ಿ(0CBF) = start of ಹಿಂದಿ
+  if (normalizedSubject.includes("hindi") || (codepoints[0] === 0x0CB9 && codepoints[1] === 0x0CBF)) {
     console.log("Result: hindi (Hindi subject - subject name takes priority)");
     return "hindi";
   }
   
-  // English subject in ANY medium -> English (handles "ಇಂಗ್ಲೀಷ" in Kannada medium)
-  if (normalizedSubject.includes("english") || subjectName.includes("ಇಂಗ್ಲೀಷ")) {
+  // English subject: ಇ(0C87) ಂ(0C82) ಗ(0C97) = start of ಇಂಗ್ಲೀಷ
+  const isEnglishKannada = codepoints[0] === 0x0C87 && codepoints[1] === 0x0C82 && codepoints[2] === 0x0C97;
+  if (normalizedSubject.includes("english") || isEnglishKannada) {
     console.log("Result: english (English subject - subject name takes priority)");
     return "english";
   }
@@ -38,7 +40,6 @@ function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi
     return "english";
   }
   
-  // Kannada Medium (for subjects like ಗಣಿತ, ವಿಜ್ಞಾನ, ಸಮಾಜ ವಿಜ್ಞಾನ, ಇಂಗ್ಲೀಷ)
   console.log("Result: kannada (Kannada medium)");
   return "kannada";
 }

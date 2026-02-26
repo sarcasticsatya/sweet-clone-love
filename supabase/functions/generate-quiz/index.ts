@@ -39,23 +39,29 @@ function safeParseJSON(content: string): any {
   }
 }
 
-// Detect language - SUBJECT NAME takes priority over medium (v2 - 2026-02-26)
+// Detect language - SUBJECT NAME takes priority over medium (v3 - Unicode normalized)
 function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
   const normalizedSubject = subjectName.toLowerCase();
+  const nfcSubject = subjectName.normalize("NFC");
   
-  console.log(`[v2] Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
+  console.log(`[v3] Language detection - Medium: "${medium}", Subject: "${subjectName}", Codepoints: ${Array.from(subjectName).map(c => c.codePointAt(0)).join(',')}`);
   
-  if (normalizedSubject.includes("kannada") || subjectName.includes("ಕನ್ನಡ")) {
+  // Kannada subject check using codepoints: ಕ(0C95) ನ(0CA8) = start of ಕನ್ನಡ
+  const codepoints = Array.from(subjectName).map(c => c.codePointAt(0) || 0);
+  if (normalizedSubject.includes("kannada") || (codepoints[0] === 0x0C95 && codepoints[1] === 0x0CA8)) {
     console.log("Result: kannada (Kannada subject)");
     return "kannada";
   }
   
-  if (normalizedSubject.includes("hindi") || subjectName.includes("ಹಿಂದಿ")) {
+  // Hindi subject check using codepoints: ಹ(0CB9) ಿ(0CBF) = start of ಹಿಂದಿ
+  if (normalizedSubject.includes("hindi") || (codepoints[0] === 0x0CB9 && codepoints[1] === 0x0CBF)) {
     console.log("Result: hindi (Hindi subject)");
     return "hindi";
   }
   
-  if (normalizedSubject.includes("english") || subjectName.includes("ಇಂಗ್ಲೀಷ")) {
+  // English subject check using codepoints: ಇ(0C87) ಂ(0C82) ಗ(0C97) = start of ಇಂಗ್ಲೀಷ
+  const isEnglishKannada = codepoints[0] === 0x0C87 && codepoints[1] === 0x0C82 && codepoints[2] === 0x0C97;
+  if (normalizedSubject.includes("english") || isEnglishKannada) {
     console.log("Result: english (English subject)");
     return "english";
   }
