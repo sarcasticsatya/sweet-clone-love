@@ -169,6 +169,8 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          discount_expires_at: string | null
+          discount_price_inr: number | null
           features: Json | null
           id: string
           is_active: boolean
@@ -180,6 +182,8 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          discount_expires_at?: string | null
+          discount_price_inr?: number | null
           features?: Json | null
           id?: string
           is_active?: boolean
@@ -191,6 +195,8 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          discount_expires_at?: string | null
+          discount_price_inr?: number | null
           features?: Json | null
           id?: string
           is_active?: boolean
