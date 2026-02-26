@@ -26,6 +26,12 @@ function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi
     return "hindi";
   }
   
+  // English subject in ANY medium -> English (handles "ಇಂಗ್ಲೀಷ" in Kannada medium)
+  if (normalizedSubject.includes("english") || subjectName.includes("ಇಂಗ್ಲೀಷ")) {
+    console.log("Result: english (English subject - subject name takes priority)");
+    return "english";
+  }
+  
   // PRIORITY 2: Medium-based default for other subjects
   if (medium === "English") {
     console.log("Result: english (English medium, non-language subject)");
