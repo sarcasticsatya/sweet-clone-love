@@ -7,7 +7,7 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-// Detect language - SUBJECT NAME takes priority over medium
+// Detect language - SUBJECT NAME takes priority over medium (v2 - 2026-02-26)
 function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
   const normalizedSubject = subjectName.toLowerCase();
   

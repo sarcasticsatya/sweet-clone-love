@@ -39,11 +39,11 @@ function safeParseJSON(content: string): any {
   }
 }
 
-// Detect language - SUBJECT NAME takes priority over medium
+// Detect language - SUBJECT NAME takes priority over medium (v2 - 2026-02-26)
 function detectLanguage(medium: string, subjectName: string): "kannada" | "hindi" | "english" {
   const normalizedSubject = subjectName.toLowerCase();
   
-  console.log(`Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
+  console.log(`[v2] Language detection - Medium: "${medium}", Subject: "${subjectName}"`);
   
   if (normalizedSubject.includes("kannada") || subjectName.includes("ಕನ್ನಡ")) {
     console.log("Result: kannada (Kannada subject)");
