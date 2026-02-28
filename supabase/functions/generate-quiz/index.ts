@@ -339,17 +339,29 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Chapter ID is required" }), { status: 400, headers: corsHeaders });
     }
 
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    }
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const token = authHeader?.replace("Bearer ", "");
-    const { data: { user } } = await supabaseClient.auth.getUser(token || "");
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
 
-    if (!user) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
+
+    const user = { id: claimsData.claims.sub as string };
 
     const { hasAccess } = await checkSubjectAccess(supabaseClient, user.id, chapterId);
     if (!hasAccess) {
