@@ -221,7 +221,7 @@ export const ChatPanel = ({
         </ReactMarkdown>
       </div>;
   };
-  return <div className="flex-1 flex flex-col bg-background h-full overflow-hidden">
+  return <div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
       <div className="px-6 py-3 border-b border-border bg-gradient-to-r from-primary/5 to-transparent shrink-0">
         <h2 className="font-medium text-sm text-foreground flex items-center gap-2">
           Chat & Q&A
