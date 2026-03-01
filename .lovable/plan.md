@@ -1,87 +1,59 @@
 
 
-## Feature: Time-Limited Discount Pricing with Real-Time Countdown
+## Fix: Chat Language Detection for ಇಂಗ್ಲೀಷ (English) Subject in Kannada Medium
 
-### Overview
-Add admin-configurable discount pricing to course bundles, showing original price slashed with a discounted price and a live countdown timer (like Myntra/Ajio flash sales) on the purchase page. The discount auto-expires after admin-set duration.
+### Problem
+The `chat-with-chapter` edge function still uses string-literal `.includes("ಇಂಗ್ಲೀಷ")` for detecting the English subject in Kannada medium. Due to Unicode normalization differences (composed vs decomposed Kannada characters), this check silently fails, causing the function to fall through to `"kannada_only"` instead of `"english_kannada"`.
 
-### Database Changes
-
-Add 3 new columns to the `course_bundles` table:
-
-```sql
-ALTER TABLE course_bundles
-  ADD COLUMN original_price_inr numeric DEFAULT NULL,
-  ADD COLUMN discount_price_inr numeric DEFAULT NULL,
-  ADD COLUMN discount_expires_at timestamptz DEFAULT NULL;
+Evidence from logs:
+```
+SUBJECT: ಇಂಗ್ಲೀಷ MEDIUM: Kannada RESPONSE_LANGUAGE: kannada_only
 ```
 
-- `original_price_inr` — The MRP / original price (shown struck-through)
-- `discount_price_inr` — The discounted selling price (what the student pays)
-- `discount_expires_at` — Timestamp when the discount ends (NULL = no active discount)
+This is why asking "Give me one question" in an English chapter returns a Kannada summary instead.
 
-The existing `price_inr` column continues to be the actual payable price. When admin sets a discount, `original_price_inr` stores the original and `price_inr` gets the discounted value. When discount expires, the frontend hides the discount UI and shows `price_inr` as-is.
+### Root Cause
+The same Unicode mismatch bug that was fixed in `generate-flashcards`, `generate-quiz`, `generate-mindmap`, and `generate-infographic` (v3 codepoint fix) was **never applied** to `chat-with-chapter`.
 
-**Alternative approach (simpler):** Keep `price_inr` as the original/base price always. Add `discount_price_inr` and `discount_expires_at`. The purchase page checks: if `discount_price_inr` is set AND `discount_expires_at > now()`, show the discount; otherwise show `price_inr` as the regular price. This avoids needing to "reset" prices after expiry.
+### Solution
 
-I will use the simpler approach:
-- `price_inr` = original/MRP price (always)
-- `discount_price_inr` = sale price (nullable, only when discount is active)
-- `discount_expires_at` = when discount ends (nullable)
+1. **Update `chat-with-chapter/index.ts`** -- Replace the `getResponseLanguages` function's string-literal Kannada checks with codepoint-based detection (matching the v3 pattern already used in the other 4 functions):
 
-### Admin Dashboard — ManageCourses.tsx
+```typescript
+function getResponseLanguages(subjectName: string, medium: string) {
+  const normalizedSubject = subjectName.toLowerCase();
+  
+  // Codepoint-based detection for Kannada script subject names
+  const codepoints = Array.from(subjectName).map(c => c.codePointAt(0) || 0);
+  const isEnglishKannada = codepoints[0] === 0x0C87 && codepoints[1] === 0x0C82 && codepoints[2] === 0x0C97;
+  const isHindiKannada = codepoints[0] === 0x0CB9 && codepoints[1] === 0x0CBF;
+  const isKannadaSubject = codepoints[0] === 0x0C95 && codepoints[1] === 0x0CA8 && codepoints[2] === 0x0CCD;
+  
+  // ... rest of detection logic using these flags
+}
+```
 
-Add 3 new fields to the course create/edit dialog:
+2. **Clear cached chat messages** for the English subject chapters so students don't see stale Kannada-only responses in their history. Run:
 
-1. **Original Price (MRP)** — already exists as `price_inr`, relabel to "Original Price (MRP) in Rupees"
-2. **Discounted Price** — new field for `discount_price_inr`
-3. **Discount Duration (days)** — admin enters number of days; on save, compute `discount_expires_at = now() + N days`
+```sql
+DELETE FROM chat_messages
+WHERE chapter_id IN (
+  SELECT c.id FROM chapters c
+  JOIN subjects s ON c.subject_id = s.id
+  WHERE s.id = '9a7cae61-6e23-4e98-abab-5749f88f4e24'
+);
+```
 
-The admin table also shows a "Discount" column showing the discounted price and remaining time if active.
+3. **Deploy** the updated `chat-with-chapter` function.
 
-### Purchase Page — SelectCourse.tsx
-
-Update the course card pricing section:
-
-1. **When discount is active** (`discount_price_inr` is set AND `discount_expires_at` is in the future):
-   - Show original price struck through: ~~Rs 5,999~~
-   - Show discounted price prominently: Rs 2,999
-   - Show a percentage badge: "50% OFF"
-   - Show a live countdown timer: "Offer ends in 2d 14h 32m 18s"
-   - The countdown updates every second using `setInterval`
-
-2. **When no discount or expired**:
-   - Show `price_inr` as the regular price (no strikethrough, no timer)
-
-3. **Coupon stacking**: If a student also applies a coupon code, the coupon discount applies on top of the already-discounted price
-
-### Payment Integration
-
-Update the `create-phonepe-payment` edge function (or the client-side logic) to use `discount_price_inr` when the discount is active, falling back to `price_inr` when expired. The edge function already reads from the database, so it will pick up the correct price.
-
-### Files to Change
+### Files Changed
 
 | File | Change |
 |------|--------|
-| Database migration | Add `discount_price_inr` and `discount_expires_at` columns |
-| `src/components/admin/ManageCourses.tsx` | Add discount price + duration fields to form; show discount info in table |
-| `src/pages/SelectCourse.tsx` | Show strikethrough pricing, discount badge, and live countdown timer |
-| `supabase/functions/create-phonepe-payment/index.ts` | Use discounted price when active discount exists |
+| `supabase/functions/chat-with-chapter/index.ts` | Replace string-literal Kannada checks with codepoint-based detection in `getResponseLanguages` |
 
-### Countdown Timer Implementation
-
-```text
-Component: CountdownTimer
-- Props: expiresAt (Date)
-- Uses setInterval(1s) to compute remaining days/hours/minutes/seconds
-- Renders: "Offer ends in Xd Xh Xm Xs" with animated styling
-- Auto-hides when countdown reaches zero
-- Styled with urgency colors (red/orange badge, pulsing animation)
+### Verification
+After deployment, the logs should show:
 ```
-
-### Technical Details
-
-- The discount expiry check is done client-side for display (comparing `discount_expires_at` with `new Date()`)
-- The payment edge function also validates server-side that the discount is still valid before applying it
-- No cron job needed — the discount simply stops showing when the timestamp passes
-- Admin can remove a discount by clearing the discounted price field
+SUBJECT: ಇಂಗ್ಲೀಷ MEDIUM: Kannada RESPONSE_LANGUAGE: english_kannada
+```
