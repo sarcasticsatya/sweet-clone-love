@@ -10,28 +10,28 @@ const corsHeaders = {
 function getResponseLanguages(subjectName: string, medium: string): "kannada_only" | "english_only" | "english_kannada" | "hindi_kannada" {
   const normalizedSubject = subjectName.toLowerCase();
   
+  // Codepoint-based detection for Kannada script subject names (v3 fix)
+  const codepoints = Array.from(subjectName).map(c => c.codePointAt(0) || 0);
+  const isEnglishKannada = codepoints[0] === 0x0C87 && codepoints[1] === 0x0C82 && codepoints[2] === 0x0C97;
+  const isHindiKannada = codepoints[0] === 0x0CB9 && codepoints[1] === 0x0CBF;
+  const isKannadaSubject = codepoints[0] === 0x0C95 && codepoints[1] === 0x0CA8 && codepoints[2] === 0x0CCD;
+  
+  console.log(`[v3] Chat language detection - Medium: "${medium}", Subject: "${subjectName}", Codepoints: ${codepoints.slice(0, 8).join(',')}`);
+  
   if (medium === "English") {
-    // English Medium Rules
-    if (normalizedSubject.includes("kannada") || normalizedSubject.includes("ಕನ್ನಡ")) return "kannada_only";
-    if (normalizedSubject.includes("hindi") || normalizedSubject.includes("ಹಿಂದಿ")) return "hindi_kannada";
+    if (normalizedSubject.includes("kannada") || isKannadaSubject) return "kannada_only";
+    if (normalizedSubject.includes("hindi") || isHindiKannada) return "hindi_kannada";
     if (normalizedSubject.includes("maths") || normalizedSubject.includes("math") || normalizedSubject.includes("mathematics")) return "english_only";
-    // English, Social, Science - English + Kannada
     return "english_kannada";
   } else {
-    // Kannada Medium Rules - use original subject name to preserve Kannada script
-    const subject = subjectName.trim();
-    
-    // English subject in Kannada medium (ಇಂಗ್ಲೀಷ) - bilingual English + Kannada
-    if (subject === "ಇಂಗ್ಲೀಷ" || subject.includes("ಇಂಗ್ಲೀಷ") || normalizedSubject.includes("english")) {
+    // Kannada Medium Rules - codepoint-based detection
+    if (isEnglishKannada || normalizedSubject.includes("english")) {
       return "english_kannada";
     }
-    
-    // Hindi subject in Kannada medium (ಹಿಂದಿ) - bilingual Hindi + Kannada
-    if (subject === "ಹಿಂದಿ" || subject.includes("ಹಿಂದಿ") || normalizedSubject.includes("hindi")) {
+    if (isHindiKannada || normalizedSubject.includes("hindi")) {
       return "hindi_kannada";
     }
-    
-    // All other Kannada medium subjects (ಕನ್ನಡ, ಗಣಿತ, ವಿಜ್ಞಾನ, ಸಮಾಜ ವಿಜ್ಞಾನ) - Kannada only
+    // All other Kannada medium subjects - Kannada only
     return "kannada_only";
   }
 }
