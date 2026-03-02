@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseProxy";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
