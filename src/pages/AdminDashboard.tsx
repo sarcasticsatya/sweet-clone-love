@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseProxy";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LogOut, Users, Video, FileText, BarChart, Download, Package, IndianRupee, Ticket } from "lucide-react";
