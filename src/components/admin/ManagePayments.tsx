@@ -6,9 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, IndianRupee, Search, Download } from "lucide-react";
+import { Loader2, IndianRupee, Search, Download, FileDown } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { generateReceipt } from "@/lib/generateReceipt";
+import * as XLSX from "xlsx";
 
 interface PaymentRecord {
   id: string;
@@ -79,6 +80,63 @@ export const ManagePayments = () => {
     setLoading(false);
   };
 
+  const handleExportPendingFailed = async () => {
+    const { data: purchases } = await supabase
+      .from("student_purchases")
+      .select("*")
+      .in("payment_status", ["pending", "failed"])
+      .order("purchased_at", { ascending: false });
+
+    if (!purchases || purchases.length === 0) {
+      return alert("No pending or failed payments found.");
+    }
+
+    const studentIds = [...new Set(purchases.map(p => p.student_id))];
+    const bundleIds = [...new Set(purchases.map(p => p.bundle_id))];
+
+    const [profilesRes, bundlesRes] = await Promise.all([
+      supabase.from("student_profiles").select("user_id, first_name, surname, parent_mobile, personal_email, city, school_name, medium").in("user_id", studentIds),
+      supabase.from("course_bundles").select("id, name, validity_days, price_inr").in("id", bundleIds),
+    ]);
+
+    const profileMap = new Map((profilesRes.data || []).map(p => [p.user_id, p]));
+    const bundleMap = new Map((bundlesRes.data || []).map(b => [b.id, b]));
+
+    const rows = purchases.map(p => {
+      const profile = profileMap.get(p.student_id);
+      const bundle = bundleMap.get(p.bundle_id);
+      return {
+        "Student Name": profile ? `${profile.first_name} ${profile.surname}` : "Unknown",
+        "Phone Number": profile?.parent_mobile || "N/A",
+        "Email": profile?.personal_email || "N/A",
+        "City": profile?.city || "N/A",
+        "School": profile?.school_name || "N/A",
+        "Medium": profile?.medium || "N/A",
+        "Course Name": bundle?.name || "Unknown",
+        "Course Price (₹)": bundle?.price_inr || 0,
+        "Amount Paid (₹)": p.amount_paid,
+        "Discount (₹)": p.discount_amount || 0,
+        "Coupon Applied": p.coupon_code_applied || "—",
+        "Payment Status": p.payment_status,
+        "Payment Date": p.purchased_at ? format(new Date(p.purchased_at), "MMM d, yyyy HH:mm") : "N/A",
+        "Transaction ID": p.phonepe_merchant_transaction_id || p.id,
+        "Expires At": p.expires_at ? format(new Date(p.expires_at), "MMM d, yyyy") : "N/A",
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Pending & Failed Payments");
+    
+    // Auto-size columns
+    const colWidths = Object.keys(rows[0]).map(key => ({
+      wch: Math.max(key.length, ...rows.map(r => String((r as any)[key]).length)) + 2
+    }));
+    ws["!cols"] = colWidths;
+
+    XLSX.writeFile(wb, `Pending_Failed_Payments_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+  };
+
   const filtered = payments.filter(p => {
     const matchesSearch = p.student_name.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || p.payment_status === statusFilter;
@@ -114,6 +172,10 @@ export const ManagePayments = () => {
               className="pl-9"
             />
           </div>
+          <Button variant="outline" size="sm" onClick={handleExportPendingFailed}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Export Pending/Failed
+          </Button>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]">
               <SelectValue />

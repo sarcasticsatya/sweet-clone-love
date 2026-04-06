@@ -485,105 +485,14 @@ export const ManageContent = () => {
               </TabsList>
               
               <div className="flex gap-2">
-                <Dialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Subject
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create New {selectedMedium} Medium Subject</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        {selectedMedium === "English" 
-                          ? "English name is mandatory, Kannada is optional"
-                          : "Kannada name is mandatory, English is optional"}
-                      </p>
-                      <div>
-                        <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
-                        <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g., Mathematics" />
-                      </div>
-                      <div>
-                        <Label>Subject Name (Kannada) {getMandatoryLabel(false)}</Label>
-                        <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} placeholder="e.g., ಗಣಿತ" />
-                      </div>
-                      <div>
-                        <Label>Description (Optional)</Label>
-                        <Input value={subjectDescription} onChange={(e) => setSubjectDescription(e.target.value)} />
-                      </div>
-                      <Button onClick={handleCreateSubject} disabled={loading} className="w-full">
-                        Create Subject
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Dialog open={chapterDialogOpen} onOpenChange={setChapterDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Chapter PDF
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Upload {selectedMedium} Medium Chapter PDF</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label>Select Subject</Label>
-                        <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose subject" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filteredSubjects.map((subject) => (
-                              <SelectItem key={subject.id} value={subject.id}>
-                                {selectedMedium === "English" 
-                                  ? (subject.name || subject.name_kannada)
-                                  : (subject.name_kannada || subject.name)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Chapter Number</Label>
-                        <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedMedium === "English" 
-                          ? "English name is mandatory, Kannada is optional"
-                          : "Kannada name is mandatory, English is optional"}
-                      </p>
-                      <div>
-                        <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
-                        <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label>Chapter Name (Kannada) {getMandatoryLabel(false)}</Label>
-                        <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label>PDF File (max 10MB)</Label>
-                        <Input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} disabled={uploading} />
-                      </div>
-                      {uploading && (
-                        <div className="space-y-2">
-                          <Progress value={uploadProgress} className="w-full" />
-                          <p className="text-sm text-center text-muted-foreground">
-                            Uploading... {Math.round(uploadProgress)}%
-                          </p>
-                        </div>
-                      )}
-                      <Button onClick={handleUploadChapter} disabled={loading || uploading} className="w-full">
-                        {uploading ? "Uploading..." : "Upload Chapter"}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button size="sm" variant="outline" onClick={() => setSubjectDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Subject
+                </Button>
+                <Button size="sm" onClick={() => setChapterDialogOpen(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Chapter PDF
+                </Button>
               </div>
             </div>
           </Tabs>
@@ -853,6 +762,97 @@ export const ManageContent = () => {
             </p>
             <Button onClick={handleAddMedium} className="w-full">
               Add Medium
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Subject Dialog - outside Tabs to prevent re-render conflicts */}
+      <Dialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New {selectedMedium} Medium Subject</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {selectedMedium === "English" 
+                ? "English name is mandatory, Kannada is optional"
+                : "Kannada name is mandatory, English is optional"}
+            </p>
+            <div>
+              <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
+              <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g., Mathematics" />
+            </div>
+            <div>
+              <Label>Subject Name (Kannada) {getMandatoryLabel(false)}</Label>
+              <Input value={subjectNameKannada} onChange={(e) => setSubjectNameKannada(e.target.value)} placeholder="e.g., ಗಣಿತ" />
+            </div>
+            <div>
+              <Label>Description (Optional)</Label>
+              <Input value={subjectDescription} onChange={(e) => setSubjectDescription(e.target.value)} />
+            </div>
+            <Button onClick={handleCreateSubject} disabled={loading} className="w-full">
+              Create Subject
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Chapter Dialog - outside Tabs to prevent re-render conflicts */}
+      <Dialog open={chapterDialogOpen} onOpenChange={setChapterDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload {selectedMedium} Medium Chapter PDF</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Select Subject</Label>
+              <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredSubjects.map((subject) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {selectedMedium === "English" 
+                        ? (subject.name || subject.name_kannada)
+                        : (subject.name_kannada || subject.name)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Chapter Number</Label>
+              <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {selectedMedium === "English" 
+                ? "English name is mandatory, Kannada is optional"
+                : "Kannada name is mandatory, English is optional"}
+            </p>
+            <div>
+              <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
+              <Input value={chapterName} onChange={(e) => setChapterName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Chapter Name (Kannada) {getMandatoryLabel(false)}</Label>
+              <Input value={chapterNameKannada} onChange={(e) => setChapterNameKannada(e.target.value)} />
+            </div>
+            <div>
+              <Label>PDF File (max 10MB)</Label>
+              <Input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} disabled={uploading} />
+            </div>
+            {uploading && (
+              <div className="space-y-2">
+                <Progress value={uploadProgress} className="w-full" />
+                <p className="text-sm text-center text-muted-foreground">
+                  Uploading... {Math.round(uploadProgress)}%
+                </p>
+              </div>
+            )}
+            <Button onClick={handleUploadChapter} disabled={loading || uploading} className="w-full">
+              {uploading ? "Uploading..." : "Upload Chapter"}
             </Button>
           </div>
         </DialogContent>
