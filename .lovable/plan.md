@@ -1,52 +1,32 @@
 
 
-# Cloudflare Worker Proxy Integration
+# Plan: Payment Data Export + Fix Medium Dialog Issue
 
-## Overview
-Route all app traffic through your Cloudflare Worker (`https://snowy-hat-87c1.aiwasinc-06d.workers.dev`) so Indian users can access the app without hitting the DNS block on `*.supabase.co`.
+## Task 1: Export Pending/Failed Payment Data as Excel
 
-## How It Works
-No data migration. The proxy is a transparent tunnel:
+**What**: Add an "Export" button in the Payments tab that downloads an Excel file containing all pending and failed payment records with full student details.
 
-```text
-Student Browser (India)
-        |
-        v
-snowy-hat-87c1.aiwasinc-06d.workers.dev  (not blocked)
-        |
-        v
-lnoeofoucvyopmhcfwes.supabase.co  (blocked client-side only)
-```
+**Data included**: Student Name, Phone Number (parent_mobile), Personal Email, Course Name, Amount, Payment Status, Payment Date, Transaction ID, Coupon Applied, Discount Amount.
 
-## Changes
+**How**:
+- Query `student_purchases` filtered by `payment_status` in ('pending', 'failed')
+- Join with `student_profiles` to get name + `parent_mobile` (phone number)
+- Join with `course_bundles` to get course name
+- Generate an `.xlsx` file client-side using the `xlsx` library (SheetJS)
+- Add an "Export Pending/Failed" button next to the status filter in `ManagePayments.tsx`
 
-### 1. Create proxy Supabase client (`src/lib/supabaseProxy.ts`)
-A new file that creates a Supabase client pointing to `https://snowy-hat-87c1.aiwasinc-06d.workers.dev` instead of the direct backend URL. Uses the same anon key and auth configuration (persistent sessions, auto-refresh tokens).
+**Files modified**:
+- `src/components/admin/ManagePayments.tsx` -- add export button and logic
+- `package.json` -- add `xlsx` dependency
 
-### 2. Update all 27 files to use proxy client
-Every file that currently imports from `@/integrations/supabase/client` will be updated to import from `@/lib/supabaseProxy` instead. This is a simple find-and-replace across these files:
+---
 
-**Pages (10 files):**
-- `Auth.tsx`, `StudentDashboard.tsx`, `AdminDashboard.tsx`, `SelectCourse.tsx`, `PaymentStatus.tsx`, `VerifyEmail.tsx`, `NotVerified.tsx`, `UserProfile.tsx`, `ResetPassword.tsx`, `UpdatePassword.tsx`, `Index.tsx`
+## Task 2: Fix "Add Medium" Dialog Causing Subject/Course Dialogs to Disappear
 
-**Student components (8 files):**
-- `ChatPanel.tsx`, `SourcesPanel.tsx`, `FlashcardsView.tsx`, `QuizView.tsx`, `MindmapView.tsx`, `InfographicView.tsx`, `VideosView.tsx`, `ToolsPanel.tsx`
+**Root cause**: In `ManageContent.tsx`, the "Add Subject" and "Upload Chapter PDF" dialogs are rendered **inside** the `<Tabs>` component (lines 488-586). The `<Tabs>` component wraps Radix UI Tabs, and when `selectedMedium` changes (triggered by `handleAddMedium` calling `setSelectedMedium`), the tab content and its child dialogs re-render. The Radix Dialog's focus management and the Tabs' value change can conflict, causing dialogs to close or fail to open properly right after a medium switch.
 
-**Admin components (7 files):**
-- `ManageStudents.tsx`, `ManageContent.tsx`, `ManageVideos.tsx`, `ManageCourses.tsx`, `ManageCoupons.tsx`, `ManagePayments.tsx`, `ViewReports.tsx`, `DataExport.tsx`
+**Fix**: Move the "Add Subject" and "Upload Chapter PDF" `<Dialog>` components **outside** the `<Tabs>` component, similar to how the "Add Medium" dialog is already placed outside (line 837). The trigger buttons stay inside Tabs, but the actual Dialog portals are rendered at the Card level. This prevents tab re-renders from interfering with dialog state.
 
-**Hooks (1 file):**
-- `use-inactivity-logout.ts`
-
-### 3. No edge function changes needed
-Edge functions run server-side (on Supabase/Deno infrastructure), so they are not affected by the India DNS block. They will continue to work as-is.
-
-## What Won't Change
-- All data remains in the existing backend -- no migration
-- Edge functions remain unchanged (server-side, not blocked)
-- The auto-generated `client.ts` and `types.ts` files are left untouched
-- Auth flows, RLS policies, storage -- all work identically through the proxy
-
-## After Implementation
-You will need to **Publish** the app for the changes to go live. Students in India should then be able to access the app normally.
+**Files modified**:
+- `src/components/admin/ManageContent.tsx` -- restructure dialog placement
 
