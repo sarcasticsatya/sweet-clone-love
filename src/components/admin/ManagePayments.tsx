@@ -172,6 +172,10 @@ export const ManagePayments = () => {
               className="pl-9"
             />
           </div>
+          <Button variant="outline" size="sm" onClick={handleExportPendingFailed}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Export Pending/Failed
+          </Button>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]">
               <SelectValue />
