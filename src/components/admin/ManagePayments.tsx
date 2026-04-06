@@ -6,9 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, IndianRupee, Search, Download } from "lucide-react";
+import { Loader2, IndianRupee, Search, Download, FileDown } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { generateReceipt } from "@/lib/generateReceipt";
+import * as XLSX from "xlsx";
 
 interface PaymentRecord {
   id: string;
