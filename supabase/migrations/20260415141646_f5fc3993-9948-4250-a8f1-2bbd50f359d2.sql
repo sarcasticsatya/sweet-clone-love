@@ -1,0 +1,1 @@
+ALTER TABLE public.subjects DROP CONSTRAINT subjects_medium_check;
