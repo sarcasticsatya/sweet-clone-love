@@ -64,9 +64,9 @@ export const ManageContent = () => {
       .select("medium");
     if (data) {
       const distinct = [...new Set(data.map(d => d.medium))].sort();
-      // Ensure English and Kannada are always present
+      // Ensure English and Kannada are always present, plus any locally-added mediums
       const base = ["English", "Kannada"];
-      const merged = [...new Set([...base, ...distinct])];
+      const merged = [...new Set([...base, ...distinct, ...localMediums])];
       setAvailableMediums(merged);
     }
   };
