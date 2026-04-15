@@ -81,6 +81,8 @@ export const ManageContent = () => {
       toast.error("This medium already exists");
       return;
     }
+    // Track locally so it survives loadMediums() calls
+    setLocalMediums(prev => [...prev, trimmed]);
     setAvailableMediums(prev => [...prev, trimmed]);
     setSelectedMedium(trimmed);
     setNewMediumName("");
