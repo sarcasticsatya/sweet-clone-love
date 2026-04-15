@@ -147,33 +147,45 @@ export const ManageContent = () => {
 
   // Get validation requirements based on selected medium
   const getMandatoryLabel = (isEnglish: boolean) => {
-    if (selectedMedium === "English") {
-      return isEnglish ? <span className="text-destructive">*</span> : <span className="text-muted-foreground text-xs">(optional)</span>;
-    } else {
+    if (selectedMedium === "Kannada") {
       return isEnglish ? <span className="text-muted-foreground text-xs">(optional)</span> : <span className="text-destructive">*</span>;
     }
+    // For English and all other mediums, English name is primary
+    return isEnglish ? <span className="text-destructive">*</span> : <span className="text-muted-foreground text-xs">(optional)</span>;
+  };
+
+  const getValidationHint = () => {
+    if (selectedMedium === "Kannada") return "Kannada name is mandatory, English is optional";
+    return "English name is mandatory, Kannada is optional";
   };
 
   const validateSubjectNames = (): boolean => {
-    if (selectedMedium === "English" && !subjectName.trim()) {
-      toast.error("English name is mandatory for English Medium subjects");
-      return false;
-    }
-    if (selectedMedium === "Kannada" && !subjectNameKannada.trim()) {
-      toast.error("Kannada name is mandatory for Kannada Medium subjects");
-      return false;
+    if (selectedMedium === "Kannada") {
+      if (!subjectNameKannada.trim()) {
+        toast.error("Kannada name is mandatory for Kannada Medium subjects");
+        return false;
+      }
+    } else {
+      // English and all custom mediums require English name
+      if (!subjectName.trim()) {
+        toast.error("English name is mandatory for subjects");
+        return false;
+      }
     }
     return true;
   };
 
   const validateChapterNames = (): boolean => {
-    if (selectedMedium === "English" && !chapterName.trim()) {
-      toast.error("English name is mandatory for English Medium chapters");
-      return false;
-    }
-    if (selectedMedium === "Kannada" && !chapterNameKannada.trim()) {
-      toast.error("Kannada name is mandatory for Kannada Medium chapters");
-      return false;
+    if (selectedMedium === "Kannada") {
+      if (!chapterNameKannada.trim()) {
+        toast.error("Kannada name is mandatory for Kannada Medium chapters");
+        return false;
+      }
+    } else {
+      if (!chapterName.trim()) {
+        toast.error("English name is mandatory for chapters");
+        return false;
+      }
     }
     return true;
   };
