@@ -204,12 +204,16 @@ export const ManageContent = () => {
       });
 
     if (error) {
-      toast.error("Failed to create subject");
+      console.error("Subject creation error:", error);
+      toast.error(`Failed to create subject: ${error.message}`);
     } else {
       toast.success("Subject created successfully");
       setSubjectDialogOpen(false);
       resetSubjectForm();
       loadSubjects();
+      loadMediums(); // Refresh mediums list now that a subject exists for this medium
+      // Remove from localMediums since it's now in DB
+      setLocalMediums(prev => prev.filter(m => m !== selectedMedium));
     }
     setLoading(false);
   };
