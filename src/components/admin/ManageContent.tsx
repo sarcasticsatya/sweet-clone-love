@@ -17,6 +17,8 @@ import { naturalSortChapters } from "@/lib/naturalSort";
 export const ManageContent = () => {
   const [selectedMedium, setSelectedMedium] = useState<string>("English");
   const [availableMediums, setAvailableMediums] = useState<string[]>(["English", "Kannada"]);
+  // Track mediums added locally (not yet in DB) so they survive loadMediums()
+  const [localMediums, setLocalMediums] = useState<string[]>([]);
   const [addMediumDialogOpen, setAddMediumDialogOpen] = useState(false);
   const [newMediumName, setNewMediumName] = useState("");
   const [subjects, setSubjects] = useState<any[]>([]);
