@@ -533,9 +533,7 @@ export const ManageContent = () => {
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                {editingSubject?.medium === "English" 
-                  ? "English name is mandatory, Kannada is optional"
-                  : "Kannada name is mandatory, English is optional"}
+                {getValidationHint()}
               </p>
               <div>
                 <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
@@ -574,9 +572,7 @@ export const ManageContent = () => {
                 <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
               </div>
               <p className="text-sm text-muted-foreground">
-                {selectedMedium === "English" 
-                  ? "English name is mandatory, Kannada is optional"
-                  : "Kannada name is mandatory, English is optional"}
+                {getValidationHint()}
               </p>
               <div>
                 <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
@@ -795,9 +791,7 @@ export const ManageContent = () => {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              {selectedMedium === "English" 
-                ? "English name is mandatory, Kannada is optional"
-                : "Kannada name is mandatory, English is optional"}
+              {getValidationHint()}
             </p>
             <div>
               <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
@@ -847,9 +841,7 @@ export const ManageContent = () => {
               <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedMedium === "English" 
-                ? "English name is mandatory, Kannada is optional"
-                : "Kannada name is mandatory, English is optional"}
+              {getValidationHint()}
             </p>
             <div>
               <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
