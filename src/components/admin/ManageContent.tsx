@@ -17,6 +17,8 @@ import { naturalSortChapters } from "@/lib/naturalSort";
 export const ManageContent = () => {
   const [selectedMedium, setSelectedMedium] = useState<string>("English");
   const [availableMediums, setAvailableMediums] = useState<string[]>(["English", "Kannada"]);
+  // Track mediums added locally (not yet in DB) so they survive loadMediums()
+  const [localMediums, setLocalMediums] = useState<string[]>([]);
   const [addMediumDialogOpen, setAddMediumDialogOpen] = useState(false);
   const [newMediumName, setNewMediumName] = useState("");
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -62,9 +64,9 @@ export const ManageContent = () => {
       .select("medium");
     if (data) {
       const distinct = [...new Set(data.map(d => d.medium))].sort();
-      // Ensure English and Kannada are always present
+      // Ensure English and Kannada are always present, plus any locally-added mediums
       const base = ["English", "Kannada"];
-      const merged = [...new Set([...base, ...distinct])];
+      const merged = [...new Set([...base, ...distinct, ...localMediums])];
       setAvailableMediums(merged);
     }
   };
@@ -79,6 +81,8 @@ export const ManageContent = () => {
       toast.error("This medium already exists");
       return;
     }
+    // Track locally so it survives loadMediums() calls
+    setLocalMediums(prev => [...prev, trimmed]);
     setAvailableMediums(prev => [...prev, trimmed]);
     setSelectedMedium(trimmed);
     setNewMediumName("");
@@ -143,33 +147,45 @@ export const ManageContent = () => {
 
   // Get validation requirements based on selected medium
   const getMandatoryLabel = (isEnglish: boolean) => {
-    if (selectedMedium === "English") {
-      return isEnglish ? <span className="text-destructive">*</span> : <span className="text-muted-foreground text-xs">(optional)</span>;
-    } else {
+    if (selectedMedium === "Kannada") {
       return isEnglish ? <span className="text-muted-foreground text-xs">(optional)</span> : <span className="text-destructive">*</span>;
     }
+    // For English and all other mediums, English name is primary
+    return isEnglish ? <span className="text-destructive">*</span> : <span className="text-muted-foreground text-xs">(optional)</span>;
+  };
+
+  const getValidationHint = () => {
+    if (selectedMedium === "Kannada") return "Kannada name is mandatory, English is optional";
+    return "English name is mandatory, Kannada is optional";
   };
 
   const validateSubjectNames = (): boolean => {
-    if (selectedMedium === "English" && !subjectName.trim()) {
-      toast.error("English name is mandatory for English Medium subjects");
-      return false;
-    }
-    if (selectedMedium === "Kannada" && !subjectNameKannada.trim()) {
-      toast.error("Kannada name is mandatory for Kannada Medium subjects");
-      return false;
+    if (selectedMedium === "Kannada") {
+      if (!subjectNameKannada.trim()) {
+        toast.error("Kannada name is mandatory for Kannada Medium subjects");
+        return false;
+      }
+    } else {
+      // English and all custom mediums require English name
+      if (!subjectName.trim()) {
+        toast.error("English name is mandatory for subjects");
+        return false;
+      }
     }
     return true;
   };
 
   const validateChapterNames = (): boolean => {
-    if (selectedMedium === "English" && !chapterName.trim()) {
-      toast.error("English name is mandatory for English Medium chapters");
-      return false;
-    }
-    if (selectedMedium === "Kannada" && !chapterNameKannada.trim()) {
-      toast.error("Kannada name is mandatory for Kannada Medium chapters");
-      return false;
+    if (selectedMedium === "Kannada") {
+      if (!chapterNameKannada.trim()) {
+        toast.error("Kannada name is mandatory for Kannada Medium chapters");
+        return false;
+      }
+    } else {
+      if (!chapterName.trim()) {
+        toast.error("English name is mandatory for chapters");
+        return false;
+      }
     }
     return true;
   };
@@ -188,12 +204,16 @@ export const ManageContent = () => {
       });
 
     if (error) {
-      toast.error("Failed to create subject");
+      console.error("Subject creation error:", error);
+      toast.error(`Failed to create subject: ${error.message}`);
     } else {
       toast.success("Subject created successfully");
       setSubjectDialogOpen(false);
       resetSubjectForm();
       loadSubjects();
+      loadMediums(); // Refresh mediums list now that a subject exists for this medium
+      // Remove from localMediums since it's now in DB
+      setLocalMediums(prev => prev.filter(m => m !== selectedMedium));
     }
     setLoading(false);
   };
@@ -513,9 +533,7 @@ export const ManageContent = () => {
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                {editingSubject?.medium === "English" 
-                  ? "English name is mandatory, Kannada is optional"
-                  : "Kannada name is mandatory, English is optional"}
+                {getValidationHint()}
               </p>
               <div>
                 <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
@@ -554,9 +572,7 @@ export const ManageContent = () => {
                 <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
               </div>
               <p className="text-sm text-muted-foreground">
-                {selectedMedium === "English" 
-                  ? "English name is mandatory, Kannada is optional"
-                  : "Kannada name is mandatory, English is optional"}
+                {getValidationHint()}
               </p>
               <div>
                 <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
@@ -775,9 +791,7 @@ export const ManageContent = () => {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              {selectedMedium === "English" 
-                ? "English name is mandatory, Kannada is optional"
-                : "Kannada name is mandatory, English is optional"}
+              {getValidationHint()}
             </p>
             <div>
               <Label>Subject Name (English) {getMandatoryLabel(true)}</Label>
@@ -827,9 +841,7 @@ export const ManageContent = () => {
               <Input type="text" placeholder="e.g., 1, 1a, 2.1" value={chapterNumber} onChange={(e) => setChapterNumber(e.target.value)} />
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedMedium === "English" 
-                ? "English name is mandatory, Kannada is optional"
-                : "Kannada name is mandatory, English is optional"}
+              {getValidationHint()}
             </p>
             <div>
               <Label>Chapter Name (English) {getMandatoryLabel(true)}</Label>
