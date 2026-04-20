@@ -94,6 +94,76 @@ export const ManageContent = () => {
     toast.success(`${trimmed} Medium added. Now add subjects under it.`);
   };
 
+  // Open the first confirmation dialog
+  const requestDeleteMedium = (medium: string) => {
+    setMediumPendingDelete(medium);
+    setDeleteConfirmText("");
+    setDeleteMediumDialogOpen(true);
+  };
+
+  // Final delete action (after user types medium name to confirm)
+  const handleDeleteMedium = async () => {
+    if (!mediumPendingDelete) return;
+    const medium = mediumPendingDelete;
+
+    if (deleteConfirmText.trim() !== medium) {
+      toast.error(`Please type "${medium}" exactly to confirm`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Find all subjects under this medium
+      const { data: subjectsToDelete, error: fetchErr } = await supabase
+        .from("subjects")
+        .select("id")
+        .eq("medium", medium);
+      if (fetchErr) throw fetchErr;
+
+      const subjectIds = (subjectsToDelete || []).map(s => s.id);
+
+      // For each subject, fetch chapters, delete their PDFs, then delete chapters/subject
+      for (const subjectId of subjectIds) {
+        const { data: chs } = await supabase
+          .from("chapters")
+          .select("id, pdf_storage_path")
+          .eq("subject_id", subjectId);
+        const paths = (chs || []).map(c => c.pdf_storage_path).filter(Boolean) as string[];
+        if (paths.length) {
+          await supabase.storage.from("chapter-pdfs").remove(paths);
+        }
+      }
+
+      if (subjectIds.length) {
+        const { error: delErr } = await supabase
+          .from("subjects")
+          .delete()
+          .in("id", subjectIds);
+        if (delErr) throw delErr;
+      }
+
+      // Remove from local list
+      setLocalMediums(prev => prev.filter(m => m !== medium));
+      setAvailableMediums(prev => prev.filter(m => m !== medium));
+
+      // Switch tab if the deleted medium was selected
+      if (selectedMedium === medium) {
+        setSelectedMedium("English");
+      }
+
+      toast.success(`"${medium}" Medium deleted${subjectIds.length ? ` along with ${subjectIds.length} subject(s)` : ""}`);
+      setDeleteMediumDialogOpen(false);
+      setMediumPendingDelete(null);
+      setDeleteConfirmText("");
+      loadMediums();
+      loadSubjects();
+    } catch (err: any) {
+      console.error("Delete medium error:", err);
+      toast.error(err.message || "Failed to delete medium");
+    }
+    setLoading(false);
+  };
+
   // Function to get signed URL for private PDFs
   const getSignedPdfUrl = async (storagePath: string): Promise<string | null> => {
     try {
