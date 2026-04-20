@@ -21,6 +21,10 @@ export const ManageContent = () => {
   const [localMediums, setLocalMediums] = useState<string[]>([]);
   const [addMediumDialogOpen, setAddMediumDialogOpen] = useState(false);
   const [newMediumName, setNewMediumName] = useState("");
+  // Delete-medium two-step confirmation state
+  const [deleteMediumDialogOpen, setDeleteMediumDialogOpen] = useState(false);
+  const [mediumPendingDelete, setMediumPendingDelete] = useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [subjects, setSubjects] = useState<any[]>([]);
   const [chapters, setChapters] = useState<Record<string, any[]>>({});
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
@@ -88,6 +92,76 @@ export const ManageContent = () => {
     setNewMediumName("");
     setAddMediumDialogOpen(false);
     toast.success(`${trimmed} Medium added. Now add subjects under it.`);
+  };
+
+  // Open the first confirmation dialog
+  const requestDeleteMedium = (medium: string) => {
+    setMediumPendingDelete(medium);
+    setDeleteConfirmText("");
+    setDeleteMediumDialogOpen(true);
+  };
+
+  // Final delete action (after user types medium name to confirm)
+  const handleDeleteMedium = async () => {
+    if (!mediumPendingDelete) return;
+    const medium = mediumPendingDelete;
+
+    if (deleteConfirmText.trim() !== medium) {
+      toast.error(`Please type "${medium}" exactly to confirm`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Find all subjects under this medium
+      const { data: subjectsToDelete, error: fetchErr } = await supabase
+        .from("subjects")
+        .select("id")
+        .eq("medium", medium);
+      if (fetchErr) throw fetchErr;
+
+      const subjectIds = (subjectsToDelete || []).map(s => s.id);
+
+      // For each subject, fetch chapters, delete their PDFs, then delete chapters/subject
+      for (const subjectId of subjectIds) {
+        const { data: chs } = await supabase
+          .from("chapters")
+          .select("id, pdf_storage_path")
+          .eq("subject_id", subjectId);
+        const paths = (chs || []).map(c => c.pdf_storage_path).filter(Boolean) as string[];
+        if (paths.length) {
+          await supabase.storage.from("chapter-pdfs").remove(paths);
+        }
+      }
+
+      if (subjectIds.length) {
+        const { error: delErr } = await supabase
+          .from("subjects")
+          .delete()
+          .in("id", subjectIds);
+        if (delErr) throw delErr;
+      }
+
+      // Remove from local list
+      setLocalMediums(prev => prev.filter(m => m !== medium));
+      setAvailableMediums(prev => prev.filter(m => m !== medium));
+
+      // Switch tab if the deleted medium was selected
+      if (selectedMedium === medium) {
+        setSelectedMedium("English");
+      }
+
+      toast.success(`"${medium}" Medium deleted${subjectIds.length ? ` along with ${subjectIds.length} subject(s)` : ""}`);
+      setDeleteMediumDialogOpen(false);
+      setMediumPendingDelete(null);
+      setDeleteConfirmText("");
+      loadMediums();
+      loadSubjects();
+    } catch (err: any) {
+      console.error("Delete medium error:", err);
+      toast.error(err.message || "Failed to delete medium");
+    }
+    setLoading(false);
   };
 
   // Function to get signed URL for private PDFs
@@ -492,6 +566,16 @@ export const ManageContent = () => {
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Chapter PDF
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/40"
+                  onClick={() => requestDeleteMedium(selectedMedium)}
+                  title={`Delete "${selectedMedium}" Medium`}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Medium
+                </Button>
               </div>
             </div>
           </Tabs>
@@ -761,6 +845,52 @@ export const ManageContent = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Medium - Two-step confirmation */}
+      <AlertDialog
+        open={deleteMediumDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteMediumDialogOpen(open);
+          if (!open) {
+            setMediumPendingDelete(null);
+            setDeleteConfirmText("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{mediumPendingDelete}" Medium?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the <strong>{mediumPendingDelete}</strong> medium
+              along with <strong>all its subjects, chapters, and PDFs</strong>. This action
+              cannot be undone.
+              <br /><br />
+              To confirm, type <strong>{mediumPendingDelete}</strong> exactly below:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Input
+              autoFocus
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={`Type "${mediumPendingDelete}" to confirm`}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteMedium();
+              }}
+              disabled={loading || deleteConfirmText.trim() !== mediumPendingDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {loading ? "Deleting..." : "Delete Medium"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add Subject Dialog - outside Tabs to prevent re-render conflicts */}
       <Dialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen}>
