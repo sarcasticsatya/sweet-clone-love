@@ -21,6 +21,10 @@ export const ManageContent = () => {
   const [localMediums, setLocalMediums] = useState<string[]>([]);
   const [addMediumDialogOpen, setAddMediumDialogOpen] = useState(false);
   const [newMediumName, setNewMediumName] = useState("");
+  // Delete-medium two-step confirmation state
+  const [deleteMediumDialogOpen, setDeleteMediumDialogOpen] = useState(false);
+  const [mediumPendingDelete, setMediumPendingDelete] = useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [subjects, setSubjects] = useState<any[]>([]);
   const [chapters, setChapters] = useState<Record<string, any[]>>({});
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
