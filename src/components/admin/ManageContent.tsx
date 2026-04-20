@@ -846,6 +846,52 @@ export const ManageContent = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Medium - Two-step confirmation */}
+      <AlertDialog
+        open={deleteMediumDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteMediumDialogOpen(open);
+          if (!open) {
+            setMediumPendingDelete(null);
+            setDeleteConfirmText("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{mediumPendingDelete}" Medium?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the <strong>{mediumPendingDelete}</strong> medium
+              along with <strong>all its subjects, chapters, and PDFs</strong>. This action
+              cannot be undone.
+              <br /><br />
+              To confirm, type <strong>{mediumPendingDelete}</strong> exactly below:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Input
+              autoFocus
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={`Type "${mediumPendingDelete}" to confirm`}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteMedium();
+              }}
+              disabled={loading || deleteConfirmText.trim() !== mediumPendingDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {loading ? "Deleting..." : "Delete Medium"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Add Subject Dialog - outside Tabs to prevent re-render conflicts */}
       <Dialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen}>
         <DialogContent>
