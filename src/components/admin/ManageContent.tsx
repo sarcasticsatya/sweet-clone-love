@@ -566,6 +566,16 @@ export const ManageContent = () => {
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Chapter PDF
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/40"
+                  onClick={() => requestDeleteMedium(selectedMedium)}
+                  title={`Delete "${selectedMedium}" Medium`}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Medium
+                </Button>
               </div>
             </div>
           </Tabs>
