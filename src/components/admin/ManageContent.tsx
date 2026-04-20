@@ -151,7 +151,7 @@ export const ManageContent = () => {
   );
 
   const getValidationHint = () =>
-    "Provide at least one name (English or Kannada). Both are optional individually.";
+    "Both English and Kannada are optional. Just fill at least one name.";
 
   const validateSubjectNames = (): boolean => {
     if (!subjectName.trim() && !subjectNameKannada.trim()) {
