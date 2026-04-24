@@ -6,7 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, IndianRupee, Search, Download, FileDown } from "lucide-react";
+import { Loader2, IndianRupee, Search, Download, FileDown, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format, differenceInDays } from "date-fns";
 import { generateReceipt } from "@/lib/generateReceipt";
 import * as XLSX from "xlsx";
@@ -80,15 +88,20 @@ export const ManagePayments = () => {
     setLoading(false);
   };
 
-  const handleExportPendingFailed = async () => {
-    const { data: purchases } = await supabase
+  const handleExport = async (statuses: string[], label: string) => {
+    let query = supabase
       .from("student_purchases")
       .select("*")
-      .in("payment_status", ["pending", "failed"])
       .order("purchased_at", { ascending: false });
 
+    if (statuses.length > 0) {
+      query = query.in("payment_status", statuses);
+    }
+
+    const { data: purchases } = await query;
+
     if (!purchases || purchases.length === 0) {
-      return alert("No pending or failed payments found.");
+      return alert(`No ${label.toLowerCase()} payments found.`);
     }
 
     const studentIds = [...new Set(purchases.map(p => p.student_id))];
@@ -126,7 +139,8 @@ export const ManagePayments = () => {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pending & Failed Payments");
+    const sheetName = `${label} Payments`.slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
     
     // Auto-size columns
     const colWidths = Object.keys(rows[0]).map(key => ({
@@ -134,7 +148,8 @@ export const ManagePayments = () => {
     }));
     ws["!cols"] = colWidths;
 
-    XLSX.writeFile(wb, `Pending_Failed_Payments_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    const fileLabel = label.replace(/[\s/]+/g, "_");
+    XLSX.writeFile(wb, `${fileLabel}_Payments_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
   const filtered = payments.filter(p => {
@@ -172,10 +187,34 @@ export const ManagePayments = () => {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={handleExportPendingFailed}>
-            <FileDown className="w-4 h-4 mr-2" />
-            Export Pending/Failed
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FileDown className="w-4 h-4 mr-2" />
+                Export
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Download as Excel</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExport([], "All")}>
+                All Payments
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["completed"], "Completed")}>
+                Completed Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["pending"], "Pending")}>
+                Pending Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["failed"], "Failed")}>
+                Failed Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["pending", "failed"], "Pending_Failed")}>
+                Pending &amp; Failed
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]">
               <SelectValue />
