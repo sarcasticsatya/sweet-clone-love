@@ -88,15 +88,20 @@ export const ManagePayments = () => {
     setLoading(false);
   };
 
-  const handleExportPendingFailed = async () => {
-    const { data: purchases } = await supabase
+  const handleExport = async (statuses: string[], label: string) => {
+    let query = supabase
       .from("student_purchases")
       .select("*")
-      .in("payment_status", ["pending", "failed"])
       .order("purchased_at", { ascending: false });
 
+    if (statuses.length > 0) {
+      query = query.in("payment_status", statuses);
+    }
+
+    const { data: purchases } = await query;
+
     if (!purchases || purchases.length === 0) {
-      return alert("No pending or failed payments found.");
+      return alert(`No ${label.toLowerCase()} payments found.`);
     }
 
     const studentIds = [...new Set(purchases.map(p => p.student_id))];
@@ -134,7 +139,8 @@ export const ManagePayments = () => {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pending & Failed Payments");
+    const sheetName = `${label} Payments`.slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
     
     // Auto-size columns
     const colWidths = Object.keys(rows[0]).map(key => ({
@@ -142,7 +148,8 @@ export const ManagePayments = () => {
     }));
     ws["!cols"] = colWidths;
 
-    XLSX.writeFile(wb, `Pending_Failed_Payments_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    const fileLabel = label.replace(/[\s/]+/g, "_");
+    XLSX.writeFile(wb, `${fileLabel}_Payments_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
   const filtered = payments.filter(p => {
