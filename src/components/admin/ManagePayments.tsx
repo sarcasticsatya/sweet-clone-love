@@ -187,10 +187,34 @@ export const ManagePayments = () => {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={handleExportPendingFailed}>
-            <FileDown className="w-4 h-4 mr-2" />
-            Export Pending/Failed
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FileDown className="w-4 h-4 mr-2" />
+                Export
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Download as Excel</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExport([], "All")}>
+                All Payments
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["completed"], "Completed")}>
+                Completed Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["pending"], "Pending")}>
+                Pending Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["failed"], "Failed")}>
+                Failed Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(["pending", "failed"], "Pending_Failed")}>
+                Pending &amp; Failed
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]">
               <SelectValue />
