@@ -11,8 +11,8 @@ export const Footer = ({ minimal = false }: FooterProps) => {
     return (
       <footer className="py-4 text-center border-t border-border bg-background/50 backdrop-blur-sm">
         <p className="text-xs text-muted-foreground">© 2025 <BrandName size="xs" className="font-medium" />.</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">
-          Developed by <span className="font-medium text-muted-foreground">AIWOS</span>
+        <p className="text-sm md:text-base font-semibold text-foreground mt-2">
+          Developed by <span className="font-bold tracking-wide text-primary">AIWOS</span>
         </p>
       </footer>
     );
@@ -51,8 +51,8 @@ export const Footer = ({ minimal = false }: FooterProps) => {
           </div>
         </div>
         <div className="text-center mt-4 pt-4 border-t border-border/50">
-          <p className="text-xs text-muted-foreground/70">
-            Developed by <span className="font-medium text-muted-foreground">AIWOS</span>
+          <p className="text-base md:text-lg font-semibold text-foreground">
+            Developed by <span className="font-bold tracking-wide text-primary">AIWOS</span>
           </p>
         </div>
       </div>
